@@ -12,6 +12,7 @@ import toneRoutes from './modules/tone/tone.routes.js';
 import personaRoutes from './modules/persona/persona.routes.js';
 import topicRulesRoutes from './modules/topic-rules/topic-rules.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
+import forumRoutes from './modules/forum/forum.routes.js';
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/v1/tones', toneRoutes);
 app.use('/api/v1/personas', personaRoutes);
 app.use('/api/v1/topic-rules', topicRulesRoutes);
 app.use('/api/v1/audits', auditRoutes);
+app.use('/api/v1/forums', forumRoutes);
 
 // Error handling (must be after routes)
 app.use(notFound);
