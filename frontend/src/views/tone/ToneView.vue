@@ -2,7 +2,7 @@
   <div class="tone-view">
     <h2>Tone Modes</h2>
 
-    <el-button type="primary" @click="showAdd = true" style="margin-bottom: 16px">
+    <el-button type="primary" @click="openAdd" style="margin-bottom: 16px">
       Add Tone
     </el-button>
 
@@ -22,7 +22,28 @@
           <el-switch v-model="row.isActive" @change="toggleActive(row)" />
         </template>
       </el-table-column>
+      <el-table-column label="Actions" width="160" fixed="right">
+        <template #default="{ row }">
+          <el-button type="primary" size="small" link @click="openEdit(row)">Edit</el-button>
+          <el-popconfirm
+            title="Are you sure you want to delete this tone?"
+            confirm-button-text="Delete"
+            cancel-button-text="Cancel"
+            @confirm="handleDelete(row)"
+          >
+            <template #reference>
+              <el-button type="danger" size="small" link>Delete</el-button>
+            </template>
+          </el-popconfirm>
+        </template>
+      </el-table-column>
     </el-table>
+
+    <ToneForm
+      v-model="showForm"
+      :edit-data="editData"
+      @saved="onSaved"
+    />
   </div>
 </template>
 
@@ -30,18 +51,40 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
+import ToneForm from './ToneForm.vue'
 
 const tones = ref([])
 const loading = ref(false)
-const showAdd = ref(false)
+const showForm = ref(false)
+const editData = ref(null)
 
 const loadTones = async () => {
   loading.value = true
   try {
     const { data } = await api.get('/v1/tones')
-    tones.value = data.data ?? data
+    tones.value = data ?? []
   } finally {
     loading.value = false
+  }
+}
+
+const openAdd = () => {
+  editData.value = null
+  showForm.value = true
+}
+
+const openEdit = (row) => {
+  editData.value = { ...row }
+  showForm.value = true
+}
+
+const handleDelete = async (row) => {
+  try {
+    await api.delete(`/v1/tones/${row.toneId}`)
+    ElMessage.success('Tone deleted')
+    loadTones()
+  } catch (err) {
+    ElMessage.error(err.message || 'Failed to delete tone')
   }
 }
 
@@ -52,6 +95,10 @@ const toggleActive = async (row) => {
   } catch {
     row.isActive = !row.isActive
   }
+}
+
+const onSaved = () => {
+  loadTones()
 }
 
 onMounted(loadTones)

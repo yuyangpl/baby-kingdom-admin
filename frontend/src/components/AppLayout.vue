@@ -64,7 +64,7 @@
           <el-breadcrumb-item>{{ $route.name }}</el-breadcrumb-item>
         </el-breadcrumb>
         <div class="header-right">
-          <el-badge :value="pendingCount" :hidden="!pendingCount" class="notification-badge">
+          <el-badge :value="unreadCount || pendingCount" :hidden="!unreadCount && !pendingCount" class="notification-badge" @click="notifyStore.markAllRead()">
             <el-icon :size="20"><Bell /></el-icon>
           </el-badge>
           <el-dropdown>
@@ -90,21 +90,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useNotificationStore } from '../stores/notification';
+import { connectSocket, disconnectSocket } from '../socket';
+import { registerListeners } from '../socket/listeners';
 import api from '../api';
 
 const auth = useAuthStore();
+const notifyStore = useNotificationStore();
 const router = useRouter();
 const isCollapsed = ref(false);
 const pendingCount = ref(0);
+
+const unreadCount = computed(() => notifyStore.unreadCount);
 
 onMounted(async () => {
   try {
     const res = await api.get('/v1/dashboard/realtime');
     pendingCount.value = res.data?.pendingFeeds || 0;
   } catch { /* ignore */ }
+
+  // Connect socket
+  const socket = connectSocket();
+  registerListeners(socket);
+});
+
+onUnmounted(() => {
+  disconnectSocket();
 });
 
 async function handleLogout() {

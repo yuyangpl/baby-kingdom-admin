@@ -1,0 +1,126 @@
+<template>
+  <el-dialog
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', $event)"
+    title="Custom Generate"
+    width="500px"
+    :close-on-click-modal="false"
+  >
+    <el-form
+      ref="formRef"
+      :model="form"
+      :rules="rules"
+      label-position="top"
+      class="generate-form"
+    >
+      <el-form-item label="Topic" prop="topic">
+        <el-input v-model="form.topic" placeholder="Enter topic or subject" />
+      </el-form-item>
+
+      <el-form-item label="Persona Account ID" prop="personaAccountId">
+        <el-input v-model="form.personaAccountId" placeholder="Optional - leave empty for auto" />
+      </el-form-item>
+
+      <el-form-item label="Tone Mode" prop="toneMode">
+        <el-input v-model="form.toneMode" placeholder="auto" />
+      </el-form-item>
+
+      <el-form-item label="Post Type" prop="postType">
+        <el-radio-group v-model="form.postType">
+          <el-radio value="new-post">New Post</el-radio>
+          <el-radio value="reply">Reply</el-radio>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item label="Target FID" prop="targetFid">
+        <el-input-number
+          v-model="form.targetFid"
+          :min="0"
+          controls-position="right"
+          placeholder="Optional thread FID for replies"
+          style="width: 100%"
+        />
+      </el-form-item>
+    </el-form>
+
+    <template #footer>
+      <el-button @click="$emit('update:modelValue', false)">Cancel</el-button>
+      <el-button type="primary" :loading="generating" @click="handleGenerate">
+        {{ generating ? 'Generating...' : 'Generate' }}
+      </el-button>
+    </template>
+  </el-dialog>
+</template>
+
+<script setup>
+import { ref, reactive, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import api from '../../api'
+
+const props = defineProps({
+  modelValue: { type: Boolean, default: false },
+  editData: { type: Object, default: null },
+})
+
+const emit = defineEmits(['update:modelValue', 'saved'])
+
+const formRef = ref(null)
+const generating = ref(false)
+
+const defaultForm = () => ({
+  topic: '',
+  personaAccountId: '',
+  toneMode: 'auto',
+  postType: 'new-post',
+  targetFid: undefined,
+})
+
+const form = reactive(defaultForm())
+
+const rules = {
+  topic: [{ required: true, message: 'Topic is required', trigger: 'blur' }],
+}
+
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open) {
+      Object.assign(form, defaultForm())
+      formRef.value?.clearValidate()
+    }
+  }
+)
+
+const handleGenerate = async () => {
+  try {
+    await formRef.value.validate()
+  } catch {
+    return
+  }
+  generating.value = true
+  try {
+    const payload = {
+      topic: form.topic,
+      postType: form.postType,
+    }
+    if (form.personaAccountId) payload.personaAccountId = form.personaAccountId
+    if (form.toneMode && form.toneMode !== 'auto') payload.toneMode = form.toneMode
+    if (form.targetFid) payload.targetFid = form.targetFid
+
+    await api.post('/v1/feeds/custom-generate', payload)
+    ElMessage.success('Content generated successfully')
+    emit('saved')
+    emit('update:modelValue', false)
+  } catch (err) {
+    ElMessage.error(err.message || 'Generation failed')
+  } finally {
+    generating.value = false
+  }
+}
+</script>
+
+<style scoped>
+.generate-form {
+  padding: 0 4px;
+}
+</style>
