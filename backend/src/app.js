@@ -15,6 +15,8 @@ import auditRoutes from './modules/audit/audit.routes.js';
 import forumRoutes from './modules/forum/forum.routes.js';
 import scannerRoutes from './modules/scanner/scanner.routes.js';
 import trendsRoutes from './modules/trends/trends.routes.js';
+import feedRoutes from './modules/feed/feed.routes.js';
+import posterRoutes from './modules/poster/poster.routes.js';
 
 const app = express();
 
@@ -43,6 +45,8 @@ app.use('/api/v1/audits', auditRoutes);
 app.use('/api/v1/forums', forumRoutes);
 app.use('/api/v1/scanner', scannerRoutes);
 app.use('/api/v1/trends', trendsRoutes);
+app.use('/api/v1/feeds', feedRoutes);
+app.use('/api/v1/poster', posterRoutes);
 
 // Error handling (must be after routes)
 app.use(notFound);
