@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import { requestLogger } from './shared/middleware/request-logger.js';
 import { errorHandler } from './shared/middleware/error-handler.js';
 import { notFound } from './shared/middleware/not-found.js';
+import { setupSwagger } from './shared/swagger.js';
 import healthRoutes from './modules/health/health.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import configRoutes from './modules/config/config.routes.js';
@@ -51,6 +52,9 @@ app.use('/api/v1/feeds', feedRoutes);
 app.use('/api/v1/poster', posterRoutes);
 app.use('/api/v1/queues', queueRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+
+// Swagger API docs
+setupSwagger(app);
 
 // Error handling (must be after routes)
 app.use(notFound);
