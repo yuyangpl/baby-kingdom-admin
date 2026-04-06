@@ -54,11 +54,10 @@ describe('Persona CRUD', () => {
     const res = await request
       .put(`/api/v1/personas/${personaId}`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ maxPostsPerDay: 5, postsToday: 2 });
+      .send({ maxPostsPerDay: 5 });
 
     expect(res.status).toBe(200);
     expect(res.body.data.maxPostsPerDay).toBe(5);
-    expect(res.body.data.postsToday).toBe(2);
   });
 
   it('POST duplicate accountId returns 409', async () => {

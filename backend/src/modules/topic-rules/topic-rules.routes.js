@@ -4,7 +4,13 @@ import { buildCrud } from '../../shared/crud.js';
 import TopicRule from './topic-rules.model.js';
 
 const router = Router();
-const ctrl = buildCrud(TopicRule, 'topic-rules');
+const ctrl = buildCrud(TopicRule, 'topic-rules', {
+  allowedFields: [
+    'ruleId', 'topicKeywords', 'sensitivityTier', 'sentimentTrigger',
+    'priorityAccountIds', 'assignToneMode', 'postTypePreference',
+    'geminiPromptHint', 'avoidIf', 'isActive',
+  ],
+});
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 router.get('/', authenticate, wrap(ctrl.list));

@@ -8,8 +8,17 @@ import * as auditService from '../modules/audit/audit.service.js';
  * @param {string} moduleName - for audit logging
  * @param {object} options - { defaultSort, uniqueField }
  */
+function filterBody(body, allowedFields) {
+  if (!allowedFields) return body;
+  const filtered = {};
+  for (const key of allowedFields) {
+    if (key in body) filtered[key] = body[key];
+  }
+  return filtered;
+}
+
 export function buildCrud(Model, moduleName, options = {}) {
-  const { defaultSort = '-createdAt' } = options;
+  const { defaultSort = '-createdAt', allowedFields } = options;
   const resourceName = Model.modelName;
 
   return {
@@ -42,7 +51,7 @@ export function buildCrud(Model, moduleName, options = {}) {
     },
 
     async create(req, res) {
-      const doc = await Model.create(req.body);
+      const doc = await Model.create(filterBody(req.body, allowedFields));
 
       await auditService.log({
         operator: req.user?.id || 'system',
@@ -62,7 +71,7 @@ export function buildCrud(Model, moduleName, options = {}) {
       if (!doc) throw new NotFoundError(resourceName);
 
       const before = doc.toObject();
-      Object.assign(doc, req.body);
+      Object.assign(doc, filterBody(req.body, allowedFields));
       await doc.save();
 
       await auditService.log({

@@ -4,7 +4,13 @@ import { buildCrud } from '../../shared/crud.js';
 import Persona from './persona.model.js';
 
 const router = Router();
-const ctrl = buildCrud(Persona, 'persona');
+const ctrl = buildCrud(Persona, 'persona', {
+  allowedFields: [
+    'accountId', 'username', 'archetype', 'primaryToneMode', 'secondaryToneMode',
+    'avoidedToneMode', 'voiceCues', 'catchphrases', 'topicBlacklist', 'tier3Script',
+    'maxPostsPerDay', 'bkPassword', 'bkUid', 'overrideNotes', 'isActive',
+  ],
+});
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 router.get('/', authenticate, wrap(ctrl.list));

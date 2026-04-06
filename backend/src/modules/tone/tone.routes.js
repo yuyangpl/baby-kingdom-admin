@@ -4,7 +4,13 @@ import { buildCrud } from '../../shared/crud.js';
 import ToneMode from './tone.model.js';
 
 const router = Router();
-const ctrl = buildCrud(ToneMode, 'tone');
+const ctrl = buildCrud(ToneMode, 'tone', {
+  allowedFields: [
+    'toneId', 'displayName', 'whenToUse', 'emotionalRegister', 'openingStyle',
+    'sentenceStructure', 'whatToAvoid', 'exampleOpening', 'suitableForTier3',
+    'overridePriority', 'isActive',
+  ],
+});
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 router.get('/', authenticate, wrap(ctrl.list));

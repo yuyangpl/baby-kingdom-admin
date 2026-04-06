@@ -16,6 +16,7 @@ export async function list({ status, source, threadFid, personaId, page = 1, lim
   if (threadFid) filter.threadFid = parseInt(threadFid, 10);
   if (personaId) filter.personaId = personaId;
 
+  limit = Math.min(parseInt(limit) || 20, 200);
   const skip = (page - 1) * limit;
   const [data, total] = await Promise.all([
     Feed.find(filter).sort(sort).skip(skip).limit(limit)
