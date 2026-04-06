@@ -2,6 +2,7 @@ import 'dotenv/config';
 import app from './app.js';
 import { connectDB, disconnectDB } from './shared/database.js';
 import { getRedis, disconnectRedis } from './shared/redis.js';
+import { seedAdmin } from './modules/auth/auth.service.js';
 import logger from './shared/logger.js';
 
 const PORT = process.env.PORT || 3000;
@@ -9,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 async function start() {
   await connectDB();
   getRedis();
+  await seedAdmin();
 
   const server = app.listen(PORT, () => {
     logger.info(`Backend listening on port ${PORT}`);
