@@ -11,6 +11,7 @@
     "worker": "node src/worker.js"
   },
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.20.0",
     "cookie-parser": "^1.4.7",
@@ -21,8 +22,10 @@
     "ioredis": "^5.4.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.8.0",
+    "node-cron": "^4.2.1",
     "pino": "^9.5.0",
-    "pino-pretty": "^11.3.0"
+    "pino-pretty": "^11.3.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

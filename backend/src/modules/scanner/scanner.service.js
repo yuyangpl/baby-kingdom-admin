@@ -6,6 +6,7 @@ import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { matchGoogleTrends } from '../gemini/google-trends.service.js';
 import { checkQuality, checkSimilarity } from '../gemini/quality-guard.js';
+import { fetchThreadList, fetchThreadContent } from '../poster/poster.service.js';
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 
@@ -171,52 +172,8 @@ export async function scanForumThreads() {
   return stats;
 }
 
-// --- BK Forum API calls (mock in dev) ---
-
-async function fetchThreadList(fid) {
-  const baseUrl = await configService.getValue('BK_BASE_URL');
-  if (!baseUrl) {
-    logger.debug('BK_BASE_URL not configured, returning mock threads');
-    return mockThreadList();
-  }
-
-  try {
-    const app = await configService.getValue('BK_APP') || 'android';
-    const ver = await configService.getValue('BK_VER') || '3.11.11';
-    const url = `${baseUrl}?mod=forum&op=forumdisplay&fid=${fid}&orderby=lastpost&page=1&app=${app}&ver=${ver}`;
-
-    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    return (data.threads || []).map((t) => ({
-      tid: t.tid,
-      subject: t.subject,
-      replies: parseInt(t.replies || '0', 10),
-    }));
-  } catch (err) {
-    logger.warn({ err, fid }, 'Failed to fetch thread list');
-    return [];
-  }
-}
-
-async function fetchThreadContent(tid) {
-  const baseUrl = await configService.getValue('BK_BASE_URL');
-  if (!baseUrl) return 'Mock thread content for testing purposes.';
-
-  try {
-    const url = `${baseUrl}?mod=forum&op=viewthread&tid=${tid}&page=1`;
-    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const posts = data.posts || [];
-    return posts.slice(0, 4).map((p) => stripHtml(p.message || '')).join('\n\n');
-  } catch (err) {
-    logger.warn({ err, tid }, 'Failed to fetch thread content');
-    return null;
-  }
-}
+// --- BK Forum API calls imported from poster.service.js ---
+// fetchThreadList, fetchThreadContent are imported at top
 
 async function evaluateThread(subject, content) {
   const systemPrompt = '你係一個香港親子論壇內容分析師。評估以下帖子是否值得用親子角色回覆。以JSON格式回覆。';
@@ -263,23 +220,11 @@ function parseTier(tierString) {
   return match ? parseInt(match[1], 10) : 1;
 }
 
-function stripHtml(html) {
-  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
-}
-
 function generateFeedId() {
   const now = new Date();
   const ts = now.toISOString().replace(/[-:T]/g, '').slice(0, 12);
   const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
   return `FQ-${ts}-${rand}`;
-}
-
-function mockThreadList() {
-  return [
-    { tid: 23900001, subject: '幼稚園面試心得分享', replies: 15 },
-    { tid: 23900002, subject: '母乳餵哺遇到困難', replies: 8 },
-    { tid: 23900003, subject: '湊仔經好攰但好值得', replies: 25 },
-  ];
 }
 
 export async function getHistory({ page = 1, limit = 20 }) {

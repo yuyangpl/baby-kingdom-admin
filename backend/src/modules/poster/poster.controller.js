@@ -14,3 +14,8 @@ export async function history(req, res) {
   });
   return res.json({ success: true, data: result.data, pagination: result.pagination });
 }
+
+export async function syncForumIndex(req, res) {
+  const result = await posterService.syncForumIndex();
+  return success(res, result);
+}

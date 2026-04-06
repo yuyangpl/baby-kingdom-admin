@@ -4,6 +4,7 @@ import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { checkQuality } from '../gemini/quality-guard.js';
 import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
+import { emitToRoom } from '../../shared/socket.js';
 import * as auditService from '../audit/audit.service.js';
 
 const CLAIM_EXPIRY_MINUTES = 10;
@@ -48,6 +49,7 @@ export async function claim(feedId, userId) {
   feed.claimedBy = userId;
   feed.claimedAt = new Date();
   await feed.save();
+  emitToRoom('room:feed', 'feed:claimed', { feedId: feed._id, claimedBy: userId });
   return feed;
 }
 
@@ -62,6 +64,7 @@ export async function unclaim(feedId, userId) {
   feed.claimedBy = null;
   feed.claimedAt = null;
   await feed.save();
+  emitToRoom('room:feed', 'feed:unclaimed', { feedId: feed._id });
   return feed;
 }
 
@@ -84,6 +87,7 @@ export async function approve(feedId, userId, ip) {
     actionDetail: `Approved feed ${feed.feedId}`,
   });
 
+  emitToRoom('room:feed', 'feed:statusChanged', { feedId: feed._id, status: 'approved' });
   return feed;
 }
 
@@ -106,6 +110,7 @@ export async function reject(feedId, userId, notes, ip) {
     actionDetail: `Rejected feed ${feed.feedId}: ${notes || ''}`,
   });
 
+  emitToRoom('room:feed', 'feed:statusChanged', { feedId: feed._id, status: 'rejected' });
   return feed;
 }
 

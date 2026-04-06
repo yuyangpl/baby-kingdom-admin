@@ -1,8 +1,13 @@
 import 'dotenv/config';
+import { createServer } from 'http';
 import app from './app.js';
 import { connectDB, disconnectDB } from './shared/database.js';
 import { getRedis, disconnectRedis } from './shared/redis.js';
+import { initSocketIO } from './shared/socket.js';
+import { initQueues } from './modules/queue/queue.service.js';
 import { seedAdmin } from './modules/auth/auth.service.js';
+import { seed as seedConfigs } from './modules/config/config.service.js';
+import { CONFIG_PRESETS } from './seeds/config.seeds.js';
 import logger from './shared/logger.js';
 
 const PORT = process.env.PORT || 3000;
@@ -11,22 +16,29 @@ async function start() {
   await connectDB();
   getRedis();
   await seedAdmin();
+  await seedConfigs(CONFIG_PRESETS);
 
-  const server = app.listen(PORT, () => {
-    logger.info(`Backend listening on port ${PORT}`);
+  // Create HTTP server and attach Socket.io
+  const httpServer = createServer(app);
+  initSocketIO(httpServer);
+
+  // Initialize BullMQ queues
+  initQueues();
+
+  httpServer.listen(PORT, () => {
+    logger.info(`Backend listening on port ${PORT} (HTTP + WebSocket)`);
   });
 
   // Graceful shutdown
   const shutdown = async (signal) => {
     logger.info(`${signal} received, shutting down gracefully`);
-    server.close(async () => {
+    httpServer.close(async () => {
       await disconnectRedis();
       await disconnectDB();
       logger.info('Server shut down');
       process.exit(0);
     });
 
-    // Force exit after 10s
     setTimeout(() => {
       logger.error('Forced shutdown after timeout');
       process.exit(1);
