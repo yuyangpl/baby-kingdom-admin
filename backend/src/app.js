@@ -13,6 +13,8 @@ import personaRoutes from './modules/persona/persona.routes.js';
 import topicRulesRoutes from './modules/topic-rules/topic-rules.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import forumRoutes from './modules/forum/forum.routes.js';
+import scannerRoutes from './modules/scanner/scanner.routes.js';
+import trendsRoutes from './modules/trends/trends.routes.js';
 
 const app = express();
 
@@ -39,6 +41,8 @@ app.use('/api/v1/personas', personaRoutes);
 app.use('/api/v1/topic-rules', topicRulesRoutes);
 app.use('/api/v1/audits', auditRoutes);
 app.use('/api/v1/forums', forumRoutes);
+app.use('/api/v1/scanner', scannerRoutes);
+app.use('/api/v1/trends', trendsRoutes);
 
 // Error handling (must be after routes)
 app.use(notFound);

@@ -6,16 +6,18 @@ let adminToken;
 
 beforeAll(async () => {
   await setupDB();
-  await User.deleteMany({});
   await Config.deleteMany({});
 
-  await User.create({ username: 'admin', email: 'admin@test.com', password: 'admin123', role: 'admin' });
-  const res = await request.post('/api/v1/auth/login').send({ email: 'admin@test.com', password: 'admin123' });
+  // Use unique email to avoid conflicts with parallel test suites
+  const email = 'admin-config@test.com';
+  await User.findOneAndDelete({ email });
+  await User.create({ username: 'admin-config', email, password: 'admin123', role: 'admin' });
+  const res = await request.post('/api/v1/auth/login').send({ email, password: 'admin123' });
   adminToken = res.body.data.accessToken;
 });
 
 afterAll(async () => {
-  await User.deleteMany({});
+  await User.findOneAndDelete({ email: 'admin-config@test.com' });
   await Config.deleteMany({});
   await teardownDB();
 });
