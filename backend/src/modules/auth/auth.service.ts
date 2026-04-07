@@ -1,28 +1,29 @@
 import jwt from 'jsonwebtoken';
 import User from './auth.model.js';
+import type { UserDocument, IUser } from './auth.model.js';
 import { getRedis } from '../../shared/redis.js';
 import { UnauthorizedError, NotFoundError, ConflictError, ForbiddenError } from '../../shared/errors.js';
 
 const REFRESH_BLACKLIST_PREFIX = 'bl:rt:';
 
-function generateAccessToken(user) {
+function generateAccessToken(user: UserDocument): string {
   return jwt.sign(
     { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET!,
     { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '30m' }
   );
 }
 
-function generateRefreshToken(user) {
+function generateRefreshToken(user: UserDocument): string {
   return jwt.sign(
     { id: user._id, type: 'refresh' },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET!,
     { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
   );
 }
 
-export async function login(email, password) {
-  const user = await User.findOne({ email }).select('+password');
+export async function login(email: string, password: string) {
+  const user = await User.findOne({ email }).select('+password') as UserDocument | null;
   if (!user || !(await user.comparePassword(password))) {
     throw new UnauthorizedError('Invalid email or password');
   }
@@ -36,7 +37,7 @@ export async function login(email, password) {
   return { accessToken, refreshToken, user: user.toJSON() };
 }
 
-export async function register(data) {
+export async function register(data: { email: string; username: string; password: string; role?: IUser['role'] }) {
   const existing = await User.findOne({
     $or: [{ email: data.email }, { username: data.username }],
   });
@@ -46,14 +47,14 @@ export async function register(data) {
     );
   }
 
-  const user = await User.create(data);
+  const user = await User.create(data) as UserDocument;
   return user.toJSON();
 }
 
-export async function refreshAccessToken(refreshToken) {
-  let payload;
+export async function refreshAccessToken(refreshToken: string) {
+  let payload: any;
   try {
-    payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    payload = jwt.verify(refreshToken, process.env.JWT_SECRET!);
   } catch {
     throw new UnauthorizedError('Invalid refresh token');
   }
@@ -69,7 +70,7 @@ export async function refreshAccessToken(refreshToken) {
     throw new UnauthorizedError('Token has been revoked');
   }
 
-  const user = await User.findById(payload.id);
+  const user = await User.findById(payload.id) as UserDocument | null;
   if (!user) {
     throw new UnauthorizedError('User no longer exists');
   }
@@ -78,11 +79,11 @@ export async function refreshAccessToken(refreshToken) {
   return { accessToken, user: user.toJSON() };
 }
 
-export async function logout(refreshToken) {
+export async function logout(refreshToken: string | undefined) {
   if (!refreshToken) return;
 
   try {
-    const payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const payload = jwt.verify(refreshToken, process.env.JWT_SECRET!) as any;
     const ttl = payload.exp - Math.floor(Date.now() / 1000);
     if (ttl > 0) {
       const redis = getRedis();
@@ -93,14 +94,14 @@ export async function logout(refreshToken) {
   }
 }
 
-export async function getMe(userId) {
-  const user = await User.findById(userId);
+export async function getMe(userId: string) {
+  const user = await User.findById(userId) as UserDocument | null;
   if (!user) throw new NotFoundError('User');
   return user.toJSON();
 }
 
-export async function changePassword(userId, currentPassword, newPassword) {
-  const user = await User.findById(userId).select('+password');
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const user = await User.findById(userId).select('+password') as UserDocument | null;
   if (!user) throw new NotFoundError('User');
 
   if (!(await user.comparePassword(currentPassword))) {
@@ -115,12 +116,12 @@ export async function listUsers() {
   return User.find().sort({ createdAt: -1 });
 }
 
-export async function updateUserRole(userId, role, operatorId) {
+export async function updateUserRole(userId: string, role: IUser['role'], operatorId: string) {
   if (userId === operatorId) {
     throw new ForbiddenError('Cannot change your own role');
   }
 
-  const user = await User.findById(userId);
+  const user = await User.findById(userId) as UserDocument | null;
   if (!user) throw new NotFoundError('User');
 
   user.role = role;
@@ -133,7 +134,7 @@ export async function updateUserRole(userId, role, operatorId) {
   return user.toJSON();
 }
 
-export async function deleteUser(userId, operatorId) {
+export async function deleteUser(userId: string, operatorId: string) {
   if (userId === operatorId) {
     throw new ForbiddenError('Cannot delete yourself');
   }

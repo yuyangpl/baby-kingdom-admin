@@ -1,7 +1,39 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, HydratedDocument } from 'mongoose';
 import { encrypt, isEncrypted } from '../../shared/encryption.js';
 
-const personaSchema = new mongoose.Schema(
+export interface IPersona {
+  accountId: string;
+  username: string;
+  archetype: 'pregnant' | 'first-time-mom' | 'multi-kid' | 'school-age';
+  primaryToneMode?: string;
+  secondaryToneMode?: string;
+  avoidedToneMode?: string;
+  voiceCues: string[];
+  catchphrases: string[];
+  topicBlacklist: string[];
+  tier3Script?: string;
+  maxPostsPerDay: number;
+  bkPassword?: string;
+  bkUid?: number;
+  bkToken?: string;
+  bkTokenExpiry?: Date;
+  tokenStatus: 'active' | 'expired' | 'none';
+  lastPostAt?: Date;
+  postsToday: number;
+  cooldownUntil?: Date;
+  overrideNotes?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IPersonaMethods {
+  toJSON(): Record<string, unknown>;
+}
+
+export type PersonaDocument = HydratedDocument<IPersona, IPersonaMethods>;
+
+const personaSchema = new Schema<IPersona, mongoose.Model<IPersona, object, IPersonaMethods>, IPersonaMethods>(
   {
     accountId: { type: String, required: true, unique: true, trim: true },
     username: { type: String, required: true },
@@ -46,6 +78,6 @@ personaSchema.methods.toJSON = function () {
   return obj;
 };
 
-const Persona = mongoose.model('Persona', personaSchema);
+const Persona = mongoose.model<IPersona, mongoose.Model<IPersona, object, IPersonaMethods>>('Persona', personaSchema);
 
 export default Persona;

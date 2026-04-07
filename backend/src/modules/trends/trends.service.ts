@@ -4,6 +4,21 @@ import { autoAssignTier } from '../gemini/prompt.builder.js';
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 
+interface RawTrend {
+  topic_label?: string;
+  title?: string;
+  topic?: string;
+  summary?: string;
+  description?: string;
+  engagements?: number;
+  engagement?: number;
+  post_count?: number;
+  posts?: number;
+  sentiment_score?: number;
+  sentiment?: number;
+  [key: string]: any;
+}
+
 /**
  * Pull trends from MediaLens API.
  * Returns pulled trends array.
@@ -21,7 +36,7 @@ export async function pullTrends() {
   }
 
   const sources = await getEnabledSources();
-  const allTrends = [];
+  const allTrends: any[] = [];
   const pullId = generatePullId();
 
   for (const source of sources) {
@@ -45,15 +60,15 @@ export async function pullTrends() {
   return allTrends;
 }
 
-async function getEnabledSources() {
+async function getEnabledSources(): Promise<string[]> {
   const sources = ['medialens'];
   if ((await configService.getValue('ENABLE_LIHKG')) === 'true') sources.push('lihkg');
   if ((await configService.getValue('ENABLE_FB_VIRAL')) === 'true') sources.push('facebook');
   return sources;
 }
 
-async function fetchFromSource(baseUrl, token, source, country, limit, lookbackDays) {
-  const endpoints = {
+async function fetchFromSource(baseUrl: string, token: string, source: string, country: string, limit: number, lookbackDays: number): Promise<RawTrend[]> {
+  const endpoints: Record<string, string> = {
     medialens: '/buzz/viral-topics',
     lihkg: '/buzz/lihkg/viral-topics',
     facebook: '/buzz/fb/viral-posts',
@@ -76,12 +91,12 @@ async function fetchFromSource(baseUrl, token, source, country, limit, lookbackD
     return [];
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   return Array.isArray(data) ? data : data.topics || data.posts || [];
 }
 
-async function saveTrends(rawTrends, source, pullId) {
-  const saved = [];
+async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string) {
+  const saved: any[] = [];
 
   for (let i = 0; i < rawTrends.length; i++) {
     const raw = rawTrends[i];
@@ -105,7 +120,7 @@ async function saveTrends(rawTrends, source, pullId) {
       postCount: raw.post_count || raw.posts || 0,
       sensitivityTier: tier,
       sentimentScore,
-      sentimentLabel: sentimentScore > 55 ? 'positive' : sentimentScore < 45 ? 'negative' : 'neutral',
+      sentimentLabel: sentimentScore != null && sentimentScore > 55 ? 'positive' : sentimentScore != null && sentimentScore < 45 ? 'negative' : 'neutral',
       toneMode: null, // assigned during feed generation
     });
 
@@ -115,8 +130,8 @@ async function saveTrends(rawTrends, source, pullId) {
   return saved;
 }
 
-export async function list({ source, page = 1, limit = 20, sort = '-createdAt' }) {
-  const filter = {};
+export async function list({ source, page = 1, limit = 20, sort = '-createdAt' }: { source?: string; page?: number; limit?: number; sort?: string }) {
+  const filter: Record<string, string> = {};
   if (source) filter.source = source;
 
   const skip = (page - 1) * limit;
@@ -128,7 +143,7 @@ export async function list({ source, page = 1, limit = 20, sort = '-createdAt' }
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
 
-export async function markUsed(trendId, feedId) {
+export async function markUsed(trendId: string, feedId: string): Promise<void> {
   await Trend.findByIdAndUpdate(trendId, {
     isUsed: true,
     usedAt: new Date(),
@@ -136,7 +151,7 @@ export async function markUsed(trendId, feedId) {
   });
 }
 
-function generatePullId() {
+function generatePullId(): string {
   const now = new Date();
   const ts = now.toISOString().replace(/[-:T]/g, '').slice(0, 12);
   const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
@@ -144,7 +159,7 @@ function generatePullId() {
 }
 
 // MediaLens OTP
-export async function requestOtp() {
+export async function requestOtp(): Promise<boolean> {
   const baseUrl = await configService.getValue('MEDIALENS_BASE_URL');
   const email = await configService.getValue('MEDIALENS_AUTH_EMAIL');
 
@@ -158,7 +173,7 @@ export async function requestOtp() {
   return response.ok;
 }
 
-export async function verifyOtp(otp) {
+export async function verifyOtp(otp: string): Promise<boolean> {
   const baseUrl = await configService.getValue('MEDIALENS_BASE_URL');
   const email = await configService.getValue('MEDIALENS_AUTH_EMAIL');
 
@@ -171,7 +186,7 @@ export async function verifyOtp(otp) {
 
   if (!response.ok) return false;
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const token = data.token || data.jwt;
   if (token) {
     await configService.updateValue('MEDIALENS_JWT_TOKEN', token, 'system', '');

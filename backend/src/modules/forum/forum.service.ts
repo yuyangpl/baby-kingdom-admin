@@ -1,4 +1,5 @@
 import { ForumCategory, ForumBoard } from './forum.model.js';
+import type { IPersonaBinding } from './forum.model.js';
 import { NotFoundError } from '../../shared/errors.js';
 import * as auditService from '../audit/audit.service.js';
 
@@ -15,13 +16,13 @@ export async function getTree() {
 }
 
 // Categories
-export async function createCategory(data, userId, ip) {
+export async function createCategory(data: { name: string; sortOrder?: number }, userId: string, ip: string) {
   const cat = await ForumCategory.create(data);
   await auditService.log({ operator: userId, eventType: 'FORUM_UPDATED', module: 'forum', targetId: cat._id.toString(), actionDetail: `Created category: ${cat.name}`, after: cat.toObject(), ip });
   return cat;
 }
 
-export async function updateCategory(id, data, userId, ip) {
+export async function updateCategory(id: string, data: Record<string, any>, userId: string, ip: string) {
   const cat = await ForumCategory.findById(id);
   if (!cat) throw new NotFoundError('ForumCategory');
   const before = cat.toObject();
@@ -32,13 +33,13 @@ export async function updateCategory(id, data, userId, ip) {
 }
 
 // Boards
-export async function createBoard(data, userId, ip) {
+export async function createBoard(data: Record<string, any>, userId: string, ip: string) {
   const board = await ForumBoard.create(data);
   await auditService.log({ operator: userId, eventType: 'FORUM_UPDATED', module: 'forum', targetId: board._id.toString(), actionDetail: `Created board: ${board.name} (fid=${board.fid})`, after: board.toObject(), ip });
   return board;
 }
 
-export async function updateBoard(id, data, userId, ip) {
+export async function updateBoard(id: string, data: Record<string, any>, userId: string, ip: string) {
   const board = await ForumBoard.findById(id);
   if (!board) throw new NotFoundError('ForumBoard');
   const before = board.toObject();
@@ -55,7 +56,7 @@ export async function updateBoard(id, data, userId, ip) {
   return board;
 }
 
-export async function updateBoardPersonas(id, personaBindings, userId, ip) {
+export async function updateBoardPersonas(id: string, personaBindings: IPersonaBinding[], userId: string, ip: string) {
   const board = await ForumBoard.findById(id);
   if (!board) throw new NotFoundError('ForumBoard');
   const before = board.toObject();
@@ -67,7 +68,7 @@ export async function updateBoardPersonas(id, personaBindings, userId, ip) {
   return board;
 }
 
-export async function deleteBoard(id, userId, ip) {
+export async function deleteBoard(id: string, userId: string, ip: string) {
   const board = await ForumBoard.findById(id);
   if (!board) throw new NotFoundError('ForumBoard');
   await ForumBoard.findByIdAndDelete(id);

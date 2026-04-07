@@ -1,6 +1,26 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, HydratedDocument } from 'mongoose';
 
-const trendSchema = new mongoose.Schema(
+export interface ITrend {
+  pullId: string;
+  source: 'medialens' | 'lihkg' | 'facebook';
+  rank?: number;
+  topicLabel: string;
+  summary?: string;
+  engagements?: number;
+  postCount?: number;
+  sensitivityTier: 1 | 2 | 3;
+  sentimentScore?: number;
+  sentimentLabel?: 'positive' | 'negative' | 'neutral';
+  toneMode?: string;
+  isUsed: boolean;
+  usedAt?: Date;
+  feedIds: string[];
+  createdAt: Date;
+}
+
+export type TrendDocument = HydratedDocument<ITrend>;
+
+const trendSchema = new Schema<ITrend>(
   {
     pullId: { type: String, required: true },
     source: { type: String, enum: ['medialens', 'lihkg', 'facebook'], required: true },
@@ -23,6 +43,6 @@ const trendSchema = new mongoose.Schema(
 trendSchema.index({ source: 1, createdAt: -1 });
 trendSchema.index({ source: 1, topicLabel: 1 }, { unique: true });
 
-const Trend = mongoose.model('Trend', trendSchema);
+const Trend = mongoose.model<ITrend>('Trend', trendSchema);
 
 export default Trend;

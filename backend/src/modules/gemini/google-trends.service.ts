@@ -1,11 +1,26 @@
 import * as configService from '../config/config.service.js';
 import logger from '../../shared/logger.js';
 
+interface TrendMatch {
+  matched: boolean;
+  trendTitle: string;
+  trendTraffic: string;
+  matchScore: number;
+}
+
+interface RawTrend {
+  title?: string;
+  topic?: string;
+  traffic?: string;
+  searchVolume?: string;
+  [key: string]: any;
+}
+
 /**
  * Fetch Google Trends and check if any match the given topic.
  * Uses self-hosted Google Trends API at seo-hk-mac.rankwriteai.com.
  */
-export async function matchGoogleTrends(topic) {
+export async function matchGoogleTrends(topic: string): Promise<TrendMatch | null> {
   const enabled = await configService.getValue('GOOGLE_TRENDS_ENABLED');
   if (enabled === 'false') return null;
 
@@ -32,7 +47,7 @@ export async function matchGoogleTrends(topic) {
       return null;
     }
 
-    const trends = await response.json();
+    const trends = await response.json() as RawTrend[];
     return findBestMatch(topic, trends, threshold);
   } catch (err) {
     logger.warn({ err }, 'Google Trends matching failed, skipping');
@@ -44,11 +59,11 @@ export async function matchGoogleTrends(topic) {
  * Simple keyword matching between topic and trends.
  * Returns matched trend or null.
  */
-function findBestMatch(topic, trends, threshold) {
+function findBestMatch(topic: string, trends: RawTrend[], threshold: number): TrendMatch | null {
   if (!topic || !Array.isArray(trends) || trends.length === 0) return null;
 
   const topicWords = normalizeText(topic).split(/\s+/);
-  let bestMatch = null;
+  let bestMatch: TrendMatch | null = null;
   let bestScore = 0;
 
   for (const trend of trends) {
@@ -76,7 +91,7 @@ function findBestMatch(topic, trends, threshold) {
 /**
  * Normalize text for matching: lowercase, remove punctuation.
  */
-function normalizeText(text) {
+function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^\w\u4e00-\u9fff\u3400-\u4dbf]/g, ' ')

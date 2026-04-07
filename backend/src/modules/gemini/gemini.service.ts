@@ -1,11 +1,25 @@
 import * as configService from '../config/config.service.js';
 import logger from '../../shared/logger.js';
 
+interface GeminiOptions {
+  json?: boolean;
+}
+
+interface GeminiUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+interface GeminiResult {
+  text: any;
+  usage: GeminiUsage;
+}
+
 /**
  * Call Gemini API to generate content.
  * Uses @google/generative-ai SDK when available, falls back to mock in dev/test.
  */
-export async function callGemini(systemPrompt, userPrompt, options = {}) {
+export async function callGemini(systemPrompt: string, userPrompt: string, options: GeminiOptions = {}): Promise<GeminiResult> {
   const model = await configService.getValue('GEMINI_MODEL') || 'gemini-2.5-flash';
   const temperature = parseFloat(await configService.getValue('GEMINI_TEMPERATURE') || '0.85');
   const maxTokens = parseInt(await configService.getValue('GEMINI_MAX_OUTPUT_TOKENS') || '800', 10);
@@ -36,8 +50,8 @@ export async function callGemini(systemPrompt, userPrompt, options = {}) {
     return {
       text: options.json ? JSON.parse(text) : text,
       usage: {
-        inputTokens: usage.promptTokenCount || 0,
-        outputTokens: usage.candidatesTokenCount || 0,
+        inputTokens: (usage as any).promptTokenCount || 0,
+        outputTokens: (usage as any).candidatesTokenCount || 0,
       },
     };
   } catch (err) {
@@ -46,7 +60,7 @@ export async function callGemini(systemPrompt, userPrompt, options = {}) {
   }
 }
 
-function mockGeminiResponse(userPrompt, options) {
+function mockGeminiResponse(userPrompt: string, options: GeminiOptions): GeminiResult {
   if (options.json) {
     return {
       text: {

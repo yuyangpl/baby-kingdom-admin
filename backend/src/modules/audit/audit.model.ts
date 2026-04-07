@@ -1,6 +1,24 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, HydratedDocument } from 'mongoose';
 
-const auditLogSchema = new mongoose.Schema(
+export interface IAuditLog {
+  operator: string;
+  eventType: string;
+  module: 'feed' | 'persona' | 'tone' | 'topic-rules' | 'forum' | 'queue' | 'config' | 'auth' | 'scanner' | 'trends' | 'poster' | 'gemini';
+  feedId?: string;
+  targetId?: string;
+  bkUsername?: string;
+  actionDetail?: string;
+  before?: unknown;
+  after?: unknown;
+  apiStatus?: number;
+  ip?: string;
+  session: 'admin' | 'worker' | 'api';
+  createdAt: Date;
+}
+
+export type AuditLogDocument = HydratedDocument<IAuditLog>;
+
+const auditLogSchema = new Schema<IAuditLog>(
   {
     operator: { type: String, required: true }, // userId or 'system'
     eventType: { type: String, required: true },
@@ -13,8 +31,8 @@ const auditLogSchema = new mongoose.Schema(
     targetId: String,
     bkUsername: String,
     actionDetail: String,
-    before: mongoose.Schema.Types.Mixed,
-    after: mongoose.Schema.Types.Mixed,
+    before: Schema.Types.Mixed,
+    after: Schema.Types.Mixed,
     apiStatus: Number,
     ip: String,
     session: { type: String, enum: ['admin', 'worker', 'api'], default: 'admin' },
@@ -25,6 +43,6 @@ const auditLogSchema = new mongoose.Schema(
 auditLogSchema.index({ module: 1, createdAt: -1 });
 auditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 3600 }); // TTL 90 days default
 
-const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+const AuditLog = mongoose.model<IAuditLog>('AuditLog', auditLogSchema);
 
 export default AuditLog;

@@ -10,17 +10,50 @@ import { fetchThreadList, fetchThreadContent } from '../poster/poster.service.js
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 
+interface ScanStats {
+  scanned: number;
+  hits: number;
+  feeds: number;
+  skipped: {
+    queueFull: number;
+    replyCount: number;
+    duplicate: number;
+    fetchFail: number;
+    lowRelevance: number;
+    notWorth: number;
+    noPersona: number;
+  };
+}
+
+interface ThreadItem {
+  tid: number;
+  subject: string;
+  replies: number;
+  author: string;
+  lastpost: string;
+}
+
+interface EvaluationResult {
+  relevanceScore: number;
+  worthReplying: boolean;
+  topic: string;
+  tier?: string;
+  toneMode?: string;
+  sentimentScore?: number;
+  reasoning?: string;
+}
+
 /**
  * Scan forum threads and generate reply suggestions.
  * Implements 7-layer filtering + 2 circuit breakers.
  */
-export async function scanForumThreads() {
+export async function scanForumThreads(): Promise<ScanStats> {
   const startTime = Date.now();
   const timeoutMinutes = parseInt(await configService.getValue('SCANNER_TIMEOUT_MINUTES') || '5', 10);
   const maxQueue = parseInt(await configService.getValue('MAX_PENDING_QUEUE') || '100', 10);
   const relevanceThreshold = parseInt(await configService.getValue('SCANNER_RELEVANCE_THRESHOLD') || '35', 10);
 
-  const stats = { scanned: 0, hits: 0, feeds: 0, skipped: { queueFull: 0, replyCount: 0, duplicate: 0, fetchFail: 0, lowRelevance: 0, notWorth: 0, noPersona: 0 } };
+  const stats: ScanStats = { scanned: 0, hits: 0, feeds: 0, skipped: { queueFull: 0, replyCount: 0, duplicate: 0, fetchFail: 0, lowRelevance: 0, notWorth: 0, noPersona: 0 } };
 
   // Layer 1: Queue capacity check
   const pendingCount = await Feed.countDocuments({ status: 'pending' });
@@ -126,7 +159,7 @@ export async function scanForumThreads() {
         personaId: persona.accountId,
         createdAt: { $gte: new Date(Date.now() - 24 * 3600 * 1000) },
       }).select('draftContent');
-      const similarity = checkSimilarity(replyText, recentFeeds.map(f => f.draftContent).filter(Boolean));
+      const similarity = checkSimilarity(replyText, recentFeeds.map((f: any) => f.draftContent).filter(Boolean));
 
       // Save feed
       const feedId = generateFeedId();
@@ -175,7 +208,7 @@ export async function scanForumThreads() {
 // --- BK Forum API calls imported from poster.service.js ---
 // fetchThreadList, fetchThreadContent are imported at top
 
-async function evaluateThread(subject, content) {
+async function evaluateThread(subject: string, content: string): Promise<EvaluationResult> {
   const systemPrompt = '你係一個香港親子論壇內容分析師。評估以下帖子是否值得用親子角色回覆。以JSON格式回覆。';
   const userPrompt = `帖子標題：${subject}\n內容：${content.substring(0, 500)}\n\n請評估並回覆JSON: { relevanceScore (0-100), worthReplying (boolean), topic (string), tier (string), toneMode (string), sentimentScore (0-100), reasoning (string) }`;
 
@@ -183,14 +216,14 @@ async function evaluateThread(subject, content) {
   return result.text;
 }
 
-async function selectPersona(board, topic) {
+async function selectPersona(board: any, topic: string) {
   // Get personas from board bindings, or fallback to all active personas
-  let candidates = [];
+  let candidates: any[] = [];
 
   if (board.personaBindings?.length) {
     candidates = board.personaBindings
-      .filter((b) => b.personaId?.isActive && b.personaId?.postsToday < b.personaId?.maxPostsPerDay)
-      .map((b) => b.personaId);
+      .filter((b: any) => b.personaId?.isActive && b.personaId?.postsToday < b.personaId?.maxPostsPerDay)
+      .map((b: any) => b.personaId);
   }
 
   if (candidates.length === 0) {
@@ -203,8 +236,8 @@ async function selectPersona(board, topic) {
   // Filter by topic blacklist
   if (topic) {
     const topicLower = topic.toLowerCase();
-    candidates = candidates.filter((p) =>
-      !(p.topicBlacklist || []).some((bl) => topicLower.includes(bl.toLowerCase()))
+    candidates = candidates.filter((p: any) =>
+      !(p.topicBlacklist || []).some((bl: string) => topicLower.includes(bl.toLowerCase()))
     );
   }
 
@@ -214,20 +247,20 @@ async function selectPersona(board, topic) {
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
-function parseTier(tierString) {
+function parseTier(tierString: string): number {
   if (!tierString) return 1;
   const match = tierString.match(/(\d)/);
   return match ? parseInt(match[1], 10) : 1;
 }
 
-function generateFeedId() {
+function generateFeedId(): string {
   const now = new Date();
   const ts = now.toISOString().replace(/[-:T]/g, '').slice(0, 12);
   const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
   return `FQ-${ts}-${rand}`;
 }
 
-export async function getHistory({ page = 1, limit = 20 }) {
+export async function getHistory({ page = 1, limit = 20 }: { page?: number; limit?: number }) {
   // Return scan-sourced feeds as history
   const skip = (page - 1) * limit;
   const filter = { source: 'scanner' };

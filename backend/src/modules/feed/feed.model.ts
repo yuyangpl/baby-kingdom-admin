@@ -1,6 +1,67 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, HydratedDocument } from 'mongoose';
 
-const feedSchema = new mongoose.Schema(
+export interface IGoogleTrends {
+  matched?: boolean;
+  trendTitle?: string;
+  trendTraffic?: string;
+  matchScore?: number;
+}
+
+export interface IFeed {
+  feedId: string;
+  type: 'thread' | 'reply';
+  status: 'pending' | 'approved' | 'rejected' | 'posted' | 'failed';
+  source: 'scanner' | 'trends' | 'custom';
+  // Thread info
+  threadTid?: number;
+  threadFid?: number;
+  threadSubject?: string;
+  threadContent?: string;
+  subject?: string;
+  // Trend source info
+  trendSource?: string;
+  trendSentiment?: number;
+  trendEngagement?: number;
+  pullTime?: Date;
+  // Generated content
+  personaId?: string;
+  bkUsername?: string;
+  displayName?: string;
+  archetype?: string;
+  toneMode?: string;
+  sensitivityTier?: string;
+  postType: 'new-post' | 'reply';
+  draftContent?: string;
+  finalContent?: string;
+  charCount?: number;
+  adminEdit: boolean;
+  // Gemini evaluation
+  relevanceScore?: number;
+  worthReplying?: boolean;
+  // Google Trends
+  googleTrends?: IGoogleTrends;
+  // Post result
+  postedAt?: Date;
+  postId?: string;
+  postUrl?: string;
+  failReason?: string;
+  // Claim
+  claimedBy?: mongoose.Types.ObjectId | null;
+  claimedAt?: Date;
+  // Review
+  reviewedBy?: mongoose.Types.ObjectId | null;
+  reviewedAt?: Date;
+  adminNotes?: string;
+  // Quality
+  qualityWarnings: string[];
+  isDuplicate: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type FeedDocument = HydratedDocument<IFeed>;
+
+const feedSchema = new Schema<IFeed>(
   {
     feedId: { type: String, required: true, unique: true },
     type: { type: String, enum: ['thread', 'reply'], default: 'reply' },
@@ -15,9 +76,9 @@ const feedSchema = new mongoose.Schema(
     threadFid: Number,
     threadSubject: String,
     threadContent: String,
-    subject: String, // new post title
+    subject: String,
     // Trend source info
-    trendSource: String, // viral-topics / lihkg / fb-viral / SCAN / CUSTOM
+    trendSource: String,
     trendSentiment: Number,
     trendEngagement: Number,
     pullTime: Date,
@@ -49,10 +110,10 @@ const feedSchema = new mongoose.Schema(
     postUrl: String,
     failReason: String,
     // Claim
-    claimedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    claimedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     claimedAt: Date,
     // Review
-    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewedAt: Date,
     adminNotes: String,
     // Quality
@@ -69,6 +130,6 @@ feedSchema.index({ threadFid: 1, status: 1 });
 feedSchema.index({ claimedBy: 1, claimedAt: 1 });
 feedSchema.index({ source: 1, createdAt: -1 });
 
-const Feed = mongoose.model('Feed', feedSchema);
+const Feed = mongoose.model<IFeed>('Feed', feedSchema);
 
 export default Feed;

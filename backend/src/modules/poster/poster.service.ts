@@ -7,14 +7,41 @@ import logger from '../../shared/logger.js';
 import { decrypt } from '../../shared/encryption.js';
 
 // In-memory token cache (per process, keyed by accountId)
-const _bkTokens = {};
+const _bkTokens: Record<string, string> = {};
+
+interface BkApiResponse {
+  status: number;
+  message?: string;
+  data?: any;
+}
+
+interface PostResult {
+  success: boolean;
+  postId?: string;
+  postUrl?: string;
+  error?: string;
+}
+
+interface PreflightResult {
+  success: boolean;
+  typeid?: string;
+  error?: string;
+}
+
+interface ThreadItem {
+  tid: number;
+  subject: string;
+  replies: number;
+  author: string;
+  lastpost: string;
+}
 
 /**
  * Post an approved feed to BK Forum.
- * Full flow: auth → preflight → rate limit → post → record.
+ * Full flow: auth -> preflight -> rate limit -> post -> record.
  * Matches original GAS BKForumPoster.js logic exactly.
  */
-export async function postFeed(feedId, userId, ip) {
+export async function postFeed(feedId: string, userId?: string, ip?: string) {
   const feed = await Feed.findById(feedId);
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
@@ -36,7 +63,7 @@ export async function postFeed(feedId, userId, ip) {
   const rateLimitSec = parseInt(await configService.getValue('BK_RATE_LIMIT_SECONDS') || '35', 10);
 
   try {
-    // 1. Rate limiting — wait if cooldown active
+    // 1. Rate limiting -- wait if cooldown active
     await enforceRateLimit(persona, rateLimitSec);
 
     // 2. Login
@@ -47,7 +74,7 @@ export async function postFeed(feedId, userId, ip) {
     if (feed.postType === 'new-post' && feed.threadFid) {
       const preflight = await preflightCheck(baseUrl, token, feed.threadFid, bkApp, bkVer);
       if (!preflight.success) throw new Error(preflight.error);
-      typeid = preflight.typeid;
+      typeid = preflight.typeid!;
     }
 
     // 4. Post
@@ -77,7 +104,7 @@ export async function postFeed(feedId, userId, ip) {
     });
 
     return feed;
-  } catch (err) {
+  } catch (err: any) {
     feed.status = 'failed';
     feed.failReason = err.message;
     await feed.save();
@@ -95,7 +122,7 @@ export async function postFeed(feedId, userId, ip) {
 
 // --- BK Account Auth (matches GAS _ensureBkLogin) ---
 
-async function ensureBkLogin(persona, baseUrl, bkApp, bkVer) {
+async function ensureBkLogin(persona: any, baseUrl: string, bkApp: string, bkVer: string): Promise<string> {
   // Check in-memory cache first
   if (_bkTokens[persona.accountId]) return _bkTokens[persona.accountId];
 
@@ -107,7 +134,7 @@ async function ensureBkLogin(persona, baseUrl, bkApp, bkVer) {
 
   if (!persona.bkPassword) throw new Error(`Password not set for ${persona.accountId}`);
 
-  let password;
+  let password: string;
   try {
     password = decrypt(persona.bkPassword);
   } catch {
@@ -128,7 +155,7 @@ async function ensureBkLogin(persona, baseUrl, bkApp, bkVer) {
     signal: AbortSignal.timeout(10000),
   });
 
-  const body = await resp.json();
+  const body = await resp.json() as BkApiResponse;
 
   if (body.status !== 1) {
     throw new Error(`BK login failed for ${persona.username}: ${body.message || 'Unknown error'}`);
@@ -156,7 +183,7 @@ async function ensureBkLogin(persona, baseUrl, bkApp, bkVer) {
 
 // --- Preflight check (matches GAS _preflightCheck) ---
 
-async function preflightCheck(baseUrl, token, fid, bkApp, bkVer) {
+async function preflightCheck(baseUrl: string, token: string, fid: number, bkApp: string, bkVer: string): Promise<PreflightResult> {
   const params = new URLSearchParams({
     mod: 'forum', op: 'forumdisplay', fid: String(fid),
     token, app: bkApp, ver: bkVer,
@@ -166,7 +193,7 @@ async function preflightCheck(baseUrl, token, fid, bkApp, bkVer) {
     const resp = await fetch(`${baseUrl}?${params.toString()}`, {
       signal: AbortSignal.timeout(10000),
     });
-    const body = await resp.json();
+    const body = await resp.json() as BkApiResponse;
 
     if (body.status !== 1) return { success: false, error: `Preflight failed: ${body.message}` };
 
@@ -181,15 +208,15 @@ async function preflightCheck(baseUrl, token, fid, bkApp, bkVer) {
     if (typeids.length === 0) return { success: false, error: 'Forum requires typeid but none available' };
 
     return { success: true, typeid: typeids[0] };
-  } catch (e) {
+  } catch (e: any) {
     return { success: false, error: e.message };
   }
 }
 
 // --- Post new thread (matches GAS _postNewThread with retry) ---
 
-async function postNewThread(baseUrl, token, feed, content, typeid, bkApp, bkVer, retryCount = 0) {
-  const paramObj = {
+async function postNewThread(baseUrl: string, token: string, feed: any, content: string, typeid: string, bkApp: string, bkVer: string, retryCount = 0): Promise<PostResult> {
+  const paramObj: Record<string, string> = {
     mod: 'forum', op: 'newthread',
     fid: String(feed.threadFid), token,
     subject: feed.subject || feed.threadSubject,
@@ -207,28 +234,28 @@ async function postNewThread(baseUrl, token, feed, content, typeid, bkApp, bkVer
       body: params.toString(),
       signal: AbortSignal.timeout(15000),
     });
-    const body = await resp.json();
+    const body = await resp.json() as BkApiResponse;
 
     if (body.status === 1) {
       return { success: true, postId: body.data?.tid || 'unknown', postUrl: '' };
     }
 
-    // Rate limit retry (max 2 retries, 32s sleep — matches GAS)
-    if (String(body.message).includes('發帖過於頻繁') && retryCount < 2) {
+    // Rate limit retry (max 2 retries, 32s sleep -- matches GAS)
+    if (String(body.message).includes('\u767c\u5e16\u904e\u65bc\u983b\u7e41') && retryCount < 2) {
       logger.info({ retryCount }, 'Rate limited by BK, waiting 32s before retry');
       await new Promise((resolve) => setTimeout(resolve, 32000));
       return postNewThread(baseUrl, token, feed, content, typeid, bkApp, bkVer, retryCount + 1);
     }
 
     return { success: false, error: body.message || 'Post failed' };
-  } catch (e) {
+  } catch (e: any) {
     return { success: false, error: e.message };
   }
 }
 
 // --- Post reply (matches GAS _postReply with retry) ---
 
-async function postReply(baseUrl, token, feed, content, bkApp, bkVer, retryCount = 0) {
+async function postReply(baseUrl: string, token: string, feed: any, content: string, bkApp: string, bkVer: string, retryCount = 0): Promise<PostResult> {
   const params = new URLSearchParams({
     mod: 'forum', op: 'newreply',
     tid: String(feed.threadTid), fid: String(feed.threadFid),
@@ -243,28 +270,28 @@ async function postReply(baseUrl, token, feed, content, bkApp, bkVer, retryCount
       body: params.toString(),
       signal: AbortSignal.timeout(15000),
     });
-    const body = await resp.json();
+    const body = await resp.json() as BkApiResponse;
 
     if (body.status === 1) {
       return { success: true, postId: body.data?.pid || 'unknown', postUrl: '' };
     }
 
     // Rate limit retry (max 2 retries, 32s sleep)
-    if (String(body.message).includes('發帖過於頻繁') && retryCount < 2) {
+    if (String(body.message).includes('\u767c\u5e16\u904e\u65bc\u983b\u7e41') && retryCount < 2) {
       logger.info({ retryCount }, 'Rate limited by BK, waiting 32s before retry');
       await new Promise((resolve) => setTimeout(resolve, 32000));
       return postReply(baseUrl, token, feed, content, bkApp, bkVer, retryCount + 1);
     }
 
     return { success: false, error: body.message || 'Reply failed' };
-  } catch (e) {
+  } catch (e: any) {
     return { success: false, error: e.message };
   }
 }
 
 // --- Rate limiting (matches GAS _enforceRateLimit) ---
 
-async function enforceRateLimit(persona, rateLimitSec) {
+async function enforceRateLimit(persona: any, rateLimitSec: number): Promise<void> {
   if (!persona.cooldownUntil || persona.cooldownUntil <= new Date()) return;
 
   const waitMs = persona.cooldownUntil.getTime() - Date.now();
@@ -278,7 +305,7 @@ async function enforceRateLimit(persona, rateLimitSec) {
 
 export async function syncForumIndex() {
   const baseUrl = await configService.getValue('BK_BASE_URL');
-  if (!baseUrl) return { success: false, error: 'BK_BASE_URL not configured' };
+  if (!baseUrl) return { success: false as const, error: 'BK_BASE_URL not configured' };
 
   const bkApp = await configService.getValue('BK_APP') || 'android';
   const bkVer = await configService.getValue('BK_VER') || '3.11.11';
@@ -289,12 +316,12 @@ export async function syncForumIndex() {
     const resp = await fetch(`${baseUrl}?${params.toString()}`, {
       signal: AbortSignal.timeout(15000),
     });
-    const body = await resp.json();
+    const body = await resp.json() as BkApiResponse;
 
-    if (body.status !== 1) return { success: false, error: body.message };
+    if (body.status !== 1) return { success: false as const, error: body.message };
 
     const groups = body.data?.lists || [];
-    const forums = [];
+    const forums: { categoryName: string; name: string; fid: number; threads: number }[] = [];
 
     for (const group of groups) {
       const subforums = group.subforums || [];
@@ -308,15 +335,15 @@ export async function syncForumIndex() {
       }
     }
 
-    return { success: true, forums, count: forums.length };
-  } catch (e) {
-    return { success: false, error: e.message };
+    return { success: true as const, forums, count: forums.length };
+  } catch (e: any) {
+    return { success: false as const, error: e.message };
   }
 }
 
 // --- BK Forum read APIs (for Scanner) ---
 
-export async function fetchThreadList(fid) {
+export async function fetchThreadList(fid: number): Promise<ThreadItem[]> {
   const baseUrl = await configService.getValue('BK_BASE_URL');
   if (!baseUrl) return mockThreadList();
 
@@ -326,7 +353,7 @@ export async function fetchThreadList(fid) {
   // Use any cached token for read access
   const cachedToken = Object.values(_bkTokens)[0] || '';
 
-  const paramObj = {
+  const paramObj: Record<string, string> = {
     mod: 'forum', op: 'forumdisplay',
     fid: String(fid), orderby: 'lastpost', page: '1',
     app: bkApp, ver: bkVer,
@@ -339,14 +366,14 @@ export async function fetchThreadList(fid) {
     const resp = await fetch(`${baseUrl}?${params.toString()}`, {
       signal: AbortSignal.timeout(10000),
     });
-    const body = await resp.json();
+    const body = await resp.json() as BkApiResponse;
 
     if (body.status !== 1) return [];
 
     // BK API returns threads under different keys
     const threads = body.data?.lists || body.data?.threads || body.data?.list || body.data?.threadlist || [];
 
-    return threads.map((t) => ({
+    return threads.map((t: any) => ({
       tid: parseInt(t.tid, 10),
       subject: t.subject || '',
       replies: parseInt(t.replies || '0', 10),
@@ -359,7 +386,7 @@ export async function fetchThreadList(fid) {
   }
 }
 
-export async function fetchThreadContent(tid) {
+export async function fetchThreadContent(tid: number): Promise<string | null> {
   const baseUrl = await configService.getValue('BK_BASE_URL');
   if (!baseUrl) return 'Mock thread content for testing.';
 
@@ -367,7 +394,7 @@ export async function fetchThreadContent(tid) {
   const bkVer = await configService.getValue('BK_VER') || '3.11.11';
   const cachedToken = Object.values(_bkTokens)[0] || '';
 
-  const paramObj = {
+  const paramObj: Record<string, string> = {
     mod: 'forum', op: 'viewthread',
     tid: String(tid), page: '1',
     app: bkApp, ver: bkVer,
@@ -380,7 +407,7 @@ export async function fetchThreadContent(tid) {
     const resp = await fetch(`${baseUrl}?${params.toString()}`, {
       signal: AbortSignal.timeout(10000),
     });
-    const body = await resp.json();
+    const body = await resp.json() as BkApiResponse;
 
     if (body.status !== 1) return null;
 
@@ -389,7 +416,7 @@ export async function fetchThreadContent(tid) {
 
     // Take OP + first 3 replies, strip HTML
     return posts.slice(0, 4)
-      .map((p) => stripHtml(p.message || ''))
+      .map((p: any) => stripHtml(p.message || ''))
       .join('\n\n');
   } catch (err) {
     logger.warn({ err, tid }, 'Failed to fetch thread content');
@@ -397,11 +424,11 @@ export async function fetchThreadContent(tid) {
   }
 }
 
-function stripHtml(html) {
+function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
 }
 
-function mockThreadList() {
+function mockThreadList(): ThreadItem[] {
   return [
     { tid: 23900001, subject: '幼稚園面試心得分享', replies: 15, author: 'test', lastpost: '' },
     { tid: 23900002, subject: '母乳餵哺遇到困難', replies: 8, author: 'test', lastpost: '' },
@@ -409,7 +436,7 @@ function mockThreadList() {
   ];
 }
 
-async function mockPost(feed, persona, userId, ip) {
+async function mockPost(feed: any, persona: any, userId: string | undefined, ip: string | undefined) {
   logger.info({ feedId: feed.feedId }, 'Mock posting feed (BK_BASE_URL not configured)');
   feed.status = 'posted';
   feed.postedAt = new Date();
@@ -431,7 +458,7 @@ async function mockPost(feed, persona, userId, ip) {
 
 // --- Poster history ---
 
-export async function getHistory({ page = 1, limit = 20 }) {
+export async function getHistory({ page = 1, limit = 20 }: { page?: number; limit?: number }) {
   const skip = (page - 1) * limit;
   const filter = { status: { $in: ['posted', 'failed'] } };
   const [data, total] = await Promise.all([

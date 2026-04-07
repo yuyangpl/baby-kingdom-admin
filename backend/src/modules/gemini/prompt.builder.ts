@@ -2,11 +2,23 @@ import * as configService from '../config/config.service.js';
 import ToneMode from '../tone/tone.model.js';
 import Persona from '../persona/persona.model.js';
 import TopicRule from '../topic-rules/topic-rules.model.js';
+import type { PersonaDocument } from '../persona/persona.model.js';
+import type { IGoogleTrends } from '../feed/feed.model.js';
+
+interface BuildPromptParams {
+  persona: string | PersonaDocument;
+  toneMode?: string;
+  topic?: string;
+  summary?: string;
+  sentimentScore?: number;
+  sensitivityTier?: number;
+  googleTrends?: IGoogleTrends | null;
+}
 
 /**
  * Build the full Gemini prompt from Persona + Tone + Trend + Rules + Google Trends.
  */
-export async function buildPrompt({ persona, toneMode, topic, summary, sentimentScore, sensitivityTier, googleTrends }) {
+export async function buildPrompt({ persona, toneMode, topic, summary, sentimentScore, sensitivityTier, googleTrends }: BuildPromptParams) {
   const systemPrompt = await configService.getValue('GEMINI_SYSTEM_PROMPT') ||
     '你係一個香港親子論壇嘅真實用戶，用繁體中文書寫。你嘅文字要自然、真實，有個人感受，唔係廣告。';
 
@@ -26,7 +38,7 @@ export async function buildPrompt({ persona, toneMode, topic, summary, sentiment
   const rule = await matchTopicRule(topic);
 
   // Build user prompt blocks
-  const blocks = [];
+  const blocks: string[] = [];
 
   // Persona block
   if (personaDoc) {
@@ -82,16 +94,16 @@ ${sensitivityTier ? `敏感度：Tier ${sensitivityTier}` : ''}`);
 
 /**
  * Resolve tone mode using the priority chain:
- * Tier 3 forced → negative sentiment → rule specified → persona primary → default
+ * Tier 3 forced -> negative sentiment -> rule specified -> persona primary -> default
  */
-async function resolveToneMode(persona, requestedToneMode, sentimentScore, sensitivityTier) {
+async function resolveToneMode(persona: PersonaDocument | null, requestedToneMode: string | undefined, sentimentScore: number | undefined, sensitivityTier: number | undefined): Promise<string> {
   const tier3Override = await configService.getValue('TONE_OVERRIDE_ON_TIER3') || 'EMPATHISE';
   const negativeThreshold = parseInt(await configService.getValue('SENTIMENT_NEGATIVE_THRESHOLD') || '45', 10);
 
-  // 1. Tier 3 → forced
+  // 1. Tier 3 -> forced
   if (sensitivityTier === 3) return tier3Override;
 
-  // 2. Negative sentiment → EMPATHISE
+  // 2. Negative sentiment -> EMPATHISE
   if (sentimentScore !== undefined && sentimentScore <= negativeThreshold) return 'EMPATHISE';
 
   // 3. Explicitly requested (non-auto)
@@ -107,14 +119,14 @@ async function resolveToneMode(persona, requestedToneMode, sentimentScore, sensi
 /**
  * Match topic against TopicRules by keyword.
  */
-async function matchTopicRule(topic) {
+async function matchTopicRule(topic: string | undefined) {
   if (!topic) return null;
   const rules = await TopicRule.find({ isActive: true });
   const topicLower = topic.toLowerCase();
 
   // Find matching rules, pick the one with highest sensitivity tier
   const matches = rules.filter((r) =>
-    r.topicKeywords.some((kw) => topicLower.includes(kw.toLowerCase()))
+    r.topicKeywords.some((kw: string) => topicLower.includes(kw.toLowerCase()))
   );
 
   if (matches.length === 0) return null;
@@ -124,7 +136,7 @@ async function matchTopicRule(topic) {
 /**
  * Auto-assign sensitivity tier based on keywords (fallback when no rule matches).
  */
-export function autoAssignTier(topic) {
+export function autoAssignTier(topic: string | undefined): number {
   if (!topic) return 1;
   const topicLower = topic.toLowerCase();
 

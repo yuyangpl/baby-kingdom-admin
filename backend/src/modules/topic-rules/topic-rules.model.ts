@@ -1,6 +1,23 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, HydratedDocument } from 'mongoose';
 
-const topicRuleSchema = new mongoose.Schema(
+export interface ITopicRule {
+  ruleId: string;
+  topicKeywords: string[];
+  sensitivityTier: 1 | 2 | 3;
+  sentimentTrigger: 'any' | 'positive' | 'negative';
+  priorityAccountIds: string[];
+  assignToneMode: string;
+  postTypePreference: 'new-post' | 'reply' | 'any';
+  geminiPromptHint?: string;
+  avoidIf?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type TopicRuleDocument = HydratedDocument<ITopicRule>;
+
+const topicRuleSchema = new Schema<ITopicRule>(
   {
     ruleId: { type: String, required: true, unique: true, trim: true },
     topicKeywords: { type: [String], required: true },
@@ -16,6 +33,6 @@ const topicRuleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const TopicRule = mongoose.model('TopicRule', topicRuleSchema);
+const TopicRule = mongoose.model<ITopicRule>('TopicRule', topicRuleSchema);
 
 export default TopicRule;

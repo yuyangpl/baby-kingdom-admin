@@ -4,11 +4,11 @@ import QueueJob from './queue.model.js';
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 
-const queues = {};
+const queues: Record<string, Queue> = {};
 
-const QUEUE_NAMES = ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'ml-token-refresh'];
+const QUEUE_NAMES = ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'ml-token-refresh'] as const;
 
-export function initQueues() {
+export function initQueues(): void {
   const connection = getRedis();
   for (const name of QUEUE_NAMES) {
     queues[name] = new Queue(name, { connection });
@@ -16,12 +16,18 @@ export function initQueues() {
   logger.info(`Initialized ${QUEUE_NAMES.length} BullMQ queues`);
 }
 
-export function getQueue(name) {
+export function getQueue(name: string): Queue | undefined {
   return queues[name];
 }
 
-export async function getAllStatus() {
-  const result = [];
+interface QueueStatusItem {
+  name: string;
+  status: string;
+  counts: Record<string, number> | object;
+}
+
+export async function getAllStatus(): Promise<QueueStatusItem[]> {
+  const result: QueueStatusItem[] = [];
   for (const name of QUEUE_NAMES) {
     const q = queues[name];
     if (!q) {
@@ -40,7 +46,7 @@ export async function getAllStatus() {
   return result;
 }
 
-export async function getQueueStatus(name) {
+export async function getQueueStatus(name: string) {
   const q = queues[name];
   if (!q) return null;
 
@@ -49,7 +55,7 @@ export async function getQueueStatus(name) {
   return { name, status: isPaused ? 'paused' : 'running', counts };
 }
 
-export async function pauseQueue(name, userId, ip) {
+export async function pauseQueue(name: string, userId: string, ip: string) {
   const q = queues[name];
   if (!q) return false;
   await q.pause();
@@ -60,7 +66,7 @@ export async function pauseQueue(name, userId, ip) {
   return true;
 }
 
-export async function resumeQueue(name, userId, ip) {
+export async function resumeQueue(name: string, userId: string, ip: string) {
   const q = queues[name];
   if (!q) return false;
   await q.resume();
@@ -71,7 +77,7 @@ export async function resumeQueue(name, userId, ip) {
   return true;
 }
 
-export async function triggerQueue(name, userId, ip) {
+export async function triggerQueue(name: string, userId: string, ip: string) {
   const q = queues[name];
   if (!q) return null;
   const job = await q.add(`manual-${name}`, { triggeredBy: 'manual', triggeredByUser: userId });
@@ -84,7 +90,7 @@ export async function triggerQueue(name, userId, ip) {
   return { jobId: job.id, queueName: name };
 }
 
-export async function getJobHistory(name, { page = 1, limit = 20 }) {
+export async function getJobHistory(name: string, { page = 1, limit = 20 }: { page?: number; limit?: number }) {
   const skip = (page - 1) * limit;
   const filter = { queueName: name };
   const [data, total] = await Promise.all([
@@ -94,7 +100,7 @@ export async function getJobHistory(name, { page = 1, limit = 20 }) {
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
 
-export async function retryJob(name, jobId, userId, ip) {
+export async function retryJob(name: string, jobId: string, userId: string, ip: string) {
   const q = queues[name];
   if (!q) return false;
 
@@ -109,8 +115,19 @@ export async function retryJob(name, jobId, userId, ip) {
   return true;
 }
 
+interface RecordJobParams {
+  jobId?: string;
+  status: string;
+  startedAt?: Date;
+  completedAt?: Date;
+  result?: unknown;
+  error?: string;
+  triggeredBy: string;
+  triggeredByUser?: string;
+}
+
 // Record job execution in MongoDB for history
-export async function recordJob(queueName, { jobId, status, startedAt, completedAt, result, error, triggeredBy, triggeredByUser }) {
+export async function recordJob(queueName: string, { jobId, status, startedAt, completedAt, result, error, triggeredBy, triggeredByUser }: RecordJobParams) {
   return QueueJob.create({
     queueName, jobId, status, startedAt, completedAt,
     duration: completedAt && startedAt ? completedAt.getTime() - startedAt.getTime() : null,

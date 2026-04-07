@@ -47,7 +47,7 @@ export async function getWeekly() {
  * Aggregate today's stats from raw data.
  * Called by Worker hourly via stats-aggregator queue.
  */
-export async function aggregateDailyStats() {
+export async function aggregateDailyStats(): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
   const startOfDay = new Date(today + 'T00:00:00.000Z');
   const endOfDay = new Date(today + 'T23:59:59.999Z');

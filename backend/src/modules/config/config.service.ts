@@ -3,13 +3,14 @@ import { NotFoundError } from '../../shared/errors.js';
 import * as auditService from '../audit/audit.service.js';
 import { encrypt, decrypt } from '../../shared/encryption.js';
 
-function maskSecret(value) {
+function maskSecret(value: string): string {
   if (!value || value.length <= 4) return '••••••••';
   return '••••••••' + value.slice(-4);
 }
 
-export async function listByCategory(category) {
-  const filter = category ? { category } : {};
+export async function listByCategory(category: string | null) {
+  const filter: Record<string, string> = {};
+  if (category) filter.category = category;
   const configs = await Config.find(filter).sort({ category: 1, key: 1 });
   return configs.map((c) => {
     const obj = c.toObject();
@@ -28,7 +29,7 @@ export async function getAll() {
   return listByCategory(null);
 }
 
-export async function getValue(key) {
+export async function getValue(key: string): Promise<string | null> {
   const config = await Config.findOne({ key });
   if (!config) return null;
   if (config.isSecret && config.value) {
@@ -41,7 +42,7 @@ export async function getValue(key) {
   return config.value;
 }
 
-export async function updateValue(key, value, userId, ip) {
+export async function updateValue(key: string, value: string, userId: string, ip: string) {
   const config = await Config.findOne({ key });
   if (!config) throw new NotFoundError('Config');
 
@@ -66,7 +67,15 @@ export async function updateValue(key, value, userId, ip) {
   return config;
 }
 
-export async function seed(configs) {
+interface ConfigSeedItem {
+  key: string;
+  value?: string;
+  category: string;
+  description?: string;
+  isSecret?: boolean;
+}
+
+export async function seed(configs: ConfigSeedItem[]) {
   for (const c of configs) {
     const exists = await Config.findOne({ key: c.key });
     if (!exists) {

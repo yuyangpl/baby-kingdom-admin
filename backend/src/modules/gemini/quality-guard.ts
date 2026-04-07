@@ -5,12 +5,26 @@ const AI_PATTERNS = [
   'as an ai', 'i am a language model', 'i cannot',
 ];
 
+interface QualityResult {
+  passed: boolean;
+  warnings: string[];
+}
+
+interface QualityOptions {
+  minChars?: number;
+  maxChars?: number;
+}
+
+interface PersonaLike {
+  catchphrases?: string[];
+}
+
 /**
  * Check AI-generated content for quality issues.
  * Returns { passed, warnings[] }.
  */
-export function checkQuality(content, persona, options = {}) {
-  const warnings = [];
+export function checkQuality(content: string | null | undefined, persona?: PersonaLike | null, options: QualityOptions = {}): QualityResult {
+  const warnings: string[] = [];
   const { minChars = 30, maxChars = 600 } = options;
 
   if (!content || typeof content !== 'string') {
@@ -58,11 +72,16 @@ export function checkQuality(content, persona, options = {}) {
   return { passed: true, warnings };
 }
 
+interface SimilarityResult {
+  isDuplicate: boolean;
+  maxSimilarity: number;
+}
+
 /**
  * Check content similarity against recent feeds.
  * Simple character-level Jaccard similarity.
  */
-export function checkSimilarity(content, recentContents, threshold = 0.85) {
+export function checkSimilarity(content: string | null | undefined, recentContents: string[] | undefined, threshold = 0.85): SimilarityResult {
   if (!content || !recentContents?.length) return { isDuplicate: false, maxSimilarity: 0 };
 
   const contentSet = new Set(content.split(''));
