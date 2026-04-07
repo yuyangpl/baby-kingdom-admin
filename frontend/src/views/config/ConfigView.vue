@@ -1,6 +1,16 @@
 <template>
   <div class="config-view">
-    <h2 class="page-title">{{ $t('config.title') }}</h2>
+    <div class="config-header-row">
+      <h2 class="page-title">{{ $t('config.title') }}</h2>
+      <div class="config-actions">
+        <el-button @click="resetDefaults">
+          {{ $t('config.resetDefaults') }}
+        </el-button>
+        <el-button type="primary" @click="saveAll" :loading="savingAll">
+          {{ $t('config.saveChanges') }}
+        </el-button>
+      </div>
+    </div>
 
     <el-tabs v-model="activeTab" v-loading="loading" class="config-tabs">
       <el-tab-pane
@@ -108,15 +118,6 @@
       </el-tab-pane>
     </el-tabs>
 
-    <!-- Bottom action buttons -->
-    <div class="config-actions">
-      <el-button @click="resetDefaults">
-        {{ $t('config.resetDefaults') }}
-      </el-button>
-      <el-button type="primary" @click="saveAll" :loading="savingAll">
-        {{ $t('config.saveChanges') }}
-      </el-button>
-    </div>
   </div>
 </template>
 
@@ -323,6 +324,7 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  padding-bottom: 2px; /* prevent card bottom border clipping */
 }
 .config-tabs :deep(.el-tab-pane) {
   height: 100%;
@@ -415,11 +417,14 @@ onMounted(() => {
 }
 
 /* Bottom actions */
+.config-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
 .config-actions {
   display: flex;
-  justify-content: flex-end;
   gap: 12px;
-  padding-top: 16px;
-  flex-shrink: 0;
 }
 </style>
