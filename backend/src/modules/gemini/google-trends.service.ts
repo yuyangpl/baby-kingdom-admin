@@ -97,31 +97,35 @@ async function callTrendsRest(baseUrl: string, path: string, apiKey: string): Pr
 }
 
 /**
- * GET /trends/summary — date-range trend rankings.
+ * GET /trends — date-range trend rankings with optional news expansion.
+ * Supports limit and expand=news params.
  */
-async function callTrendsSummary(
+async function callTrends(
   baseUrl: string, apiKey: string, geo: string, startDate: string, endDate: string,
+  opts: { limit?: number; expand?: string } = {},
 ): Promise<any | null> {
-  const qs = `geo=${encodeURIComponent(geo)}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
-  return callTrendsRest(baseUrl, `/trends/summary?${qs}`, apiKey);
+  let qs = `geo=${encodeURIComponent(geo)}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+  if (opts.limit) qs += `&limit=${encodeURIComponent(String(opts.limit))}`;
+  if (opts.expand) qs += `&expand=${encodeURIComponent(opts.expand)}`;
+  return callTrendsRest(baseUrl, `/trends?${qs}`, apiKey);
 }
 
 /**
- * GET /trends/detail — single trend timeline with news.
+ * GET /trends/{query} — single trend detail with timeline.
  */
-async function callTrendsDetail(
+async function callTrendDetail(
   baseUrl: string, apiKey: string, query: string, geo: string, startDate: string, endDate: string,
 ): Promise<any | null> {
-  const qs = `query=${encodeURIComponent(query)}&geo=${encodeURIComponent(geo)}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
-  return callTrendsRest(baseUrl, `/trends/detail?${qs}`, apiKey);
+  const qs = `geo=${encodeURIComponent(geo)}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+  return callTrendsRest(baseUrl, `/trends/${encodeURIComponent(query)}?${qs}`, apiKey);
 }
 
 // ── Public functions ───────────────────────────────────────
 
 /**
- * Fetch Google Trends Top N with news enrichment from Detail API.
- * Matches the original GAS GoogleTrendsFeed.fetchGoogleTrends() flow:
- *   Summary API (rankings) → Detail API (news per trend) → enriched array.
+ * Fetch Google Trends Top N with news via single expand=news call.
+ * GET /trends?geo=HK&start_date=...&end_date=...&limit=N&expand=news
+ * News is embedded in the response — no separate Detail API calls needed.
  */
 export async function fetchGoogleTrends(): Promise<EnrichedTrend[]> {
   const enabled = await configService.getValue('GOOGLE_TRENDS_ENABLED');
@@ -141,50 +145,25 @@ export async function fetchGoogleTrends(): Promise<EnrichedTrend[]> {
   const endDate = utcDateStr();
   const startDate = utcDaysAgoDateStr(lookDays);
 
-  logger.info({ geo, startDate, endDate }, 'fetchGoogleTrends: pulling summary');
+  logger.info({ geo, startDate, endDate, topN }, 'fetchGoogleTrends: pulling trends');
 
-  const data = await callTrendsSummary(baseUrl, apiKey, geo, startDate, endDate);
+  const data = await callTrends(baseUrl, apiKey, geo, startDate, endDate, { limit: topN, expand: 'news' });
   if (!data || !data.trends || data.trends.length === 0) {
-    logger.info('fetchGoogleTrends: Summary API returned no data');
+    logger.info('fetchGoogleTrends: API returned no data');
     return [];
   }
 
-  logger.info({ count: data.trends.length }, 'fetchGoogleTrends: Summary API returned trends');
-  const top: RawTrend[] = data.trends.slice(0, topN);
+  logger.info({ count: data.trends.length }, 'fetchGoogleTrends: API returned trends');
 
-  // Enrich Top N with Detail API for news
-  const enriched: EnrichedTrend[] = [];
-  for (const t of top) {
-    const news: Array<{ headline: string; url: string }> = [];
-    try {
-      const detail = await callTrendsDetail(baseUrl, apiKey, t.query, geo, startDate, endDate);
-      if (detail?.timeline) {
-        const seenHeadlines = new Set<string>();
-        for (const snap of detail.timeline) {
-          for (const n of snap.news || []) {
-            if (n.headline && !seenHeadlines.has(n.headline)) {
-              seenHeadlines.add(n.headline);
-              news.push({ headline: n.headline, url: n.url || '' });
-            }
-          }
-        }
-      }
-    } catch (err) {
-      logger.warn({ err, query: t.query }, 'fetchGoogleTrends: Detail API failed for trend');
-    }
-
-    enriched.push({
-      query: t.query,
-      score: t.score || 0,
-      peakVolume: t.peak_volume || 0,
-      durationHours: t.duration_hours || 0,
-      categories: t.categories || [],
-      trendBreakdown: t.trend_breakdown || [],
-      news,
-    });
-  }
-
-  return enriched;
+  return data.trends.map((t: any) => ({
+    query: t.query,
+    score: t.score || 0,
+    peakVolume: t.peak_volume || 0,
+    durationHours: t.duration_hours || 0,
+    categories: t.categories || [],
+    trendBreakdown: t.trend_breakdown || [],
+    news: (t.news || []).map((n: any) => ({ headline: n.headline || '', url: n.url || '' })),
+  }));
 }
 
 /**
