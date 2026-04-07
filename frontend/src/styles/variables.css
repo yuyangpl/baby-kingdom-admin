@@ -109,6 +109,12 @@ html, body {
 .el-table__inner-wrapper::after {
   display: none !important;
 }
+/* Unified table header background */
+.el-table th.el-table__cell {
+  background: var(--bk-muted) !important;
+  color: var(--bk-foreground);
+  font-weight: 600;
+}
 
 /* Dialog max-height with scrollable body */
 .el-dialog {

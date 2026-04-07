@@ -49,7 +49,6 @@
         :data="history"
         v-loading="loading"
         style="width: 100%"
-        :header-cell-style="{ background: 'var(--bk-muted)', color: 'var(--bk-foreground)' }"
         highlight-current-row
       >
         <el-table-column prop="startedAt" label="Time" width="170">

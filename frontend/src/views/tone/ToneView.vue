@@ -12,7 +12,6 @@
         :data="tones"
         v-loading="loading"
         style="width: 100%"
-        :header-cell-style="{ background: 'var(--bk-muted)', color: 'var(--bk-foreground)' }"
         highlight-current-row
         row-key="toneId"
       >

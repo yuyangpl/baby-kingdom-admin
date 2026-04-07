@@ -39,7 +39,6 @@
         :data="pendingQueue"
         v-loading="loadingQueue"
         style="width: 100%"
-        :header-cell-style="{ background: 'var(--bk-muted)', color: 'var(--bk-foreground)' }"
         highlight-current-row
       >
         <el-table-column prop="postId" label="Post ID" width="110" />
@@ -74,7 +73,6 @@
         :data="history"
         v-loading="loading"
         style="width: 100%"
-        :header-cell-style="{ background: 'var(--bk-muted)', color: 'var(--bk-foreground)' }"
         highlight-current-row
       >
         <el-table-column prop="postId" label="Post ID" width="110" />
