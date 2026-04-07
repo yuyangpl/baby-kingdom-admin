@@ -46,6 +46,7 @@
             <span>System</span>
           </template>
           <el-menu-item index="config" v-if="auth.isAdmin">Config</el-menu-item>
+          <el-menu-item index="google-trends" v-if="auth.isAdmin">Google Trends Data</el-menu-item>
           <el-menu-item index="queues">Queue Monitor</el-menu-item>
           <el-menu-item index="audit" v-if="auth.isAdmin">Audit Log</el-menu-item>
           <el-menu-item index="users" v-if="auth.isAdmin">Users</el-menu-item>
