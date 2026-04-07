@@ -83,12 +83,31 @@ html, body {
   --el-font-size-base: 14px;
 }
 
-/* Table rounded corners */
+/* Table rounded corners — natural radius without clipping content */
 .el-table {
+  --el-table-border-radius: var(--bk-radius);
   border-radius: var(--bk-radius);
-  overflow: hidden;
 }
 .el-table__inner-wrapper {
+  border-radius: var(--bk-radius);
+}
+.el-table__header-wrapper {
+  border-radius: var(--bk-radius) var(--bk-radius) 0 0;
+}
+.el-table__header-wrapper th.el-table__cell:first-child {
+  border-top-left-radius: var(--bk-radius);
+}
+.el-table__header-wrapper th.el-table__cell:last-child {
+  border-top-right-radius: var(--bk-radius);
+}
+.el-table__body-wrapper {
+  border-radius: 0 0 var(--bk-radius) var(--bk-radius);
+}
+.el-table--border {
+  border-radius: var(--bk-radius);
+}
+.el-table--border::after,
+.el-table--border::before {
   border-radius: var(--bk-radius);
 }
 
