@@ -458,10 +458,14 @@ onMounted(() => {
 /* Sticky top area */
 .feed-sticky-top {
   position: sticky;
-  top: 0;
+  top: -24px; /* offset the main-content padding so it sticks flush to top */
   z-index: 10;
   background: var(--bk-background);
-  padding-bottom: 4px;
+  padding-top: 24px; /* restore visual spacing eaten by negative top */
+  padding-bottom: 12px;
+  margin: -24px -24px 0 -24px; /* bleed into main-content padding to cover full width */
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 /* Feed Header */
