@@ -147,17 +147,20 @@ const sources = reactive({
 
 const sourceTagType = (source: string): string => {
   const map: Record<string, string> = {
-    MediaLens: '',
+    medialens: 'primary',
+    MediaLens: 'primary',
+    lihkg: 'warning',
     LIHKG: 'warning',
+    facebook: 'info',
     Facebook: 'info',
   }
-  return map[source] || 'info'
+  return map[source] ?? 'info'
 }
 
 const sentimentTagType = (score: number | undefined): string => {
   if (score == null) return 'info'
-  if (score > 0) return 'success'
-  if (score < 0) return 'danger'
+  if (score >= 60) return 'success'
+  if (score <= 40) return 'danger'
   return 'info'
 }
 
