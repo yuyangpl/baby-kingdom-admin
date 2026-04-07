@@ -1,16 +1,11 @@
 <template>
   <div class="trends-view">
-    <h1 class="page-title">{{ $t('trends.title') }}</h1>
-
-    <!-- Trigger Pull Button -->
-    <el-button
-      type="primary"
-      :loading="pulling"
-      style="width: 100%; margin-bottom: 20px;"
-      @click="triggerPull"
-    >
-      {{ $t('trends.triggerPull') }}
-    </el-button>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h1 class="page-title" style="margin: 0;">{{ $t('trends.title') }}</h1>
+      <el-button type="primary" :loading="pulling" @click="triggerPull">
+        {{ $t('trends.triggerPull') }}
+      </el-button>
+    </div>
 
     <!-- Token Status Card -->
     <el-card
