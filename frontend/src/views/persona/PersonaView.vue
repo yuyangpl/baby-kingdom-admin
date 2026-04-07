@@ -1,8 +1,8 @@
 <template>
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h2 style="margin:0">Personas</h2>
-      <el-button type="primary" @click="openForm(null)">Add Persona</el-button>
+      <h2 style="margin:0">{{ $t('persona.title') }}</h2>
+      <el-button type="primary" @click="openForm(null)">{{ $t('persona.addPersona') }}</el-button>
     </div>
 
     <el-row :gutter="16" v-loading="loading">
@@ -15,14 +15,14 @@
             </div>
           </template>
           <p><code>{{ p.accountId }}</code></p>
-          <p>Tone: <el-tag size="small">{{ p.primaryToneMode || '-' }}</el-tag></p>
-          <p>Posts: {{ p.postsToday ?? 0 }} / {{ p.maxPostsPerDay }}</p>
-          <el-tag v-if="!p.isActive" type="danger" size="small">Inactive</el-tag>
+          <p>{{ $t('persona.primaryTone') }}: <el-tag size="small">{{ p.primaryToneMode || '-' }}</el-tag></p>
+          <p>{{ $t('persona.postsToday') }}: {{ p.postsToday ?? 0 }} / {{ p.maxPostsPerDay }}</p>
+          <el-tag v-if="!p.isActive" type="danger" size="small">{{ $t('persona.inactive') }}</el-tag>
           <div style="margin-top:12px;display:flex;gap:8px">
-            <el-button size="small" @click="openForm(p)">Edit</el-button>
-            <el-popconfirm title="Delete this persona?" @confirm="handleDelete(p._id)">
+            <el-button size="small" @click="openForm(p)">{{ $t('common.edit') }}</el-button>
+            <el-popconfirm :title="$t('persona.deleteConfirm')" @confirm="handleDelete(p._id)">
               <template #reference>
-                <el-button size="small" type="danger" plain>Delete</el-button>
+                <el-button size="small" type="danger" plain>{{ $t('common.delete') }}</el-button>
               </template>
             </el-popconfirm>
           </div>

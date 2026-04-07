@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    :title="isEdit ? 'Edit Tone Mode' : 'Add Tone Mode'"
+    :title="isEdit ? $t('common.edit') + ' ' + $t('tone.title') : $t('tone.addTone')"
     width="600px"
     :close-on-click-modal="false"
   >
@@ -13,62 +13,62 @@
       label-position="top"
       class="tone-form"
     >
-      <el-form-item label="Tone ID" prop="toneId">
+      <el-form-item :label="$t('tone.toneId')" prop="toneId">
         <el-input v-model="form.toneId" :disabled="isEdit" placeholder="e.g. warm, humorous" />
       </el-form-item>
 
-      <el-form-item label="Display Name" prop="displayName">
+      <el-form-item :label="$t('tone.displayName')" prop="displayName">
         <el-input v-model="form.displayName" placeholder="Human-readable name" />
       </el-form-item>
 
-      <el-form-item label="When to Use" prop="whenToUse">
+      <el-form-item :label="$t('tone.whenToUse')" prop="whenToUse">
         <el-input v-model="form.whenToUse" type="textarea" :rows="2" />
       </el-form-item>
 
-      <el-form-item label="Emotional Register" prop="emotionalRegister">
+      <el-form-item :label="$t('tone.emotionalRegister')" prop="emotionalRegister">
         <el-input v-model="form.emotionalRegister" type="textarea" :rows="2" />
       </el-form-item>
 
-      <el-form-item label="Opening Style" prop="openingStyle">
+      <el-form-item :label="$t('tone.openingStyle')" prop="openingStyle">
         <el-input v-model="form.openingStyle" type="textarea" :rows="2" />
         <div class="field-note">Injected into Gemini prompt</div>
       </el-form-item>
 
-      <el-form-item label="Sentence Structure" prop="sentenceStructure">
+      <el-form-item :label="$t('tone.sentenceHints')" prop="sentenceStructure">
         <el-input v-model="form.sentenceStructure" type="textarea" :rows="2" />
         <div class="field-note">Injected into Gemini prompt</div>
       </el-form-item>
 
-      <el-form-item label="What to Avoid" prop="whatToAvoid">
+      <el-form-item :label="$t('tone.whatToAvoid')" prop="whatToAvoid">
         <el-input v-model="form.whatToAvoid" type="textarea" :rows="2" />
         <div class="field-note">Injected as negative constraint</div>
       </el-form-item>
 
-      <el-form-item label="Example Opening" prop="exampleOpening">
+      <el-form-item :label="$t('tone.exampleOpening')" prop="exampleOpening">
         <el-input v-model="form.exampleOpening" type="textarea" :rows="2" />
       </el-form-item>
 
       <el-row :gutter="16">
         <el-col :span="12">
-          <el-form-item label="Suitable for Tier 3" prop="suitableForTier3">
+          <el-form-item :label="$t('tone.tier3Suitable')" prop="suitableForTier3">
             <el-switch v-model="form.suitableForTier3" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="Override Priority" prop="overridePriority">
+          <el-form-item :label="$t('tone.priority')" prop="overridePriority">
             <el-input-number v-model="form.overridePriority" :min="1" :max="10" />
           </el-form-item>
         </el-col>
       </el-row>
 
-      <el-form-item label="Active" prop="isActive">
+      <el-form-item :label="$t('persona.active')" prop="isActive">
         <el-switch v-model="form.isActive" />
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="$emit('update:modelValue', false)">Cancel</el-button>
-      <el-button type="primary" :loading="saving" @click="handleSave">Save</el-button>
+      <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="saving" @click="handleSave">{{ $t('common.save') }}</el-button>
     </template>
   </el-dialog>
 </template>

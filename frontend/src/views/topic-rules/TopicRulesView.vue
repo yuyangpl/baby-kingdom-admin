@@ -1,40 +1,40 @@
 <template>
   <div class="topic-rules-view">
-    <h2>Topic Rules</h2>
+    <h2>{{ $t('topicRules.title') }}</h2>
 
     <el-button type="primary" @click="openAdd" style="margin-bottom: 16px">
-      Add Rule
+      {{ $t('topicRules.addRule') }}
     </el-button>
 
     <el-table :data="rules" v-loading="loading" stripe border style="width: 100%">
-      <el-table-column prop="ruleId" label="Rule ID" width="120" />
-      <el-table-column prop="topicKeywords" label="Keywords" min-width="250">
+      <el-table-column prop="ruleId" :label="$t('topicRules.ruleId')" width="120" />
+      <el-table-column prop="topicKeywords" :label="$t('topicRules.keywords')" min-width="250">
         <template #default="{ row }">
           <el-tag v-for="kw in (row.topicKeywords || [])" :key="kw" size="small" style="margin: 2px">
             {{ kw }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="sensitivityTier" label="Sensitivity Tier" width="140" />
-      <el-table-column prop="assignToneMode" label="Assign Tone" width="150" />
-      <el-table-column prop="isActive" label="Active" width="100">
+      <el-table-column prop="sensitivityTier" :label="$t('topicRules.sensitivityTier')" width="140" />
+      <el-table-column prop="assignToneMode" :label="$t('topicRules.assignToneMode')" width="150" />
+      <el-table-column prop="isActive" :label="$t('common.status')" width="100">
         <template #default="{ row }">
           <el-tag :type="row.isActive ? 'success' : 'info'" size="small">
             {{ row.isActive ? 'Yes' : 'No' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="Actions" width="160" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="160" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" size="small" link @click="openEdit(row)">Edit</el-button>
+          <el-button type="primary" size="small" link @click="openEdit(row)">{{ $t('common.edit') }}</el-button>
           <el-popconfirm
             title="Are you sure you want to delete this rule?"
-            confirm-button-text="Delete"
-            cancel-button-text="Cancel"
+            :confirm-button-text="$t('common.delete')"
+            :cancel-button-text="$t('common.cancel')"
             @confirm="handleDelete(row)"
           >
             <template #reference>
-              <el-button type="danger" size="small" link>Delete</el-button>
+              <el-button type="danger" size="small" link>{{ $t('common.delete') }}</el-button>
             </template>
           </el-popconfirm>
         </template>

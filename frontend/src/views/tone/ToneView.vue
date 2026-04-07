@@ -1,38 +1,38 @@
 <template>
   <div class="tone-view">
-    <h2>Tone Modes</h2>
+    <h2>{{ $t('tone.title') }}</h2>
 
     <el-button type="primary" @click="openAdd" style="margin-bottom: 16px">
-      Add Tone
+      {{ $t('tone.addTone') }}
     </el-button>
 
     <el-table :data="tones" v-loading="loading" stripe border style="width: 100%">
-      <el-table-column prop="toneId" label="Tone ID" width="120" />
-      <el-table-column prop="displayName" label="Display Name" min-width="160" />
-      <el-table-column prop="suitableForTier3" label="Tier 3" width="100">
+      <el-table-column prop="toneId" :label="$t('tone.toneId')" width="120" />
+      <el-table-column prop="displayName" :label="$t('tone.displayName')" min-width="160" />
+      <el-table-column prop="suitableForTier3" :label="$t('tone.tier3Suitable')" width="100">
         <template #default="{ row }">
           <el-tag :type="row.suitableForTier3 ? 'success' : 'info'" size="small">
             {{ row.suitableForTier3 ? 'Yes' : 'No' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="overridePriority" label="Priority" width="100" />
-      <el-table-column prop="isActive" label="Active" width="100">
+      <el-table-column prop="overridePriority" :label="$t('tone.priority')" width="100" />
+      <el-table-column prop="isActive" :label="$t('common.status')" width="100">
         <template #default="{ row }">
           <el-switch v-model="row.isActive" @change="toggleActive(row)" />
         </template>
       </el-table-column>
-      <el-table-column label="Actions" width="160" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="160" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" size="small" link @click="openEdit(row)">Edit</el-button>
+          <el-button type="primary" size="small" link @click="openEdit(row)">{{ $t('common.edit') }}</el-button>
           <el-popconfirm
             title="Are you sure you want to delete this tone?"
-            confirm-button-text="Delete"
-            cancel-button-text="Cancel"
+            :confirm-button-text="$t('common.delete')"
+            :cancel-button-text="$t('common.cancel')"
             @confirm="handleDelete(row)"
           >
             <template #reference>
-              <el-button type="danger" size="small" link>Delete</el-button>
+              <el-button type="danger" size="small" link>{{ $t('common.delete') }}</el-button>
             </template>
           </el-popconfirm>
         </template>

@@ -2,7 +2,7 @@
   <el-drawer
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    :title="isEdit ? 'Edit Persona' : 'Add Persona'"
+    :title="isEdit ? $t('common.edit') + ' Persona' : $t('persona.addPersona')"
     direction="rtl"
     size="480px"
     :close-on-click-modal="false"
@@ -14,15 +14,15 @@
       label-position="top"
       class="persona-form"
     >
-      <el-form-item label="Account ID" prop="accountId">
+      <el-form-item :label="$t('persona.accountId')" prop="accountId">
         <el-input v-model="form.accountId" :disabled="isEdit" placeholder="e.g. acc_001" />
       </el-form-item>
 
-      <el-form-item label="Username" prop="username">
+      <el-form-item :label="$t('persona.username')" prop="username">
         <el-input v-model="form.username" placeholder="Display username" />
       </el-form-item>
 
-      <el-form-item label="Archetype" prop="archetype">
+      <el-form-item :label="$t('persona.archetype')" prop="archetype">
         <el-select v-model="form.archetype" placeholder="Select archetype" style="width: 100%">
           <el-option label="Pregnant" value="pregnant" />
           <el-option label="First-time Mom" value="first-time-mom" />
@@ -31,19 +31,19 @@
         </el-select>
       </el-form-item>
 
-      <el-form-item label="Primary Tone Mode" prop="primaryToneMode">
+      <el-form-item :label="$t('persona.primaryTone')" prop="primaryToneMode">
         <el-input v-model="form.primaryToneMode" placeholder="e.g. warm" />
       </el-form-item>
 
-      <el-form-item label="Secondary Tone Mode" prop="secondaryToneMode">
+      <el-form-item :label="$t('persona.secondaryTone')" prop="secondaryToneMode">
         <el-input v-model="form.secondaryToneMode" placeholder="e.g. humorous" />
       </el-form-item>
 
-      <el-form-item label="Avoided Tone Mode" prop="avoidedToneMode">
+      <el-form-item :label="$t('persona.avoidedTone')" prop="avoidedToneMode">
         <el-input v-model="form.avoidedToneMode" placeholder="e.g. aggressive" />
       </el-form-item>
 
-      <el-form-item label="Voice Cues" prop="voiceCues">
+      <el-form-item :label="$t('persona.voiceCues')" prop="voiceCues">
         <el-input
           v-model="form.voiceCues"
           type="textarea"
@@ -52,7 +52,7 @@
         />
       </el-form-item>
 
-      <el-form-item label="Catchphrases" prop="catchphrases">
+      <el-form-item :label="$t('persona.catchphrases')" prop="catchphrases">
         <el-input
           v-model="form.catchphrases"
           type="textarea"
@@ -61,7 +61,7 @@
         />
       </el-form-item>
 
-      <el-form-item label="Tier 3 Script" prop="tier3Script">
+      <el-form-item :label="$t('persona.tier3Script')" prop="tier3Script">
         <el-input
           v-model="form.tier3Script"
           type="textarea"
@@ -69,7 +69,7 @@
         />
       </el-form-item>
 
-      <el-form-item label="Topic Blacklist" prop="topicBlacklist">
+      <el-form-item :label="$t('persona.topicBlacklist')" prop="topicBlacklist">
         <el-input
           v-model="form.topicBlacklist"
           type="textarea"
@@ -78,15 +78,15 @@
         />
       </el-form-item>
 
-      <el-form-item label="Max Posts Per Day" prop="maxPostsPerDay">
+      <el-form-item :label="$t('persona.maxPostsPerDay')" prop="maxPostsPerDay">
         <el-input-number v-model="form.maxPostsPerDay" :min="1" :max="20" />
       </el-form-item>
 
-      <el-form-item label="BK Password" prop="bkPassword">
+      <el-form-item :label="$t('persona.bkPassword')" prop="bkPassword">
         <el-input v-model="form.bkPassword" type="password" show-password placeholder="Baby Kingdom login password" />
       </el-form-item>
 
-      <el-form-item label="Override Notes" prop="overrideNotes">
+      <el-form-item :label="$t('persona.overrideNotes')" prop="overrideNotes">
         <el-input
           v-model="form.overrideNotes"
           type="textarea"
@@ -94,15 +94,15 @@
         />
       </el-form-item>
 
-      <el-form-item label="Active" prop="isActive">
+      <el-form-item :label="$t('persona.active')" prop="isActive">
         <el-switch v-model="form.isActive" />
       </el-form-item>
     </el-form>
 
     <template #footer>
       <div class="drawer-footer">
-        <el-button @click="$emit('update:modelValue', false)">Cancel</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">Save</el-button>
+        <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">{{ $t('common.save') }}</el-button>
       </div>
     </template>
   </el-drawer>
