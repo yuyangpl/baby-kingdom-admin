@@ -1,0 +1,76 @@
+:root {
+  /* === BK Admin Design Tokens === */
+
+  /* Primary palette (CRM Management - WCAG AA) */
+  --bk-primary: #2563EB;
+  --bk-primary-hover: #1D4ED8;
+  --bk-primary-light: #DBEAFE;
+  --bk-secondary: #3B82F6;
+  --bk-accent: #059669;
+
+  /* Neutrals */
+  --bk-background: #F8FAFC;
+  --bk-foreground: #0F172A;
+  --bk-card: #FFFFFF;
+  --bk-muted: #F1F5FD;
+  --bk-muted-fg: #64748B;
+  --bk-border: #E4ECFC;
+
+  /* Status */
+  --bk-success: #22C55E;
+  --bk-warning: #F59E0B;
+  --bk-danger: #DC2626;
+  --bk-info: #3B82F6;
+
+  /* Tier sensitivity */
+  --bk-tier1: #22C55E;
+  --bk-tier2: #F97316;
+  --bk-tier3: #EF4444;
+
+  /* Sidebar */
+  --bk-sidebar: #304156;
+  --bk-sidebar-hover: #3D4F63;
+  --bk-sidebar-active: #2563EB;
+  --bk-sidebar-text: #bfcbd9;
+  --bk-sidebar-group: #8B95A5;
+
+  /* Layout */
+  --bk-header-height: 64px;
+  --bk-sidebar-width: 240px;
+  --bk-sidebar-collapsed: 64px;
+  --bk-radius: 10px;
+  --bk-radius-sm: 6px;
+  --bk-radius-lg: 14px;
+
+  /* Shadows */
+  --bk-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --bk-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --bk-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* Transitions */
+  --bk-transition: all 0.2s ease;
+}
+
+/* === Element Plus Theme Overrides === */
+:root {
+  --el-color-primary: #2563EB;
+  --el-color-primary-light-3: #60A5FA;
+  --el-color-primary-light-5: #93C5FD;
+  --el-color-primary-light-7: #BFDBFE;
+  --el-color-primary-light-9: #DBEAFE;
+  --el-color-primary-dark-2: #1D4ED8;
+  --el-color-success: #22C55E;
+  --el-color-warning: #F59E0B;
+  --el-color-danger: #DC2626;
+  --el-color-info: #64748B;
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 6px;
+  --el-border-color: #E4ECFC;
+  --el-border-color-light: #F1F5FD;
+  --el-bg-color-page: #F8FAFC;
+  --el-text-color-primary: #0F172A;
+  --el-text-color-regular: #334155;
+  --el-text-color-secondary: #64748B;
+  --el-text-color-placeholder: #94A3B8;
+  --el-font-size-base: 14px;
+}

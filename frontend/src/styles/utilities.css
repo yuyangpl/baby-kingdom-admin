@@ -1,0 +1,97 @@
+/* === Status Colors === */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.status-dot--running, .status-dot--connected, .status-dot--active, .status-dot--success {
+  background-color: var(--bk-success);
+}
+.status-dot--paused, .status-dot--warning, .status-dot--expiring {
+  background-color: var(--bk-warning);
+}
+.status-dot--failed, .status-dot--error, .status-dot--disconnected, .status-dot--expired {
+  background-color: var(--bk-danger);
+}
+.status-dot--idle, .status-dot--not-configured {
+  background-color: var(--bk-muted-fg);
+}
+
+/* Pulse animation for live indicators */
+.status-dot--pulse {
+  animation: bk-pulse 2s infinite;
+}
+@keyframes bk-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Reduce motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .status-dot--pulse {
+    animation: none;
+  }
+}
+
+/* === Tier Colors === */
+.tier-badge--1 { background-color: var(--bk-tier1); color: #fff; }
+.tier-badge--2 { background-color: var(--bk-tier2); color: #fff; }
+.tier-badge--3 { background-color: var(--bk-tier3); color: #fff; }
+
+/* Left border accents (for feed cards) */
+.border-tier-1 { border-left: 4px solid var(--bk-tier1); }
+.border-tier-2 { border-left: 4px solid var(--bk-tier2); }
+.border-tier-3 { border-left: 4px solid var(--bk-tier3); }
+
+/* === Gradient Avatars === */
+.avatar-gradient {
+  background: linear-gradient(135deg, #60A5FA, #2563EB);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+}
+
+/* === Card Variants === */
+.card--info { background: #EFF6FF; border: 1px solid #BFDBFE; }
+.card--success { background: #F0FDF4; border: 1px solid #BBF7D0; }
+.card--warning { background: #FFFBEB; border: 1px solid #FDE68A; }
+.card--danger { background: #FEF2F2; border: 1px solid #FECACA; }
+.card--highlight { background: #FEFCE8; border: 1px solid #FDE047; }
+
+/* === Skeleton Loading === */
+.skeleton {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--bk-radius-sm);
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* === Transitions === */
+.hover-lift {
+  transition: var(--bk-transition);
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--bk-shadow);
+}
+
+/* === Page Title === */
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--bk-foreground);
+  margin: 0;
+}
+.page-subtitle {
+  font-size: 14px;
+  color: var(--bk-muted-fg);
+  margin-top: 4px;
+}

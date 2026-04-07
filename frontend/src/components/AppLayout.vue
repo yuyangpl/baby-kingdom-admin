@@ -1,79 +1,109 @@
 <template>
-  <el-container class="app-layout">
-    <el-aside :width="isCollapsed ? '64px' : '240px'" class="sidebar">
-      <div class="logo">
-        <span v-if="!isCollapsed">{{ $t('nav.appName') }}</span>
-        <span v-else>{{ $t('nav.appNameShort') }}</span>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" :class="{ 'sidebar--collapsed': isCollapsed }">
+      <div class="sidebar-logo">
+        <span v-if="!isCollapsed" class="sidebar-logo__text">{{ $t('nav.appName') }}</span>
+        <span v-else class="sidebar-logo__text">{{ $t('nav.appNameShort') }}</span>
       </div>
-      <el-menu
-        :default-active="$route.name"
-        :collapse="isCollapsed"
-        router
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-      >
-        <el-menu-item index="dashboard">
-          <el-icon><DataAnalysis /></el-icon>
-          <template #title>{{ $t('nav.dashboard') }}</template>
-        </el-menu-item>
 
-        <el-sub-menu index="content">
-          <template #title>
-            <el-icon><Document /></el-icon>
-            <span>{{ $t('nav.content') }}</span>
-          </template>
-          <el-menu-item index="feeds">{{ $t('nav.feedQueue') }}</el-menu-item>
-          <el-menu-item index="scanner">{{ $t('nav.scanner') }}</el-menu-item>
-          <el-menu-item index="trends">{{ $t('nav.trends') }}</el-menu-item>
-          <el-menu-item index="poster">{{ $t('nav.poster') }}</el-menu-item>
-        </el-sub-menu>
+      <nav class="sidebar-nav">
+        <div class="nav-group">
+          <div v-if="!isCollapsed" class="nav-group__title">OVERVIEW</div>
+          <router-link to="/" class="nav-item" :class="{ 'nav-item--active': $route.name === 'dashboard' }">
+            <el-icon class="nav-item__icon"><DataAnalysis /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.dashboard') }}</span>
+          </router-link>
+        </div>
 
-        <el-sub-menu index="configuration">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>{{ $t('nav.configuration') }}</span>
-          </template>
-          <el-menu-item index="personas">{{ $t('nav.personas') }}</el-menu-item>
-          <el-menu-item index="tones">{{ $t('nav.toneModes') }}</el-menu-item>
-          <el-menu-item index="topic-rules">{{ $t('nav.topicRules') }}</el-menu-item>
-          <el-menu-item index="forums">{{ $t('nav.forumBoards') }}</el-menu-item>
-        </el-sub-menu>
+        <div class="nav-group">
+          <div v-if="!isCollapsed" class="nav-group__title">CONTENT</div>
+          <router-link to="/feeds" class="nav-item" :class="{ 'nav-item--active': $route.name === 'feeds' }">
+            <el-icon class="nav-item__icon"><Document /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.feedQueue') }}</span>
+          </router-link>
+          <router-link to="/scanner" class="nav-item" :class="{ 'nav-item--active': $route.name === 'scanner' }">
+            <el-icon class="nav-item__icon"><Search /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.scanner') }}</span>
+          </router-link>
+          <router-link to="/trends" class="nav-item" :class="{ 'nav-item--active': $route.name === 'trends' }">
+            <el-icon class="nav-item__icon"><TrendCharts /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.trends') }}</span>
+          </router-link>
+          <router-link to="/poster" class="nav-item" :class="{ 'nav-item--active': $route.name === 'poster' }">
+            <el-icon class="nav-item__icon"><Promotion /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.poster') }}</span>
+          </router-link>
+        </div>
 
-        <el-sub-menu index="system">
-          <template #title>
-            <el-icon><Monitor /></el-icon>
-            <span>{{ $t('nav.system') }}</span>
-          </template>
-          <el-menu-item index="config" v-if="auth.isAdmin">{{ $t('nav.config') }}</el-menu-item>
-          <el-menu-item index="google-trends" v-if="auth.isAdmin">{{ $t('nav.googleTrends') }}</el-menu-item>
-          <el-menu-item index="queues">{{ $t('nav.queueMonitor') }}</el-menu-item>
-          <el-menu-item index="audit" v-if="auth.isAdmin">{{ $t('nav.auditLog') }}</el-menu-item>
-          <el-menu-item index="users" v-if="auth.isAdmin">{{ $t('nav.users') }}</el-menu-item>
-        </el-sub-menu>
-      </el-menu>
+        <div class="nav-group">
+          <div v-if="!isCollapsed" class="nav-group__title">CONFIGURATION</div>
+          <router-link to="/personas" class="nav-item" :class="{ 'nav-item--active': $route.name === 'personas' }">
+            <el-icon class="nav-item__icon"><User /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.personas') }}</span>
+          </router-link>
+          <router-link to="/tones" class="nav-item" :class="{ 'nav-item--active': $route.name === 'tones' }">
+            <el-icon class="nav-item__icon"><ChatDotRound /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.toneModes') }}</span>
+          </router-link>
+          <router-link to="/topic-rules" class="nav-item" :class="{ 'nav-item--active': $route.name === 'topic-rules' }">
+            <el-icon class="nav-item__icon"><List /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.topicRules') }}</span>
+          </router-link>
+          <router-link to="/forums" class="nav-item" :class="{ 'nav-item--active': $route.name === 'forums' }">
+            <el-icon class="nav-item__icon"><Grid /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.forumBoards') }}</span>
+          </router-link>
+        </div>
 
-      <div class="collapse-btn" @click="isCollapsed = !isCollapsed">
-        <el-icon><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
-      </div>
-    </el-aside>
+        <div class="nav-group">
+          <div v-if="!isCollapsed" class="nav-group__title">SYSTEM</div>
+          <router-link v-if="auth.isAdmin" to="/config" class="nav-item" :class="{ 'nav-item--active': $route.name === 'config' }">
+            <el-icon class="nav-item__icon"><Setting /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.config') }}</span>
+          </router-link>
+          <router-link v-if="auth.isAdmin" to="/google-trends" class="nav-item" :class="{ 'nav-item--active': $route.name === 'google-trends' }">
+            <el-icon class="nav-item__icon"><DataLine /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.googleTrends') }}</span>
+          </router-link>
+          <router-link to="/queues" class="nav-item" :class="{ 'nav-item--active': $route.name === 'queues' }">
+            <el-icon class="nav-item__icon"><Operation /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.queueMonitor') }}</span>
+          </router-link>
+          <router-link v-if="auth.isAdmin" to="/audit" class="nav-item" :class="{ 'nav-item--active': $route.name === 'audit' }">
+            <el-icon class="nav-item__icon"><Notebook /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.auditLog') }}</span>
+          </router-link>
+          <router-link v-if="auth.isAdmin" to="/users" class="nav-item" :class="{ 'nav-item--active': $route.name === 'users' }">
+            <el-icon class="nav-item__icon"><UserFilled /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.users') }}</span>
+          </router-link>
+        </div>
+      </nav>
+    </aside>
 
-    <el-container>
-      <el-header class="header">
-        <el-breadcrumb>
-          <el-breadcrumb-item :to="{ name: 'dashboard' }">{{ $t('nav.home') }}</el-breadcrumb-item>
-          <el-breadcrumb-item>{{ $route.name }}</el-breadcrumb-item>
-        </el-breadcrumb>
+    <!-- Main area -->
+    <div class="main-wrapper">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <button class="header-toggle" @click="isCollapsed = !isCollapsed" aria-label="Toggle sidebar">
+            <el-icon :size="20"><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
+          </button>
+          <span class="header-title">Baby Kingdom Admin</span>
+        </div>
         <div class="header-right">
           <el-badge :value="unreadCount || pendingCount" :hidden="!unreadCount && !pendingCount" class="notification-badge" @click="notifyStore.markAllRead()">
             <el-icon :size="20"><Bell /></el-icon>
           </el-badge>
-          <el-button text @click="toggleLanguage" style="margin-right: 12px;">
+          <button class="lang-toggle" @click="toggleLanguage">
             {{ locale === 'zh-HK' ? 'EN' : '繁中' }}
-          </el-button>
+          </button>
           <el-dropdown>
             <span class="user-info">
-              <el-avatar :size="28">{{ auth.user?.username?.[0]?.toUpperCase() }}</el-avatar>
+              <div class="avatar-gradient" style="width: 32px; height: 32px; font-size: 14px;">
+                {{ auth.user?.username?.[0]?.toUpperCase() }}
+              </div>
               <span class="username">{{ auth.user?.username }}</span>
             </span>
             <template #dropdown>
@@ -84,13 +114,14 @@
             </template>
           </el-dropdown>
         </div>
-      </el-header>
+      </header>
 
-      <el-main class="main-content">
+      <!-- Content -->
+      <main class="main-content">
         <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -143,39 +174,149 @@ async function handleLogout() {
 
 <style scoped>
 .app-layout {
+  display: flex;
   height: 100vh;
+  overflow: hidden;
 }
+
+/* Sidebar */
 .sidebar {
-  background: #304156;
-  overflow-y: auto;
-  transition: width 0.3s;
+  width: var(--bk-sidebar-width);
+  background: var(--bk-sidebar);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  flex-shrink: 0;
 }
-.logo {
-  height: 60px;
+.sidebar--collapsed {
+  width: var(--bk-sidebar-collapsed);
+}
+
+.sidebar-logo {
+  height: var(--bk-header-height);
   display: flex;
   align-items: center;
   justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+.sidebar-logo__text {
   color: #fff;
   font-size: 20px;
-  font-weight: bold;
+  font-weight: 700;
+  white-space: nowrap;
 }
-.collapse-btn {
-  text-align: center;
-  padding: 12px;
-  color: #bfcbd9;
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+.nav-group {
+  margin-bottom: 8px;
+}
+.nav-group__title {
+  font-size: 11px;
+  color: var(--bk-sidebar-group);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 20px 4px;
+  white-space: nowrap;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  color: var(--bk-sidebar-text);
+  text-decoration: none;
+  transition: background 0.15s ease;
   cursor: pointer;
+  white-space: nowrap;
 }
+.sidebar--collapsed .nav-item {
+  padding: 10px 0;
+  justify-content: center;
+}
+.nav-item:hover {
+  background: var(--bk-sidebar-hover);
+}
+.nav-item--active {
+  background: var(--bk-sidebar-active) !important;
+  color: #fff;
+}
+.nav-item__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.nav-item__text {
+  margin-left: 12px;
+  font-size: 14px;
+}
+
+/* Main wrapper */
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
 .header {
+  height: var(--bk-header-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e6e6e6;
-  background: #fff;
+  padding: 0 24px;
+  background: var(--bk-card);
+  border-bottom: 1px solid var(--bk-border);
+  flex-shrink: 0;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--bk-muted-fg);
+  padding: 6px;
+  border-radius: var(--bk-radius-sm);
+  display: flex;
+  align-items: center;
+  transition: var(--bk-transition);
+}
+.header-toggle:hover {
+  background: var(--bk-muted);
+  color: var(--bk-foreground);
+}
+.header-title {
+  font-size: 14px;
+  color: var(--bk-muted-fg);
 }
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+}
+.lang-toggle {
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--bk-muted-fg);
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius-sm);
+  background: none;
+  cursor: pointer;
+  transition: var(--bk-transition);
+}
+.lang-toggle:hover {
+  color: var(--bk-foreground);
+  border-color: var(--bk-foreground);
 }
 .user-info {
   display: flex;
@@ -185,12 +326,17 @@ async function handleLogout() {
 }
 .username {
   font-size: 14px;
+  color: var(--bk-foreground);
 }
 .notification-badge {
   cursor: pointer;
 }
+
+/* Content */
 .main-content {
-  background: #f5f7fa;
-  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--bk-background);
 }
 </style>
