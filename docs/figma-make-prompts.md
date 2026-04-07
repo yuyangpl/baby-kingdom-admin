@@ -77,13 +77,15 @@ Section E - Quality & Cost (fourth row, left 60%):
 - Persona Performance: small horizontal bar chart ranking top 5 personas by post count, with rejection rate as secondary red bar overlay
 
 Section F - System Health (fourth row, right 40%):
-- Vertical list of external dependency status indicators:
-  - BK Forum API: green dot "Connected" or red dot "Unreachable"
-  - MediaLens: green dot "JWT Valid (expires in 5d)" or yellow dot "JWT expiring soon" or red dot "JWT Expired - Action Required"
-  - Gemini API: green dot "Operational" or yellow dot "Rate Limited"
-  - Google Trends API: green dot / red dot
+- Vertical list of external dependency status indicators (data from GET /api/health/services):
+  - BK Forum API: green dot "Connected" or red dot "Disconnected" or grey dot "Not Configured"
+  - MediaLens: green dot "JWT Valid (expires in 5d)" or yellow dot "Expiring Soon (< 24h)" or red dot "JWT Expired - Action Required" or grey dot "Not Configured"
+  - Gemini API: green dot "Operational" or yellow dot "No Recent Activity" or grey dot "Not Configured"
+  - Google Trends API: green dot "Connected" or red dot "Disconnected" or grey dot "Not Configured"
 - BK Account Health summary: "28/30 active, 2 cooldown" with link to Persona page
-- Each row is a compact status line with colored dot + label + detail text
+- Each row is a compact status line with colored dot + label + detail text + last checked timestamp
+- Small mail icon next to red/yellow status indicates email alert has been sent to admins
+- Auto-refreshes every 5 minutes (matches backend health monitor cron interval)
 
 Use Element Plus card components, subtle shadows, consistent spacing.
 ```
@@ -293,7 +295,7 @@ Left panel (30%, tree structure):
 
 Right panel (70%, selected board details):
 - Board name and FID display
-- Toggle switches: Enable Scraping, Enable Auto Reply
+- Toggle switches: Enable Scraping, Enable Auto Reply (with tooltip: "审批通过后自动入 Poster 队列发帖")
 - Reply Threshold: range slider (min-max, default 0-40)
 - Scan Interval: number input (minutes)
 - Default Tone Mode: dropdown
@@ -314,7 +316,7 @@ Persona Bindings section (below board config):
 ```
 Design a system configuration page:
 
-Tab navigation: MediaLens | BK Forum | Gemini AI | Google Trends | Scanner | General
+Tab navigation: MediaLens | BK Forum | Gemini AI | Google Trends | Scanner | Email | General
 
 Each tab shows a form with key-value pairs:
 - Each row: Key label (bold, monospace), Value input, Description (grey text below)
@@ -329,6 +331,15 @@ Bottom: "Save Changes" primary button, "Reset to Defaults" outline button
 MediaLens tab has additional section:
 - Token Status card: valid/expired indicator, expiry date
 - "Request OTP" button → inline OTP input field → "Verify" button
+
+Email tab:
+- SMTP Host: text input
+- SMTP Port: number input (default 587)
+- SMTP User: text input
+- SMTP Password: masked input with show/hide
+- Sender Address: text input (default "BK Admin <noreply@baby-kingdom.com>")
+- "Send Test Email" button → sends a test email to current admin's email to verify configuration
+- Note: Admin notification emails (ADMIN_EMAILS) configured in General tab
 ```
 
 ---
