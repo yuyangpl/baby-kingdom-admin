@@ -20,46 +20,9 @@
         :name="tab.key"
       >
         <el-card shadow="never" class="config-tab-card">
-        <!-- Config fields -->
-        <div class="config-group">
-          <div
-            v-for="item in configsByCategory(tab.key)"
-            :key="item.key"
-            class="config-row"
-          >
-            <div class="config-header">
-              <span class="config-key">{{ item.key }}</span>
-              <span v-if="item.description" class="config-desc">{{ item.description }}</span>
-            </div>
-            <div class="config-value-row">
-              <el-input
-                v-if="item.isSecret"
-                v-model="item._editValue"
-                type="password"
-                show-password
-                placeholder="********  (enter new value to change)"
-                style="flex: 1"
-              />
-              <el-input
-                v-else-if="isLongText(item.key, item.value)"
-                v-model="item._editValue"
-                type="textarea"
-                :rows="4"
-                :autosize="{ minRows: 3, maxRows: 12 }"
-                style="flex: 1"
-              />
-              <el-input
-                v-else
-                v-model="item._editValue"
-                style="flex: 1"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- MediaLens extra: Token status + OTP -->
+        <!-- MediaLens: Token status + OTP (shown first) -->
         <template v-if="tab.key === 'medialens'">
-          <div class="config-section">
+          <div class="config-section" style="margin-bottom: 20px;">
             <h4 class="config-section__title">{{ $t('trends.tokenStatus') }}</h4>
             <div class="token-status-card" :class="tokenValid ? 'card--success' : 'card--danger'">
               <div class="token-status-card__row">
@@ -102,6 +65,43 @@
             </div>
           </div>
         </template>
+
+        <!-- Config fields -->
+        <div class="config-group">
+          <div
+            v-for="item in configsByCategory(tab.key)"
+            :key="item.key"
+            class="config-row"
+          >
+            <div class="config-header">
+              <span class="config-key">{{ item.key }}</span>
+              <span v-if="item.description" class="config-desc">{{ item.description }}</span>
+            </div>
+            <div class="config-value-row">
+              <el-input
+                v-if="item.isSecret"
+                v-model="item._editValue"
+                type="password"
+                show-password
+                placeholder="********  (enter new value to change)"
+                style="flex: 1"
+              />
+              <el-input
+                v-else-if="isLongText(item.key, item.value)"
+                v-model="item._editValue"
+                type="textarea"
+                :rows="4"
+                :autosize="{ minRows: 3, maxRows: 12 }"
+                style="flex: 1"
+              />
+              <el-input
+                v-else
+                v-model="item._editValue"
+                style="flex: 1"
+              />
+            </div>
+          </div>
+        </div>
 
         <!-- Email extra: Send Test -->
         <template v-if="tab.key === 'email'">
