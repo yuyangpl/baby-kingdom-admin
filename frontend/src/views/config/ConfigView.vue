@@ -306,7 +306,6 @@ onMounted(() => {
 
 <style scoped>
 .config-view {
-  padding: 20px;
 }
 .config-tabs {
   margin-top: 16px;

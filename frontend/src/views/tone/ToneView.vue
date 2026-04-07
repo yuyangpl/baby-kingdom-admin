@@ -148,7 +148,6 @@ onMounted(loadTones)
 
 <style scoped>
 .tone-view {
-  padding: 24px;
 }
 
 .page-header {

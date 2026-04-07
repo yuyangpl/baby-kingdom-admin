@@ -59,7 +59,7 @@
     <!-- Section 3: Recent Activity + 7-Day Trends -->
     <div class="grid grid--3-2" style="margin-top: 24px">
       <!-- Recent Activity (2/3) -->
-      <el-card class="dash-section-card">
+      <el-card class="dash-section-card" shadow="never">
         <template #header>{{ $t('dashboard.recentActivity') }}</template>
         <template v-if="loadingRecent">
           <div v-for="i in 5" :key="'skel-ra-' + i" style="display: flex; gap: 12px; margin-bottom: 16px">
@@ -85,7 +85,7 @@
       </el-card>
 
       <!-- 7-Day Trends (1/3) -->
-      <el-card class="dash-section-card">
+      <el-card class="dash-section-card" shadow="never">
         <template #header>{{ $t('dashboard.weeklyTrend') }}</template>
         <template v-if="loadingWeekly">
           <div v-for="i in 5" :key="'skel-wk-' + i" style="margin-bottom: 16px">
@@ -112,7 +112,7 @@
     <!-- Section 4: Quality & Cost + System Health -->
     <div class="grid grid--3-2" style="margin-top: 24px">
       <!-- Quality & Cost (3/5) -->
-      <el-card class="dash-section-card">
+      <el-card class="dash-section-card" shadow="never">
         <template #header>Quality &amp; Cost</template>
         <div class="quality-grid">
           <div class="quality-card">
@@ -135,7 +135,7 @@
       </el-card>
 
       <!-- System Health (2/5) -->
-      <el-card class="dash-section-card">
+      <el-card class="dash-section-card" shadow="never">
         <template #header>{{ $t('dashboard.systemHealth') }}</template>
         <template v-if="loadingHealth">
           <div v-for="i in 4" :key="'skel-sh-' + i" style="display: flex; gap: 12px; margin-bottom: 14px">
@@ -369,6 +369,9 @@ onMounted(async () => {
 /* ---- Section card ---- */
 .dash-section-card {
   min-height: 200px;
+  background: var(--bk-card);
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius);
 }
 
 .dash-empty {
@@ -419,7 +422,8 @@ onMounted(async () => {
 
 .quality-card {
   background: var(--bk-muted);
-  border-radius: var(--bk-radius-sm);
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius);
   padding: 14px;
   display: flex;
   flex-direction: column;

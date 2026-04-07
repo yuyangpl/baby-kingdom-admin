@@ -246,7 +246,6 @@ onMounted(() => {
 
 <style scoped>
 .forum-view {
-  padding: 24px;
 }
 .forum-layout {
   display: flex;

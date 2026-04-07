@@ -226,7 +226,6 @@ onMounted(loadAudits)
 
 <style scoped>
 .audit-view {
-  padding: 24px;
 }
 .audit-view__header {
   display: flex;

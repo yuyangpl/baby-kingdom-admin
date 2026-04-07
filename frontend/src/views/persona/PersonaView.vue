@@ -159,7 +159,6 @@ onMounted(loadData)
 
 <style scoped>
 .persona-view {
-  padding: 20px;
 }
 .persona-view__header {
   display: flex;

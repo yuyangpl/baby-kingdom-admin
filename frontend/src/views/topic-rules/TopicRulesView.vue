@@ -170,7 +170,6 @@ onMounted(loadRules)
 
 <style scoped>
 .topic-rules-view {
-  padding: 24px;
 }
 .topic-rules-view__header {
   display: flex;

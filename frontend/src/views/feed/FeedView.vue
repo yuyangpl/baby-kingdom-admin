@@ -457,7 +457,6 @@ onMounted(() => {
 
 <style scoped>
 .feed-view {
-  padding: 20px;
 }
 
 /* New Feed Banner */

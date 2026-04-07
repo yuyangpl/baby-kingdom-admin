@@ -223,7 +223,6 @@ onMounted(() => {
 
 <style scoped>
 .trends-view {
-  padding: 24px;
 }
 
 .token-card {

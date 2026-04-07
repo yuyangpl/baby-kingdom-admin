@@ -196,7 +196,6 @@ onMounted(loadUsers)
 
 <style scoped>
 .user-view {
-  padding: 24px;
 }
 .user-view__header {
   display: flex;

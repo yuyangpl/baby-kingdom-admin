@@ -201,7 +201,6 @@ onUnmounted(() => {
 
 <style scoped>
 .queue-view {
-  padding: 24px;
 }
 .queue-view__header {
   display: flex;

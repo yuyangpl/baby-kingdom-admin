@@ -1,3 +1,11 @@
+/* Prevent outer page scroll */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 :root {
   /* === BK Admin Design Tokens === */
 
@@ -73,4 +81,36 @@
   --el-text-color-secondary: #64748B;
   --el-text-color-placeholder: #94A3B8;
   --el-font-size-base: 14px;
+}
+
+/* Table rounded corners */
+.el-table {
+  border-radius: var(--bk-radius);
+  overflow: hidden;
+}
+.el-table__inner-wrapper {
+  border-radius: var(--bk-radius);
+}
+
+/* Dialog max-height with scrollable body */
+.el-dialog {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.el-dialog__header {
+  flex-shrink: 0;
+}
+.el-dialog__body {
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(85vh - 120px);
+}
+.el-dialog__footer {
+  flex-shrink: 0;
+}
+
+/* Same for el-drawer */
+.el-drawer__body {
+  overflow-y: auto;
 }

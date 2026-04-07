@@ -166,7 +166,6 @@ onMounted(() => {
 
 <style scoped>
 .scanner-view {
-  padding: 24px;
 }
 
 .page-header {

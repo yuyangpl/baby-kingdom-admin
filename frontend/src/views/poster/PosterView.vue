@@ -201,7 +201,6 @@ onMounted(() => {
 
 <style scoped>
 .poster-view {
-  padding: 24px;
 }
 
 .page-header {
