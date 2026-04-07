@@ -190,7 +190,7 @@ const loadTrends = async () => {
 
 const loadTokenStatus = async () => {
   try {
-    const res = await api.get('/v1/trends/token-status')
+    const res = await api.get('/v1/trends/medialens/token-status')
     const data = res.data ?? res
     tokenValid.value = data.valid ?? true
     if (data.expiry) {
