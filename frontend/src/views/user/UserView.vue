@@ -44,7 +44,7 @@
       style="width: 100%"
       :row-class-name="rowClassName"
     >
-      <el-table-column label="Avatar" width="70" align="center">
+      <el-table-column :label="$t('common.avatar')" width="70" align="center">
         <template #default="{ row }">
           <div class="avatar-gradient user-avatar">
             {{ avatarInitial(row.username) }}
@@ -173,7 +173,7 @@ const handleRoleChange = async (row: any, newRole: string) => {
     ElMessage.success(`Role updated to ${newRole}`)
   } catch (err: any) {
     row.role = oldRole
-    ElMessage.error(err.message || 'Failed to update role')
+    ElMessage.error(err.message || t('user.roleFailed'))
   }
 }
 

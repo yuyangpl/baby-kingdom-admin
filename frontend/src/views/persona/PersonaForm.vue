@@ -19,11 +19,11 @@
       </el-form-item>
 
       <el-form-item :label="$t('persona.username')" prop="username">
-        <el-input v-model="form.username" placeholder="Display username" />
+        <el-input v-model="form.username" :placeholder="$t('persona.usernamePlaceholder')" />
       </el-form-item>
 
       <el-form-item :label="$t('persona.archetype')" prop="archetype">
-        <el-select v-model="form.archetype" placeholder="Select archetype" style="width: 100%">
+        <el-select v-model="form.archetype" :placeholder="$t('persona.selectArchetype')" style="width: 100%">
           <el-option label="Pregnant" value="pregnant" />
           <el-option label="First-time Mom" value="first-time-mom" />
           <el-option label="Multi-kid" value="multi-kid" />
@@ -48,7 +48,7 @@
           v-model="form.voiceCues"
           type="textarea"
           :rows="3"
-          placeholder="One per line"
+          :placeholder="$t('common.onePerLine')"
         />
       </el-form-item>
 
@@ -57,7 +57,7 @@
           v-model="form.catchphrases"
           type="textarea"
           :rows="3"
-          placeholder="One per line"
+          :placeholder="$t('common.onePerLine')"
         />
       </el-form-item>
 
@@ -74,7 +74,7 @@
           v-model="form.topicBlacklist"
           type="textarea"
           :rows="2"
-          placeholder="Comma separated"
+          :placeholder="$t('common.commasSeparated')"
         />
       </el-form-item>
 
@@ -83,7 +83,7 @@
       </el-form-item>
 
       <el-form-item :label="$t('persona.bkPassword')" prop="bkPassword">
-        <el-input v-model="form.bkPassword" type="password" show-password placeholder="Baby Kingdom login password" />
+        <el-input v-model="form.bkPassword" type="password" show-password :placeholder="$t('persona.bkPasswordPlaceholder')" />
       </el-form-item>
 
       <el-form-item :label="$t('persona.overrideNotes')" prop="overrideNotes">
@@ -112,6 +112,7 @@
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
 
 const props = defineProps<{
@@ -124,6 +125,7 @@ const emit = defineEmits<{
   saved: []
 }>()
 
+const { t } = useI18n()
 const isEdit = computed(() => !!props.editData)
 const formRef = ref<FormInstance>()
 const saving = ref<boolean>(false)
@@ -205,11 +207,11 @@ const handleSave = async () => {
     } else {
       await api.post('/v1/personas', payload)
     }
-    ElMessage.success(isEdit.value ? 'Persona updated' : 'Persona created')
+    ElMessage.success(t('common.success'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to save persona')
+    ElMessage.error(err.message || t('common.error'))
   } finally {
     saving.value = false
   }

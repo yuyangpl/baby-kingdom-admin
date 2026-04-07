@@ -22,7 +22,7 @@
       </el-form-item>
 
       <el-form-item :label="$t('user.password')" prop="password">
-        <el-input v-model="form.password" type="password" show-password placeholder="Min 8 characters" />
+        <el-input v-model="form.password" type="password" show-password :placeholder="$t('user.passwordPlaceholder')" />
       </el-form-item>
 
       <el-form-item :label="$t('user.role')" prop="role">

@@ -32,7 +32,7 @@
         </el-radio-group>
       </el-form-item>
 
-      <el-form-item label="Target FID" prop="targetFid">
+      <el-form-item :label="$t('feed.targetFid')" prop="targetFid">
         <el-input-number
           v-model="form.targetFid"
           :min="0"

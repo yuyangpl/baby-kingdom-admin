@@ -90,7 +90,7 @@
           <button class="header-toggle" @click="isCollapsed = !isCollapsed" aria-label="Toggle sidebar">
             <el-icon :size="20"><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
           </button>
-          <span class="header-title">Baby Kingdom Admin</span>
+          <span class="header-title">{{ $t('nav.appTitle') }}</span>
         </div>
         <div class="header-right">
           <el-badge :value="unreadCount || pendingCount" :hidden="!unreadCount && !pendingCount" class="notification-badge" @click="notifyStore.markAllRead()">

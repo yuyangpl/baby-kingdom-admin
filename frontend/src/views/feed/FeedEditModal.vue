@@ -9,7 +9,7 @@
     <div v-if="editData" class="feed-edit-modal">
       <!-- Read-only section -->
       <el-descriptions :column="2" border size="small" class="readonly-section">
-        <el-descriptions-item label="Feed ID">{{ editData.feedId }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('feed.feedId')">{{ editData.feedId }}</el-descriptions-item>
         <el-descriptions-item :label="$t('trends.source')">
           <el-tag size="small">{{ editData.source }}</el-tag>
         </el-descriptions-item>
@@ -18,7 +18,7 @@
         </el-descriptions-item>
         <el-descriptions-item :label="$t('feed.persona')">{{ editData.personaId }}</el-descriptions-item>
         <el-descriptions-item :label="$t('feed.toneMode')">{{ editData.toneMode }}</el-descriptions-item>
-        <el-descriptions-item label="Sensitivity Tier">
+        <el-descriptions-item :label="$t('feed.sensitivityTier')">
           <el-tag
             :type="tierType(editData.sensitivityTier)"
             size="small"
