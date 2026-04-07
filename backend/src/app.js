@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import mongoSanitize from 'express-mongo-sanitize';
 import { requestLogger } from './shared/middleware/request-logger.js';
 import { errorHandler } from './shared/middleware/error-handler.js';
 import { notFound } from './shared/middleware/not-found.js';
@@ -34,6 +35,9 @@ app.use(cors({
 // Parsing
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
+
+// NoSQL injection defense — strips $ and . from req.body/query/params keys
+app.use(mongoSanitize());
 
 // Logging
 app.use(requestLogger);

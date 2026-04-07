@@ -6,6 +6,7 @@ import { checkQuality } from '../gemini/quality-guard.js';
 import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
 import { emitToRoom } from '../../shared/socket.js';
 import * as auditService from '../audit/audit.service.js';
+import xss from 'xss';
 
 const CLAIM_EXPIRY_MINUTES = 10;
 
@@ -120,9 +121,10 @@ export async function updateContent(feedId, content, userId, ip) {
   const feed = await Feed.findById(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
-  feed.finalContent = content;
+  const cleanContent = xss(content);
+  feed.finalContent = cleanContent;
   feed.adminEdit = true;
-  feed.charCount = content.length;
+  feed.charCount = cleanContent.length;
   await feed.save();
 
   await auditService.log({
@@ -197,9 +199,10 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
   });
 
   const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
-  const content = typeof result.text === 'string' ? result.text : result.text.replyText || '';
+  const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
+  const draftContent = xss(rawContent);
 
-  const quality = checkQuality(content, persona);
+  const quality = checkQuality(draftContent, persona);
 
   const feedId = generateFeedId();
   const feed = await Feed.create({
@@ -216,8 +219,8 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
     toneMode: promptResult.resolvedToneMode,
     sensitivityTier: `Tier ${tier}`,
     postType: postType || 'reply',
-    draftContent: content,
-    charCount: content.length,
+    draftContent,
+    charCount: draftContent.length,
     qualityWarnings: quality.warnings,
   });
 
