@@ -34,18 +34,18 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import api from '../../api';
 import { ElMessage } from 'element-plus';
 import PersonaForm from './PersonaForm.vue';
 
-const personas = ref([]);
-const loading = ref(false);
-const showForm = ref(false);
-const editData = ref(null);
+const personas = ref<any[]>([]);
+const loading = ref<boolean>(false);
+const showForm = ref<boolean>(false);
+const editData = ref<Record<string, any> | null>(null);
 
-const archetypeColor = { pregnant: 'danger', 'first-time-mom': '', 'multi-kid': 'success', 'school-age': 'warning' };
+const archetypeColor: Record<string, string> = { pregnant: 'danger', 'first-time-mom': '', 'multi-kid': 'success', 'school-age': 'warning' };
 
 async function loadData() {
   loading.value = true;
@@ -57,12 +57,12 @@ async function loadData() {
   }
 }
 
-function openForm(data) {
+function openForm(data: Record<string, any> | null) {
   editData.value = data;
   showForm.value = true;
 }
 
-async function handleDelete(id) {
+async function handleDelete(id: string) {
   await api.delete(`/v1/personas/${id}`);
   ElMessage.success('Deleted');
   loadData();

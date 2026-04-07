@@ -108,21 +108,25 @@
   </el-drawer>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import type { FormInstance } from 'element-plus'
 import api from '../../api'
 
-const props = defineProps({
-  modelValue: { type: Boolean, default: false },
-  editData: { type: Object, default: null },
-})
+const props = defineProps<{
+  modelValue: boolean
+  editData: Record<string, any> | null
+}>()
 
-const emit = defineEmits(['update:modelValue', 'saved'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  saved: []
+}>()
 
 const isEdit = computed(() => !!props.editData)
-const formRef = ref(null)
-const saving = ref(false)
+const formRef = ref<FormInstance>()
+const saving = ref<boolean>(false)
 
 const defaultForm = () => ({
   accountId: '',
@@ -178,8 +182,8 @@ watch(
   }
 )
 
-const buildPayload = () => {
-  const payload = { ...form }
+const buildPayload = (): Record<string, any> => {
+  const payload: Record<string, any> = { ...form }
   payload.voiceCues = form.voiceCues ? form.voiceCues.split('\n').map(s => s.trim()).filter(Boolean) : []
   payload.catchphrases = form.catchphrases ? form.catchphrases.split('\n').map(s => s.trim()).filter(Boolean) : []
   payload.topicBlacklist = form.topicBlacklist ? form.topicBlacklist.split(',').map(s => s.trim()).filter(Boolean) : []
@@ -189,7 +193,7 @@ const buildPayload = () => {
 
 const handleSave = async () => {
   try {
-    await formRef.value.validate()
+    await formRef.value!.validate()
   } catch {
     return
   }
@@ -204,7 +208,7 @@ const handleSave = async () => {
     ElMessage.success(isEdit.value ? 'Persona updated' : 'Persona created')
     emit('saved')
     emit('update:modelValue', false)
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to save persona')
   } finally {
     saving.value = false

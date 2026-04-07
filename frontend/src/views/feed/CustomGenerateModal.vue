@@ -52,22 +52,34 @@
   </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import type { FormInstance } from 'element-plus'
 import api from '../../api'
 
-const props = defineProps({
-  modelValue: { type: Boolean, default: false },
-  editData: { type: Object, default: null },
-})
+const props = defineProps<{
+  modelValue: boolean
+  editData?: Record<string, any> | null
+}>()
 
-const emit = defineEmits(['update:modelValue', 'saved'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  saved: []
+}>()
 
-const formRef = ref(null)
-const generating = ref(false)
+const formRef = ref<FormInstance>()
+const generating = ref<boolean>(false)
 
-const defaultForm = () => ({
+interface GenerateForm {
+  topic: string
+  personaAccountId: string
+  toneMode: string
+  postType: string
+  targetFid: number | undefined
+}
+
+const defaultForm = (): GenerateForm => ({
   topic: '',
   personaAccountId: '',
   toneMode: 'auto',
@@ -93,13 +105,13 @@ watch(
 
 const handleGenerate = async () => {
   try {
-    await formRef.value.validate()
+    await formRef.value!.validate()
   } catch {
     return
   }
   generating.value = true
   try {
-    const payload = {
+    const payload: Record<string, any> = {
       topic: form.topic,
       postType: form.postType,
     }
@@ -111,7 +123,7 @@ const handleGenerate = async () => {
     ElMessage.success('Content generated successfully')
     emit('saved')
     emit('update:modelValue', false)
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Generation failed')
   } finally {
     generating.value = false

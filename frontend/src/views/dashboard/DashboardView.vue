@@ -55,15 +55,15 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import api from '../../api';
 
-const queues = ref([]);
-const pendingFeeds = ref(0);
-const todayStats = ref([]);
-const recentFeeds = ref([]);
-const weeklyStats = ref([]);
+const queues = ref<any[]>([]);
+const pendingFeeds = ref<number>(0);
+const todayStats = ref<any[]>([]);
+const recentFeeds = ref<any[]>([]);
+const weeklyStats = ref<any[]>([]);
 
 onMounted(async () => {
   try {

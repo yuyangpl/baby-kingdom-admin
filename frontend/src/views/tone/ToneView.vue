@@ -47,16 +47,16 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 import ToneForm from './ToneForm.vue'
 
-const tones = ref([])
-const loading = ref(false)
-const showForm = ref(false)
-const editData = ref(null)
+const tones = ref<any[]>([])
+const loading = ref<boolean>(false)
+const showForm = ref<boolean>(false)
+const editData = ref<Record<string, any> | null>(null)
 
 const loadTones = async () => {
   loading.value = true
@@ -73,22 +73,22 @@ const openAdd = () => {
   showForm.value = true
 }
 
-const openEdit = (row) => {
+const openEdit = (row: any) => {
   editData.value = { ...row }
   showForm.value = true
 }
 
-const handleDelete = async (row) => {
+const handleDelete = async (row: any) => {
   try {
     await api.delete(`/v1/tones/${row.toneId}`)
     ElMessage.success('Tone deleted')
     loadTones()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to delete tone')
   }
 }
 
-const toggleActive = async (row) => {
+const toggleActive = async (row: any) => {
   try {
     await api.patch(`/v1/tones/${row.toneId}`, { isActive: row.isActive })
     ElMessage.success('Tone updated')

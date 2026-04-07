@@ -25,14 +25,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 
-const trends = ref([])
-const loading = ref(false)
-const pulling = ref(false)
+const trends = ref<any[]>([])
+const loading = ref<boolean>(false)
+const pulling = ref<boolean>(false)
 
 const loadTrends = async () => {
   loading.value = true
