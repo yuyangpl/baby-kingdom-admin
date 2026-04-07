@@ -12,19 +12,20 @@ npm run build     # Production build → dist/
 
 ```
 src/
-├── main.js                 # Vue + Pinia + Router + Element Plus + icons
+├── main.ts                 # Vue + Pinia + Router + Element Plus + icons
+├── env.d.ts                # Vite client types + Vue SFC module declaration
 ├── App.vue                 # Root (router-view only)
-├── api/index.js            # Axios instance (JWT auto-refresh interceptor)
+├── api/index.ts            # Axios instance (JWT auto-refresh interceptor)
 ├── socket/
-│   ├── index.js            # Socket.io client (connect/disconnect/room management)
-│   └── listeners.js        # 8 event handlers → Pinia stores → ElNotification
+│   ├── index.ts            # Socket.io client (connect/disconnect/room management)
+│   └── listeners.ts        # 8 event handlers → Pinia stores → ElNotification
 ├── stores/
-│   ├── auth.js             # login/logout/fetchMe, accessToken, role getters
-│   ├── feed.js             # feeds list, pagination, filters, newFeedCount, claim/status updates
-│   ├── queue.js            # queue statuses
-│   ├── notification.js     # toast notifications, unread count
-│   └── app.js              # sidebar collapsed, language
-├── router/index.js         # Routes + beforeEach role guard (admin>editor>viewer)
+│   ├── auth.ts             # login/logout/fetchMe, accessToken, role getters
+│   ├── feed.ts             # feeds list, pagination, filters, newFeedCount, claim/status updates
+│   ├── queue.ts            # queue statuses
+│   ├── notification.ts     # toast notifications, unread count
+│   └── app.ts              # sidebar collapsed, language
+├── router/index.ts         # Routes + beforeEach role guard (admin>editor>viewer)
 ├── components/
 │   └── AppLayout.vue       # Sidebar + header + notification badge + socket connect
 └── views/                  # 13 pages (lazy-loaded)
@@ -58,7 +59,7 @@ src/
 ## Adding a New Page
 
 1. Create `src/views/<name>/<Name>View.vue`
-2. Add route in `src/router/index.js` under the layout children
+2. Add route in `src/router/index.ts` under the layout children
 3. Add menu item in `src/components/AppLayout.vue`
 4. If CRUD: create `<Name>Form.vue` with `modelValue` + `editData` props, emit `saved`
 
