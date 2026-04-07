@@ -82,16 +82,16 @@ const defaultForm = () => ({
 const form = reactive(defaultForm())
 
 const rules = {
-  username: [{ required: true, message: t('user.username') + ' ' + t('common.required'), trigger: 'blur' }],
+  username: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'blur' }],
   email: [
-    { required: true, message: t('user.email') + ' ' + t('common.required'), trigger: 'blur' },
-    { type: 'email', message: 'Please enter a valid email', trigger: 'blur' },
+    { required: true, message: () => t('common.fieldRequired'), trigger: 'blur' },
+    { type: 'email', message: () => t('common.invalidEmail'), trigger: 'blur' },
   ],
   password: [
-    { required: true, message: t('user.password') + ' ' + t('common.required'), trigger: 'blur' },
-    { min: 8, message: 'Password must be at least 8 characters', trigger: 'blur' },
+    { required: true, message: () => t('common.fieldRequired'), trigger: 'blur' },
+    { min: 8, message: () => t('common.minChars', { min: 8 }), trigger: 'blur' },
   ],
-  role: [{ required: true, message: t('user.role') + ' ' + t('common.required'), trigger: 'change' }],
+  role: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'change' }],
 }
 
 watch(

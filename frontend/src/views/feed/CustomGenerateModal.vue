@@ -27,8 +27,8 @@
 
       <el-form-item :label="$t('topicRules.postType')" prop="postType">
         <el-radio-group v-model="form.postType">
-          <el-radio value="new-post">New Post</el-radio>
-          <el-radio value="reply">Reply</el-radio>
+          <el-radio value="new-post">{{ $t('common.newPost') }}</el-radio>
+          <el-radio value="reply">{{ $t('common.reply') }}</el-radio>
         </el-radio-group>
       </el-form-item>
 

@@ -25,16 +25,16 @@
               ]"
             />
             <el-tag :type="scanStatus === 'running' ? 'success' : 'info'" size="small">
-              {{ scanStatus === 'running' ? 'Running' : 'Idle' }}
+              {{ scanStatus === 'running' ? $t('scanner.running') : $t('scanner.idle') }}
             </el-tag>
           </span>
         </div>
         <div class="status-item">
-          <span class="status-label">Last Scan</span>
+          <span class="status-label">{{ $t('scanner.lastScan') }}</span>
           <span class="status-value">{{ lastScanTime || '--' }}</span>
         </div>
         <div class="status-item">
-          <span class="status-label">Next Scheduled</span>
+          <span class="status-label">{{ $t('scanner.nextScheduled') }}</span>
           <span class="status-value">{{ nextScheduled || '--' }}</span>
         </div>
       </div>
@@ -43,7 +43,7 @@
     <!-- Scan History Table -->
     <el-card shadow="never" class="table-card">
       <template #header>
-        <span class="card-header-title">Scan History</span>
+        <span class="card-header-title">{{ $t('scanner.scanHistory') }}</span>
       </template>
       <el-table
         :data="history"
@@ -51,24 +51,24 @@
         style="width: 100%"
         highlight-current-row
       >
-        <el-table-column prop="startedAt" label="Time" width="170">
+        <el-table-column prop="startedAt" :label="$t('common.time')" width="170">
           <template #default="{ row }">
             {{ row.startedAt ? new Date(row.startedAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="duration" label="Duration" width="110">
+        <el-table-column prop="duration" :label="$t('common.duration')" width="110">
           <template #default="{ row }">
             {{ row.duration ? `${row.duration}s` : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="boardsScanned" label="Boards" width="90" align="center" />
-        <el-table-column prop="threadsScanned" label="Threads" width="100" align="center" />
-        <el-table-column prop="hits" label="Hits" width="90" align="center">
+        <el-table-column prop="boardsScanned" :label="$t('scanner.boards')" width="90" align="center" />
+        <el-table-column prop="threadsScanned" :label="$t('scanner.threads')" width="100" align="center" />
+        <el-table-column prop="hits" :label="$t('scanner.hits')" width="90" align="center">
           <template #default="{ row }">
             <span class="text-success">{{ row.hits ?? 0 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="feedsCreated" label="Feeds" width="90" align="center" />
+        <el-table-column prop="feedsCreated" :label="$t('scanner.feeds')" width="90" align="center" />
         <el-table-column prop="status" :label="$t('common.status')" width="120">
           <template #default="{ row }">
             <el-tag

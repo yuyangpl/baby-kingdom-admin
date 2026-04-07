@@ -41,6 +41,40 @@ export default {
     medium: '中',
     low: '低',
     none: '無',
+    qualityCost: '質量與成本',
+    scanned: '已掃描',
+    hitRate: '命中率',
+    drafts: '草稿',
+    posted: '已發佈',
+    newTrends: '新趨勢',
+    fullDetail: '完整詳情',
+    before: '變更前',
+    after: '變更後',
+    exportCsv: '匯出 CSV',
+    any: '任何',
+    positive: '正面',
+    negative: '負面',
+    newPost: '新帖',
+    reply: '回覆',
+    fieldRequired: '此欄位為必填',
+    invalidEmail: '請輸入有效的電郵地址',
+    minChars: '最少 {min} 個字元',
+    syncStarted: '同步已開始',
+    syncFailed: '同步失敗',
+    jobRetried: '任務已重試',
+    retryFailed: '重試失敗',
+    queueResumed: '隊列已恢復',
+    queuePaused: '隊列已暫停',
+    resumeFailed: '恢復隊列失敗',
+    pauseFailed: '暫停隊列失敗',
+    jobCancelled: '任務已取消',
+    cancelFailed: '取消任務失敗',
+    resetConfirm: '這將把所有配置重置為預設值。是否繼續？',
+    clearFilter: '清除篩選',
+    approvalRate: '通過率',
+    avgReviewTime: '平均審核時間',
+    apiCost: 'API 成本',
+    personaPerformance: '人設表現',
   },
 
   // App Layout / Navigation
@@ -91,6 +125,16 @@ export default {
     weeklyTrend: '每週趨勢',
     todayStats: '今日統計',
     systemHealth: '系統健康',
+    serviceStatus: {
+      connected: '已連接',
+      valid: 'JWT 有效',
+      operational: '運行中',
+      disconnected: '已斷開',
+      expired: '已過期',
+      expiring_soon: '即將過期',
+      no_recent_activity: '近期無活動',
+      not_configured: '未配置',
+    },
   },
 
   // Feed
@@ -127,6 +171,12 @@ export default {
     sensitivityTier: '敏感等級',
     targetFid: '目標 FID',
     adminNotes: '管理員備註',
+    sources: {
+      'bk-forum': 'BK 論壇',
+      'google-trends': 'Google 趨勢',
+      medialens: 'MediaLens',
+      custom: '自訂',
+    },
     placeholder: {
       topic: '輸入話題或主題',
       toneMode: '留空則自動選擇',
@@ -145,6 +195,12 @@ export default {
     hits: '命中',
     feeds: '生成 Feed',
     lastScan: '上次掃描',
+    scanHistory: '掃描歷史',
+    boards: '版塊',
+    threads: '帖子',
+    nextScheduled: '下次排程',
+    running: '運行中',
+    idle: '閒置',
   },
 
   // Trends
@@ -224,6 +280,12 @@ export default {
       'multi-kid': '多孩媽媽',
       'school-age': '學齡兒童媽媽',
     },
+    archetypeOptions: {
+      pregnant: '孕媽媽',
+      'first-time-mom': '新手媽媽',
+      'multi-kid': '多孩媽媽',
+      'school-age': '學齡兒童媽媽',
+    },
   },
 
   // Tone Mode
@@ -244,6 +306,8 @@ export default {
     toneCreated: '語氣已建立',
     toneDeleted: '語氣已刪除',
     displayNamePlaceholder: '可讀名稱',
+    injectedIntoPrompt: '注入到 Gemini prompt',
+    injectedAsNegative: '作為負面約束注入',
   },
 
   // Topic Rules
@@ -263,6 +327,7 @@ export default {
     ruleCreated: '規則已建立',
     ruleDeleted: '規則已刪除',
     accountIdsPlaceholder: '逗號分隔帳號 ID',
+    injectedVerbatim: '原文注入到 prompt',
   },
 
   // Forum
@@ -271,7 +336,7 @@ export default {
     syncFromBk: '從 BK 同步',
     enableScraping: '啟用掃描',
     enableAutoReply: '啟用自動回覆',
-    autoReplyTip: '審批通過後自動入 Poster 隊列發帖',
+    autoReplyTip: '啟用後，審批通過的回覆將自動發佈',
     replyThreshold: '回覆數閾值',
     scanInterval: '掃描間隔',
     defaultTone: '預設語氣',
@@ -316,6 +381,7 @@ export default {
     testEmailFailed: '發送測試郵件失敗',
     configsReset: '配置已重置為預設值',
     enterOtp: '輸入 OTP 驗證碼',
+    testEmailNote: '發送測試郵件到配置的收件人以驗證 SMTP 設定。',
   },
 
   configDesc: {
@@ -392,6 +458,10 @@ export default {
     jobHistory: '任務歷史',
     queue: '隊列',
     startedAt: '開始時間',
+    running: '運行中',
+    paused: '已暫停',
+    idle: '閒置',
+    live: '即時',
   },
 
   // Audit
@@ -448,5 +518,15 @@ export default {
     postNow: '立即發帖',
     posted: '已發佈',
     failReason: '失敗原因',
+    pendingQueue: '待發隊列',
+    postId: 'Post ID',
+    board: '版塊',
+    type: '類型',
+    scheduled: '排程時間',
+    notes: '備註',
+    postHistory: '發帖歷史',
+    waiting: '等待中',
+    success: '成功',
+    queued: '排隊中',
   },
 };

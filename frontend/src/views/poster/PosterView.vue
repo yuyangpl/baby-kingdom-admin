@@ -13,19 +13,19 @@
       <el-col :span="8">
         <el-card class="metric-card card--info" shadow="never">
           <div class="metric-number">{{ metrics.waiting }}</div>
-          <div class="metric-label">Waiting</div>
+          <div class="metric-label">{{ $t('poster.waiting') }}</div>
         </el-card>
       </el-col>
       <el-col :span="8">
         <el-card class="metric-card card--success" shadow="never">
           <div class="metric-number metric-number--success">{{ metrics.success }}</div>
-          <div class="metric-label">Success</div>
+          <div class="metric-label">{{ $t('poster.success') }}</div>
         </el-card>
       </el-col>
       <el-col :span="8">
         <el-card class="metric-card card--danger" shadow="never">
           <div class="metric-number metric-number--danger">{{ metrics.failed }}</div>
-          <div class="metric-label">Failed</div>
+          <div class="metric-label">{{ $t('queue.failed') }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -33,7 +33,7 @@
     <!-- Pending Queue Table -->
     <el-card shadow="never" class="table-card">
       <template #header>
-        <span class="card-header-title">Pending Queue</span>
+        <span class="card-header-title">{{ $t('poster.pendingQueue') }}</span>
       </template>
       <el-table
         :data="pendingQueue"
@@ -41,24 +41,24 @@
         style="width: 100%"
         highlight-current-row
       >
-        <el-table-column prop="postId" label="Post ID" width="110" />
-        <el-table-column prop="feedId" label="Feed ID" width="110" />
-        <el-table-column prop="persona" label="Persona" width="120" />
-        <el-table-column prop="board" label="Board" width="120" />
-        <el-table-column prop="type" label="Type" width="90" />
-        <el-table-column prop="scheduledAt" label="Scheduled" width="170">
+        <el-table-column prop="postId" :label="$t('poster.postId')" width="110" />
+        <el-table-column prop="feedId" :label="$t('feed.feedId')" width="110" />
+        <el-table-column prop="persona" :label="$t('feed.persona')" width="120" />
+        <el-table-column prop="board" :label="$t('poster.board')" width="120" />
+        <el-table-column prop="type" :label="$t('poster.type')" width="90" />
+        <el-table-column prop="scheduledAt" :label="$t('poster.scheduled')" width="170">
           <template #default="{ row }">
             {{ row.scheduledAt ? new Date(row.scheduledAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
         <el-table-column prop="status" :label="$t('common.status')" width="100">
           <template #default>
-            <el-tag type="primary" size="small" effect="light">Queued</el-tag>
+            <el-tag type="primary" size="small" effect="light">{{ $t('poster.queued') }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="" width="90" align="center">
           <template #default="{ row }">
-            <el-button type="danger" size="small" link @click="cancelJob(row)">Cancel</el-button>
+            <el-button type="danger" size="small" link @click="cancelJob(row)">{{ $t('common.cancel') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -67,7 +67,7 @@
     <!-- Post History Table -->
     <el-card shadow="never" class="table-card" style="margin-top: 20px;">
       <template #header>
-        <span class="card-header-title">Post History</span>
+        <span class="card-header-title">{{ $t('poster.postHistory') }}</span>
       </template>
       <el-table
         :data="history"
@@ -75,11 +75,11 @@
         style="width: 100%"
         highlight-current-row
       >
-        <el-table-column prop="postId" label="Post ID" width="110" />
-        <el-table-column prop="feedId" label="Feed ID" width="110" />
-        <el-table-column prop="persona" label="Persona" width="120" />
-        <el-table-column prop="board" label="Board" width="120" />
-        <el-table-column prop="type" label="Type" width="90" />
+        <el-table-column prop="postId" :label="$t('poster.postId')" width="110" />
+        <el-table-column prop="feedId" :label="$t('feed.feedId')" width="110" />
+        <el-table-column prop="persona" :label="$t('feed.persona')" width="120" />
+        <el-table-column prop="board" :label="$t('poster.board')" width="120" />
+        <el-table-column prop="type" :label="$t('poster.type')" width="90" />
         <el-table-column prop="postedAt" :label="$t('poster.posted')" width="170">
           <template #default="{ row }">
             {{ row.postedAt ? new Date(row.postedAt).toLocaleString() : '--' }}
@@ -95,7 +95,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="notes" label="Notes" min-width="160" show-overflow-tooltip>
+        <el-table-column prop="notes" :label="$t('poster.notes')" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <a v-if="row.postUrl" :href="row.postUrl" target="_blank" class="post-link">{{ row.postUrl }}</a>
             <span v-else-if="row.errorMessage" class="text-danger">{{ row.errorMessage }}</span>
@@ -111,7 +111,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { VideoPlay, VideoPause } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const history = ref<any[]>([])
 const pendingQueue = ref<any[]>([])
@@ -163,29 +166,29 @@ const loadMetrics = async () => {
 const resumeQueue = async () => {
   try {
     await api.post('/v1/queues/poster/resume')
-    ElMessage.success('Queue resumed')
+    ElMessage.success(t('common.queueResumed'))
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to resume queue')
+    ElMessage.error(err.message || t('common.resumeFailed'))
   }
 }
 
 const pauseQueue = async () => {
   try {
     await api.post('/v1/queues/poster/pause')
-    ElMessage.success('Queue paused')
+    ElMessage.success(t('common.queuePaused'))
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to pause queue')
+    ElMessage.error(err.message || t('common.pauseFailed'))
   }
 }
 
 const cancelJob = async (row: any) => {
   try {
     await api.delete(`/v1/queues/poster/jobs/${row.postId || row._id}`)
-    ElMessage.success('Job cancelled')
+    ElMessage.success(t('common.jobCancelled'))
     loadQueue()
     loadMetrics()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to cancel job')
+    ElMessage.error(err.message || t('common.cancelFailed'))
   }
 }
 

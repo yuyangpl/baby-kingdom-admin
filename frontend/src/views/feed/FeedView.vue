@@ -58,7 +58,7 @@
           class="filter-chip"
           @click="toggleSourceFilter(src)"
         >
-          {{ src }}
+          {{ $t(`feed.sources.${src}`) }}
         </el-tag>
         <el-tag
           v-if="feedStore.filters.source"
@@ -67,7 +67,7 @@
           class="filter-chip"
           @click="clearSourceFilter"
         >
-          Clear filter
+          {{ $t('common.clearFilter') }}
         </el-tag>
       </div>
     </div>

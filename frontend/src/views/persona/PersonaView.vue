@@ -103,7 +103,10 @@
 import { ref, onMounted } from 'vue'
 import api from '../../api'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import PersonaForm from './PersonaForm.vue'
+
+const { t } = useI18n()
 
 const personas = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -150,7 +153,7 @@ function openForm(data: Record<string, any> | null) {
 
 async function handleDelete(id: string) {
   await api.delete(`/v1/personas/${id}`)
-  ElMessage.success('Deleted')
+  ElMessage.success(t('common.deleted'))
   loadData()
 }
 

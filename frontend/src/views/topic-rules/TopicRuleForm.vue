@@ -42,9 +42,9 @@
 
       <el-form-item :label="$t('topicRules.sentimentTrigger')" prop="sentimentTrigger">
         <el-radio-group v-model="form.sentimentTrigger">
-          <el-radio value="any">Any</el-radio>
-          <el-radio value="positive">Positive</el-radio>
-          <el-radio value="negative">Negative</el-radio>
+          <el-radio value="any">{{ $t('common.any') }}</el-radio>
+          <el-radio value="positive">{{ $t('common.positive') }}</el-radio>
+          <el-radio value="negative">{{ $t('common.negative') }}</el-radio>
         </el-radio-group>
       </el-form-item>
 
@@ -63,9 +63,9 @@
 
       <el-form-item :label="$t('topicRules.postType')" prop="postTypePreference">
         <el-radio-group v-model="form.postTypePreference">
-          <el-radio value="new-post">New Post</el-radio>
-          <el-radio value="reply">Reply</el-radio>
-          <el-radio value="any">Any</el-radio>
+          <el-radio value="new-post">{{ $t('common.newPost') }}</el-radio>
+          <el-radio value="reply">{{ $t('common.reply') }}</el-radio>
+          <el-radio value="any">{{ $t('common.any') }}</el-radio>
         </el-radio-group>
       </el-form-item>
 
@@ -75,7 +75,7 @@
           type="textarea"
           :rows="3"
         />
-        <div class="field-note">Injected verbatim into prompt</div>
+        <div class="field-note">{{ $t('topicRules.injectedVerbatim') }}</div>
       </el-form-item>
 
       <el-form-item :label="$t('topicRules.avoidIf')" prop="avoidIf">
@@ -137,7 +137,7 @@ const defaultForm = () => ({
 const form = reactive(defaultForm())
 
 const rules = {
-  ruleId: [{ required: true, message: 'Rule ID is required', trigger: 'blur' }],
+  ruleId: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'blur' }],
 }
 
 watch(

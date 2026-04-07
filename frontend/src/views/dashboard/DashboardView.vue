@@ -113,22 +113,22 @@
     <div class="grid grid--3-2" style="margin-top: 24px">
       <!-- Quality & Cost (3/5) -->
       <el-card class="dash-section-card" shadow="never">
-        <template #header>Quality &amp; Cost</template>
+        <template #header>{{ $t('common.qualityCost') }}</template>
         <div class="quality-grid">
           <div class="quality-card">
-            <span class="quality-card__label">Approval Rate</span>
+            <span class="quality-card__label">{{ $t('common.approvalRate') }}</span>
             <span class="quality-card__value">{{ qualityData.approvalRate }}</span>
           </div>
           <div class="quality-card">
-            <span class="quality-card__label">Avg Review Time</span>
+            <span class="quality-card__label">{{ $t('common.avgReviewTime') }}</span>
             <span class="quality-card__value">{{ qualityData.avgReviewTime }}</span>
           </div>
           <div class="quality-card">
-            <span class="quality-card__label">API Cost</span>
+            <span class="quality-card__label">{{ $t('common.apiCost') }}</span>
             <span class="quality-card__value">{{ qualityData.apiCost }}</span>
           </div>
           <div class="quality-card">
-            <span class="quality-card__label">Persona Performance</span>
+            <span class="quality-card__label">{{ $t('common.personaPerformance') }}</span>
             <span class="quality-card__value">{{ qualityData.personaPerformance }}</span>
           </div>
         </div>
@@ -167,7 +167,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../api';
+
+const { t } = useI18n();
 
 interface QueueStatus {
   name: string;
@@ -233,17 +236,9 @@ function healthDotClass(status: string): string {
 }
 
 function healthStatusText(status: string): string {
-  const map: Record<string, string> = {
-    connected: 'Connected',
-    valid: 'JWT Valid',
-    operational: 'Operational',
-    disconnected: 'Disconnected',
-    expired: 'Expired',
-    expiring_soon: 'Expiring Soon',
-    no_recent_activity: 'No Recent Activity',
-    not_configured: 'Not Configured',
-  };
-  return map[status] || status;
+  const key = `dashboard.serviceStatus.${status}`;
+  const translated = t(key);
+  return translated !== key ? translated : status;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -292,20 +287,20 @@ onMounted(async () => {
 
   // Fetch today's stats
   api.get('/v1/dashboard/today').then((res) => {
-    const t = res.data || {};
-    const approvalRate = Math.round((t.quality?.approvalRate || 0) * 100);
+    const d = res.data || {};
+    const approvalRate = Math.round((d.quality?.approvalRate || 0) * 100);
     todayStats.value = [
-      { label: 'Scanned', value: t.scanner?.scanned || 0 },
-      { label: 'Hit Rate', value: `${Math.round((t.scanner?.hitRate || 0) * 100)}%` },
-      { label: 'Drafts', value: t.feeds?.generated || 0 },
-      { label: 'Posted', value: `${t.feeds?.posted || 0}/${t.feeds?.approved || 0}` },
-      { label: 'New Trends', value: t.trends?.pulled || 0 },
+      { label: t('common.scanned'), value: d.scanner?.scanned || 0 },
+      { label: t('common.hitRate'), value: `${Math.round((d.scanner?.hitRate || 0) * 100)}%` },
+      { label: t('common.drafts'), value: d.feeds?.generated || 0 },
+      { label: t('common.posted'), value: `${d.feeds?.posted || 0}/${d.feeds?.approved || 0}` },
+      { label: t('common.newTrends'), value: d.trends?.pulled || 0 },
     ];
     qualityData.value = {
       approvalRate: `${approvalRate}%`,
-      avgReviewTime: t.quality?.avgReviewTime || '-',
-      apiCost: t.quality?.apiCost || '-',
-      personaPerformance: t.quality?.personaPerformance || '-',
+      avgReviewTime: d.quality?.avgReviewTime || '-',
+      apiCost: d.quality?.apiCost || '-',
+      personaPerformance: d.quality?.personaPerformance || '-',
     };
   }).catch(() => {}).finally(() => { loadingToday.value = false; });
 

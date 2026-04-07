@@ -30,9 +30,9 @@
                   class="status-dot"
                   :class="tokenValid ? 'status-dot--active' : 'status-dot--expired'"
                 />
-                <span>{{ tokenValid ? 'Token Active' : 'Token Expired / Not Set' }}</span>
+                <span>{{ tokenValid ? t('dashboard.serviceStatus.valid') : t('dashboard.serviceStatus.expired') }}</span>
                 <span v-if="tokenExpiry" class="token-status-card__expiry">
-                  Expires: {{ tokenExpiry }}
+                  {{ tokenExpiry }}
                 </span>
               </div>
             </div>
@@ -110,7 +110,7 @@
               {{ $t('config.sendTestEmail') }}
             </el-button>
             <p class="config-section__note">
-              Sends a test email to the configured recipient to verify SMTP settings.
+              {{ t('config.testEmailNote') }}
             </p>
           </div>
         </template>
@@ -221,9 +221,9 @@ const saveAll = async () => {
       }
     }
     if (errors > 0) {
-      ElMessage.warning(`Saved ${saved} configs, ${errors} failed`)
+      ElMessage.warning(`${saved} ${t('common.updated')}, ${errors} ${t('common.failed')}`)
     } else if (saved > 0) {
-      ElMessage.success(`Saved ${saved} config(s)`)
+      ElMessage.success(`${saved} ${t('common.updated')}`)
     } else {
       ElMessage.info(t('common.noChanges'))
     }
@@ -235,7 +235,7 @@ const saveAll = async () => {
 const resetDefaults = async () => {
   try {
     await ElMessageBox.confirm(
-      'This will reset all configs to their default values. Continue?',
+      t('common.resetConfirm'),
       t('config.resetDefaults'),
       { confirmButtonText: t('common.confirm'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )

@@ -2,7 +2,7 @@
   <el-drawer
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    :title="isEdit ? $t('common.edit') + ' Persona' : $t('persona.addPersona')"
+    :title="isEdit ? $t('common.edit') + ' ' + $t('persona.title') : $t('persona.addPersona')"
     direction="rtl"
     size="480px"
     :close-on-click-modal="false"
@@ -24,10 +24,10 @@
 
       <el-form-item :label="$t('persona.archetype')" prop="archetype">
         <el-select v-model="form.archetype" :placeholder="$t('persona.selectArchetype')" style="width: 100%">
-          <el-option label="Pregnant" value="pregnant" />
-          <el-option label="First-time Mom" value="first-time-mom" />
-          <el-option label="Multi-kid" value="multi-kid" />
-          <el-option label="School Age" value="school-age" />
+          <el-option :label="$t('persona.archetypeOptions.pregnant')" value="pregnant" />
+          <el-option :label="$t('persona.archetypeOptions.first-time-mom')" value="first-time-mom" />
+          <el-option :label="$t('persona.archetypeOptions.multi-kid')" value="multi-kid" />
+          <el-option :label="$t('persona.archetypeOptions.school-age')" value="school-age" />
         </el-select>
       </el-form-item>
 
@@ -150,8 +150,8 @@ const defaultForm = () => ({
 const form = reactive(defaultForm())
 
 const rules = {
-  accountId: [{ required: true, message: 'Account ID is required', trigger: 'blur' }],
-  username: [{ required: true, message: 'Username is required', trigger: 'blur' }],
+  accountId: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'blur' }],
+  username: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'blur' }],
 }
 
 watch(

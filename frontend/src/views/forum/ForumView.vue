@@ -77,7 +77,7 @@
                 <el-form-item>
                   <template #label>
                     <span>{{ $t('forum.enableAutoReply') }}</span>
-                    <el-tooltip content="When enabled, approved replies will be automatically posted" placement="top">
+                    <el-tooltip :content="$t('forum.autoReplyTip')" placement="top">
                       <el-icon style="margin-left: 4px; vertical-align: middle; cursor: help"><QuestionFilled /></el-icon>
                     </el-tooltip>
                   </template>
@@ -128,7 +128,7 @@
 
             <el-form-item>
               <el-button type="primary" :loading="saving" @click="saveBoard">
-                Save
+                {{ $t('common.save') }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -219,7 +219,7 @@ const saveBoard = async () => {
     Object.assign(selectedBoard.value, formData)
     ElMessage.success(t('common.success'))
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to save')
+    ElMessage.error(err.message || t('common.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -229,10 +229,10 @@ const syncFromBK = async () => {
   syncing.value = true
   try {
     await api.post('/v1/forums/sync')
-    ElMessage.success('Sync started')
+    ElMessage.success(t('common.syncStarted'))
     await loadForums()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Sync failed')
+    ElMessage.error(err.message || t('common.syncFailed'))
   } finally {
     syncing.value = false
   }

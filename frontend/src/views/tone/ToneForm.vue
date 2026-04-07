@@ -31,17 +31,17 @@
 
       <el-form-item :label="$t('tone.openingStyle')" prop="openingStyle">
         <el-input v-model="form.openingStyle" type="textarea" :rows="2" />
-        <div class="field-note">Injected into Gemini prompt</div>
+        <div class="field-note">{{ $t('tone.injectedIntoPrompt') }}</div>
       </el-form-item>
 
       <el-form-item :label="$t('tone.sentenceHints')" prop="sentenceStructure">
         <el-input v-model="form.sentenceStructure" type="textarea" :rows="2" />
-        <div class="field-note">Injected into Gemini prompt</div>
+        <div class="field-note">{{ $t('tone.injectedIntoPrompt') }}</div>
       </el-form-item>
 
       <el-form-item :label="$t('tone.whatToAvoid')" prop="whatToAvoid">
         <el-input v-model="form.whatToAvoid" type="textarea" :rows="2" />
-        <div class="field-note">Injected as negative constraint</div>
+        <div class="field-note">{{ $t('tone.injectedAsNegative') }}</div>
       </el-form-item>
 
       <el-form-item :label="$t('tone.exampleOpening')" prop="exampleOpening">
@@ -113,8 +113,8 @@ const defaultForm = () => ({
 const form = reactive(defaultForm())
 
 const rules = {
-  toneId: [{ required: true, message: 'Tone ID is required', trigger: 'blur' }],
-  displayName: [{ required: true, message: 'Display Name is required', trigger: 'blur' }],
+  toneId: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'blur' }],
+  displayName: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'blur' }],
 }
 
 watch(

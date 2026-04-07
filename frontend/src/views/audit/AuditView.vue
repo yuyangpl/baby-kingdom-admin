@@ -3,7 +3,7 @@
     <div class="audit-view__header">
       <h2 class="page-title">{{ $t('audit.title') }}</h2>
       <el-button plain @click="exportCSV">
-        Export CSV
+        {{ $t('common.exportCsv') }}
       </el-button>
     </div>
 
@@ -70,19 +70,19 @@
         <template #default="{ row }">
           <div class="audit-expand">
             <div class="audit-expand__detail">
-              <strong>Full Detail:</strong>
+              <strong>{{ $t('common.fullDetail') }}:</strong>
               <p>{{ row.actionDetail || '--' }}</p>
             </div>
             <div v-if="row.before" class="audit-expand__diff audit-expand__diff--before">
-              <strong>Before:</strong>
+              <strong>{{ $t('common.before') }}:</strong>
               <pre>{{ JSON.stringify(row.before, null, 2) }}</pre>
             </div>
             <div v-if="row.after" class="audit-expand__diff audit-expand__diff--after">
-              <strong>After:</strong>
+              <strong>{{ $t('common.after') }}:</strong>
               <pre>{{ JSON.stringify(row.after, null, 2) }}</pre>
             </div>
             <div v-if="row.ip" class="audit-expand__ip">
-              <strong>IP Address:</strong> {{ row.ip }}
+              <strong>{{ $t('audit.ip') }}:</strong> {{ row.ip }}
             </div>
           </div>
         </template>
@@ -153,7 +153,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { User } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const audits = ref<any[]>([])
 const loading = ref<boolean>(false)

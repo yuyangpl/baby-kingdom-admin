@@ -4,7 +4,7 @@
       <h2 class="page-title">{{ $t('queue.title') }}</h2>
       <div class="live-indicator">
         <span class="status-dot status-dot--active status-dot--pulse" />
-        <span class="live-indicator__text">Live</span>
+        <span class="live-indicator__text">{{ $t('queue.live') }}</span>
       </div>
     </div>
 
@@ -23,7 +23,7 @@
             size="small"
             effect="dark"
           >
-            {{ q.status === 'running' ? 'Running' : q.status === 'paused' ? 'Paused' : 'Idle' }}
+            {{ q.status === 'running' ? $t('queue.running') : q.status === 'paused' ? $t('queue.paused') : $t('queue.idle') }}
           </el-tag>
         </div>
 
@@ -77,7 +77,7 @@
     <!-- Job history table -->
     <el-card shadow="never" class="queue-history" style="margin-top: 24px">
       <template #header>
-        <span style="font-weight: 600">Job History</span>
+        <span style="font-weight: 600">{{ $t('queue.jobHistory') }}</span>
       </template>
 
       <el-table :data="jobs" stripe border style="width: 100%">
@@ -117,7 +117,7 @@
               plain
               @click="retryJob(row)"
             >
-              Retry
+              {{ $t('common.retry') }}
             </el-button>
           </template>
         </el-table-column>
@@ -165,23 +165,23 @@ const loadJobs = async () => {
 
 const pauseQueue = async (q: any) => {
   await api.post(`/v1/queues/${q.name}/pause`)
-  ElMessage.success(`${q.name} paused`)
+  ElMessage.success(t('common.queuePaused'))
   loadQueues()
 }
 
 const resumeQueue = async (q: any) => {
   await api.post(`/v1/queues/${q.name}/resume`)
-  ElMessage.success(`${q.name} resumed`)
+  ElMessage.success(t('common.queueResumed'))
   loadQueues()
 }
 
 const retryJob = async (job: any) => {
   try {
     await api.post(`/v1/queues/${job.queueName ?? job.queue}/jobs/${job.jobId ?? job.id}/retry`)
-    ElMessage.success('Job retried')
+    ElMessage.success(t('common.jobRetried'))
     loadJobs()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Retry failed')
+    ElMessage.error(err.message || t('common.retryFailed'))
   }
 }
 

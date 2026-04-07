@@ -40,6 +40,40 @@ export default {
     medium: 'Medium',
     low: 'Low',
     none: 'None',
+    qualityCost: 'Quality & Cost',
+    scanned: 'Scanned',
+    hitRate: 'Hit Rate',
+    drafts: 'Drafts',
+    posted: 'Posted',
+    newTrends: 'New Trends',
+    fullDetail: 'Full Detail',
+    before: 'Before',
+    after: 'After',
+    exportCsv: 'Export CSV',
+    any: 'Any',
+    positive: 'Positive',
+    negative: 'Negative',
+    newPost: 'New Post',
+    reply: 'Reply',
+    fieldRequired: 'This field is required',
+    invalidEmail: 'Please enter a valid email',
+    minChars: 'Must be at least {min} characters',
+    syncStarted: 'Sync started',
+    syncFailed: 'Sync failed',
+    jobRetried: 'Job retried',
+    retryFailed: 'Retry failed',
+    queueResumed: 'Queue resumed',
+    queuePaused: 'Queue paused',
+    resumeFailed: 'Failed to resume queue',
+    pauseFailed: 'Failed to pause queue',
+    jobCancelled: 'Job cancelled',
+    cancelFailed: 'Failed to cancel job',
+    resetConfirm: 'This will reset all configs to their default values. Continue?',
+    clearFilter: 'Clear filter',
+    approvalRate: 'Approval Rate',
+    avgReviewTime: 'Avg Review Time',
+    apiCost: 'API Cost',
+    personaPerformance: 'Persona Performance',
   },
 
   nav: {
@@ -87,6 +121,16 @@ export default {
     weeklyTrend: 'Weekly Trend',
     todayStats: "Today's Statistics",
     systemHealth: 'System Health',
+    serviceStatus: {
+      connected: 'Connected',
+      valid: 'JWT Valid',
+      operational: 'Operational',
+      disconnected: 'Disconnected',
+      expired: 'Expired',
+      expiring_soon: 'Expiring Soon',
+      no_recent_activity: 'No Recent Activity',
+      not_configured: 'Not Configured',
+    },
   },
 
   feed: {
@@ -122,6 +166,12 @@ export default {
     sensitivityTier: 'Sensitivity Tier',
     targetFid: 'Target FID',
     adminNotes: 'Admin Notes',
+    sources: {
+      'bk-forum': 'BK Forum',
+      'google-trends': 'Google Trends',
+      medialens: 'MediaLens',
+      custom: 'Custom',
+    },
     placeholder: {
       topic: 'Enter topic or subject',
       toneMode: 'Leave empty for auto',
@@ -139,6 +189,12 @@ export default {
     hits: 'Hits',
     feeds: 'Feeds Generated',
     lastScan: 'Last Scan',
+    scanHistory: 'Scan History',
+    boards: 'Boards',
+    threads: 'Threads',
+    nextScheduled: 'Next Scheduled',
+    running: 'Running',
+    idle: 'Idle',
   },
 
   trends: {
@@ -215,6 +271,12 @@ export default {
       'multi-kid': 'Multi-kid Mom',
       'school-age': 'School-age Mom',
     },
+    archetypeOptions: {
+      pregnant: 'Pregnant',
+      'first-time-mom': 'First-time Mom',
+      'multi-kid': 'Multi-kid Mom',
+      'school-age': 'School Age Mom',
+    },
   },
 
   tone: {
@@ -234,6 +296,8 @@ export default {
     toneCreated: 'Tone created',
     toneDeleted: 'Tone deleted',
     displayNamePlaceholder: 'Human-readable name',
+    injectedIntoPrompt: 'Injected into Gemini prompt',
+    injectedAsNegative: 'Injected as negative constraint',
   },
 
   topicRules: {
@@ -252,6 +316,7 @@ export default {
     ruleCreated: 'Rule created',
     ruleDeleted: 'Rule deleted',
     accountIdsPlaceholder: 'Comma separated account IDs',
+    injectedVerbatim: 'Injected verbatim into prompt',
   },
 
   forum: {
@@ -259,7 +324,7 @@ export default {
     syncFromBk: 'Sync from BK',
     enableScraping: 'Enable Scraping',
     enableAutoReply: 'Enable Auto Reply',
-    autoReplyTip: 'Auto-queue to Poster after approval',
+    autoReplyTip: 'When enabled, approved replies will be automatically posted',
     replyThreshold: 'Reply Threshold',
     scanInterval: 'Scan Interval',
     defaultTone: 'Default Tone',
@@ -303,6 +368,7 @@ export default {
     testEmailFailed: 'Failed to send test email',
     configsReset: 'Configs reset to defaults',
     enterOtp: 'Enter OTP code',
+    testEmailNote: 'Sends a test email to the configured recipient to verify SMTP settings.',
   },
 
   configDesc: {
@@ -371,6 +437,10 @@ export default {
     jobHistory: 'Job History',
     queue: 'Queue',
     startedAt: 'Started At',
+    running: 'Running',
+    paused: 'Paused',
+    idle: 'Idle',
+    live: 'Live',
   },
 
   audit: {
@@ -424,5 +494,15 @@ export default {
     postNow: 'Post Now',
     posted: 'Posted',
     failReason: 'Fail Reason',
+    pendingQueue: 'Pending Queue',
+    postId: 'Post ID',
+    board: 'Board',
+    type: 'Type',
+    scheduled: 'Scheduled',
+    notes: 'Notes',
+    postHistory: 'Post History',
+    waiting: 'Waiting',
+    success: 'Success',
+    queued: 'Queued',
   },
 };
