@@ -52,7 +52,7 @@ async function loadTrends() {
     trends.value = res.data || [];
     pagination.value = res.pagination || pagination.value;
   } catch (err: any) {
-    ElMessage.error('Failed to load trends');
+    ElMessage.error(t('common.loadFailed'));
   } finally {
     loading.value = false;
   }
@@ -66,7 +66,7 @@ async function triggerPull() {
     ElMessage.success(t('googleTrends.pulled', { count: res.data?.count || 0 }));
     await loadTrends();
   } catch (err: any) {
-    if (err !== 'cancel') ElMessage.error('Pull failed');
+    if (err !== 'cancel') ElMessage.error(t('googleTrends.pullFailed'));
   } finally {
     triggering.value = false;
   }
@@ -121,10 +121,10 @@ onMounted(() => loadTrends());
     <div style="display: flex; gap: 12px; margin-bottom: 16px;">
       <el-select v-model="filters.relevance" :placeholder="$t('googleTrends.filter.relevance')" clearable @change="handleFilterChange" style="width: 160px;">
         <el-option :label="$t('googleTrends.filter.all')" value="" />
-        <el-option label="High" value="high" />
-        <el-option label="Medium" value="medium" />
-        <el-option label="Low" value="low" />
-        <el-option label="None" value="none" />
+        <el-option :label="$t('common.high')" value="high" />
+        <el-option :label="$t('common.medium')" value="medium" />
+        <el-option :label="$t('common.low')" value="low" />
+        <el-option :label="$t('common.none')" value="none" />
       </el-select>
       <el-select v-model="filters.safeOnly" :placeholder="$t('googleTrends.safe')" clearable @change="handleFilterChange" style="width: 160px;">
         <el-option :label="$t('googleTrends.filter.all')" value="" />

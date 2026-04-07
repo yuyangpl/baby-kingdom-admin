@@ -81,23 +81,23 @@
       </template>
 
       <el-table :data="jobs" stripe border style="width: 100%">
-        <el-table-column prop="jobId" label="Job ID" width="120">
+        <el-table-column prop="jobId" :label="$t('common.jobId')" width="120">
           <template #default="{ row }">
             <code class="mono-id">{{ row.jobId ?? row.id }}</code>
           </template>
         </el-table-column>
-        <el-table-column prop="queue" label="Queue" width="150" />
-        <el-table-column prop="startedAt" label="Started At" width="170">
+        <el-table-column prop="queue" :label="$t('queue.queue')" width="150" />
+        <el-table-column prop="startedAt" :label="$t('queue.startedAt')" width="170">
           <template #default="{ row }">
             {{ row.startedAt ? formatDate(row.startedAt) : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="duration" label="Duration" width="100">
+        <el-table-column prop="duration" :label="$t('common.duration')" width="100">
           <template #default="{ row }">
             {{ row.duration ? `${row.duration}ms` : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="Status" width="110">
+        <el-table-column prop="status" :label="$t('common.status')" width="110">
           <template #default="{ row }">
             <el-tag
               :type="row.status === 'completed' ? 'success' : 'danger'"
@@ -108,8 +108,8 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="triggeredBy" label="Triggered By" min-width="120" />
-        <el-table-column label="Actions" width="100" fixed="right">
+        <el-table-column prop="triggeredBy" :label="$t('common.triggeredBy')" min-width="120" />
+        <el-table-column :label="$t('common.actions')" width="100" fixed="right">
           <template #default="{ row }">
             <el-button
               v-if="row.status === 'failed'"

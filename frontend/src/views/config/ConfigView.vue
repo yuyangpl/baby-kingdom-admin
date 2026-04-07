@@ -50,7 +50,7 @@
                 <div class="otp-section__input">
                   <el-input
                     v-model="otpCode"
-                    placeholder="Enter OTP code"
+                    :placeholder="$t('config.enterOtp')"
                     style="width: 200px"
                   />
                   <el-button
@@ -225,7 +225,7 @@ const saveAll = async () => {
     } else if (saved > 0) {
       ElMessage.success(`Saved ${saved} config(s)`)
     } else {
-      ElMessage.info('No changes to save')
+      ElMessage.info(t('common.noChanges'))
     }
   } finally {
     savingAll.value = false
@@ -240,7 +240,7 @@ const resetDefaults = async () => {
       { confirmButtonText: t('common.confirm'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
     await api.post('/v1/configs/reset')
-    ElMessage.success('Configs reset to defaults')
+    ElMessage.success(t('config.configsReset'))
     loadConfigs()
   } catch (err: any) {
     if (err === 'cancel') return
@@ -253,9 +253,9 @@ const requestOtp = async () => {
   try {
     await api.post('/v1/medialens/request-otp')
     otpRequested.value = true
-    ElMessage.success('OTP sent')
+    ElMessage.success(t('config.otpSent'))
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to request OTP')
+    ElMessage.error(err.message || t('config.otpFailed'))
   } finally {
     otpLoading.value = false
   }
@@ -265,13 +265,13 @@ const verifyOtp = async () => {
   otpLoading.value = true
   try {
     await api.post('/v1/medialens/verify-otp', { otp: otpCode.value })
-    ElMessage.success('OTP verified, token refreshed')
+    ElMessage.success(t('config.otpVerified'))
     otpRequested.value = false
     otpCode.value = ''
     tokenValid.value = true
     loadTokenStatus()
   } catch (err: any) {
-    ElMessage.error(err.message || 'OTP verification failed')
+    ElMessage.error(err.message || t('config.otpVerifyFailed'))
   } finally {
     otpLoading.value = false
   }
@@ -293,9 +293,9 @@ const sendTestEmail = async () => {
   testEmailLoading.value = true
   try {
     await api.post('/v1/configs/test-email')
-    ElMessage.success('Test email sent')
+    ElMessage.success(t('config.testEmailSent'))
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to send test email')
+    ElMessage.error(err.message || t('config.testEmailFailed'))
   } finally {
     testEmailLoading.value = false
   }

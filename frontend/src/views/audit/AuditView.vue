@@ -13,7 +13,7 @@
         <el-col :span="6">
           <el-select
             v-model="filters.module"
-            placeholder="Module"
+            :placeholder="$t('audit.placeholder.module')"
             clearable
             style="width: 100%"
             @change="loadAudits"
@@ -24,7 +24,7 @@
         <el-col :span="6">
           <el-select
             v-model="filters.eventType"
-            placeholder="Event Type"
+            :placeholder="$t('audit.placeholder.eventType')"
             clearable
             style="width: 100%"
             @change="loadAudits"
@@ -35,7 +35,7 @@
         <el-col :span="6">
           <el-select
             v-model="filters.operator"
-            placeholder="Operator"
+            :placeholder="$t('audit.placeholder.operator')"
             clearable
             style="width: 100%"
             @change="loadAudits"
@@ -46,7 +46,7 @@
         <el-col :span="6">
           <el-input
             v-model="filters.targetId"
-            placeholder="Target ID"
+            :placeholder="$t('audit.placeholder.targetId')"
             clearable
             @clear="loadAudits"
             @keyup.enter="loadAudits"
@@ -124,7 +124,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="targetId" label="Target ID" width="140">
+      <el-table-column prop="targetId" :label="$t('audit.targetId')" width="140">
         <template #default="{ row }">
           <code v-if="row.targetId" class="mono-id">{{ row.targetId }}</code>
           <span v-else class="text-muted">--</span>
@@ -133,7 +133,7 @@
 
       <el-table-column prop="actionDetail" :label="$t('audit.detail')" min-width="200" show-overflow-tooltip />
 
-      <el-table-column prop="sessionId" label="Session" width="120">
+      <el-table-column prop="sessionId" :label="$t('audit.session')" width="120">
         <template #default="{ row }">
           <el-tag
             v-if="row.sessionId"
