@@ -308,9 +308,34 @@ onMounted(() => {
 
 <style scoped>
 .config-view {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--bk-header-height) - 48px);
 }
 .config-tabs {
   margin-top: 16px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.config-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.config-tabs :deep(.el-tab-pane) {
+  height: 100%;
+}
+.config-tab-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.config-tab-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* Config group / rows */
@@ -394,7 +419,8 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 24px;
+  padding-top: 16px;
+  flex-shrink: 0;
   padding-top: 16px;
   border-top: 1px solid var(--bk-border);
 }
