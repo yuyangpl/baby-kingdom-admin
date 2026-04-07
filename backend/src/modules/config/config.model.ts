@@ -3,7 +3,7 @@ import mongoose, { Schema, HydratedDocument } from 'mongoose';
 export interface IConfig {
   key: string;
   value: string;
-  category: 'gemini' | 'bk-forum' | 'medialens' | 'google-trends' | 'scanner' | 'general';
+  category: 'gemini' | 'bk-forum' | 'medialens' | 'google-trends' | 'scanner' | 'email' | 'general';
   description: string;
   isSecret: boolean;
   updatedBy?: string;
@@ -20,7 +20,7 @@ const configSchema = new Schema<IConfig>(
     category: {
       type: String,
       required: true,
-      enum: ['gemini', 'bk-forum', 'medialens', 'google-trends', 'scanner', 'general'],
+      enum: ['gemini', 'bk-forum', 'medialens', 'google-trends', 'scanner', 'email', 'general'],
     },
     description: { type: String, default: '' },
     isSecret: { type: Boolean, default: false },
