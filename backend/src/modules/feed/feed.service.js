@@ -1,11 +1,13 @@
 import Feed from './feed.model.js';
 import Persona from '../persona/persona.model.js';
+import { ForumBoard } from '../forum/forum.model.js';
 import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { checkQuality } from '../gemini/quality-guard.js';
 import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
 import { emitToRoom } from '../../shared/socket.js';
 import * as auditService from '../audit/audit.service.js';
+import logger from '../../shared/logger.js';
 import xss from 'xss';
 
 const CLAIM_EXPIRY_MINUTES = 10;
@@ -90,6 +92,28 @@ export async function approve(feedId, userId, ip) {
   });
 
   emitToRoom('room:feed', 'feed:statusChanged', { feedId: feed._id, status: 'approved' });
+
+  // Auto-post: if the board has enableAutoReply, enqueue to poster queue
+  if (feed.threadFid) {
+    try {
+      const board = await ForumBoard.findOne({ fid: feed.threadFid });
+      if (board?.enableAutoReply) {
+        const { getQueue } = await import('../queue/queue.service.js');
+        const posterQueue = getQueue('poster');
+        if (posterQueue) {
+          await posterQueue.add('auto-post', {
+            feedId: feed._id.toString(),
+            triggeredBy: 'auto-approve',
+          });
+          logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Auto-post queued after approval');
+        }
+      }
+    } catch (err) {
+      // Auto-post failure should not block approval
+      logger.error({ err, feedId: feed.feedId }, 'Failed to queue auto-post');
+    }
+  }
+
   return feed;
 }
 

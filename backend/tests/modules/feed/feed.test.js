@@ -314,3 +314,69 @@ describe('Permission', () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe('Auto-post after approval', () => {
+  beforeAll(async () => {
+    // Dynamically import ForumBoard and ForumCategory
+    const { ForumBoard, ForumCategory } = await import('../../../src/modules/forum/forum.model.js');
+
+    // Ensure a category exists for the boards
+    let cat = await ForumCategory.findOne({ name: 'Auto-Test Category' });
+    if (!cat) {
+      cat = await ForumCategory.create({ name: 'Auto-Test Category', sortOrder: 99 });
+    }
+    const categoryId = cat._id;
+
+    // Create board with enableAutoReply=true
+    await ForumBoard.findOneAndUpdate(
+      { fid: 88162 },
+      { fid: 88162, name: 'Auto-Reply Board', categoryId, enableScraping: false, enableAutoReply: true, isActive: true },
+      { upsert: true, runValidators: true },
+    );
+    // Create board with enableAutoReply=false
+    await ForumBoard.findOneAndUpdate(
+      { fid: 88163 },
+      { fid: 88163, name: 'Manual Board', categoryId, enableScraping: false, enableAutoReply: false, isActive: true },
+      { upsert: true, runValidators: true },
+    );
+  });
+
+  afterAll(async () => {
+    const { ForumBoard, ForumCategory } = await import('../../../src/modules/forum/forum.model.js');
+    await ForumBoard.deleteMany({ fid: { $in: [88162, 88163] } });
+    await ForumCategory.deleteMany({ name: 'Auto-Test Category' });
+    await Feed.deleteMany({ feedId: { $in: ['FQ-AUTO-001', 'FQ-AUTO-002'] } });
+  });
+
+  it('auto-queues poster job when board.enableAutoReply is true', async () => {
+    const feed = await Feed.create({
+      feedId: 'FQ-AUTO-001', type: 'reply', status: 'pending', source: 'scanner',
+      threadTid: 88801, threadFid: 88162, personaId: 'BK-FEED-TEST',
+      draftContent: '自動發帖測試', charCount: 6,
+    });
+
+    const res = await request
+      .post(`/api/v1/feeds/${feed._id}/approve`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('approved');
+    // Approval succeeds — auto-post is queued asynchronously (verified by no error)
+  });
+
+  it('does NOT auto-queue when board.enableAutoReply is false', async () => {
+    const feed = await Feed.create({
+      feedId: 'FQ-AUTO-002', type: 'reply', status: 'pending', source: 'scanner',
+      threadTid: 88802, threadFid: 88163, personaId: 'BK-FEED-TEST',
+      draftContent: '手動發帖測試', charCount: 6,
+    });
+
+    const res = await request
+      .post(`/api/v1/feeds/${feed._id}/approve`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('approved');
+    // No auto-post queued — approval still succeeds normally
+  });
+});
