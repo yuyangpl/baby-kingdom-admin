@@ -238,26 +238,50 @@ const syncFromBK = async () => {
   }
 }
 
-onMounted(() => {
-  loadForums()
-  loadTones()
+onMounted(async () => {
+  await Promise.all([loadForums(), loadTones()])
+  // Default select first board
+  if (treeData.value.length > 0) {
+    const firstCat = treeData.value[0]
+    if (firstCat.boards?.length > 0) {
+      selectBoard(firstCat.boards[0])
+    }
+  }
 })
 </script>
 
 <style scoped>
 .forum-view {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--bk-header-height) - 48px); /* header + main-content padding */
 }
 .forum-layout {
   display: flex;
   gap: 20px;
-  min-height: 600px;
+  flex: 1;
+  min-height: 0; /* allow flex children to shrink below content size */
 }
 .forum-tree-panel {
   flex: 0 0 25%;
   min-width: 260px;
+  display: flex;
+  flex-direction: column;
+}
+.forum-tree-panel :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 .forum-detail-panel {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.forum-detail-panel :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 .tree-panel__header {
   display: flex;
@@ -270,7 +294,6 @@ onMounted(() => {
   color: var(--bk-foreground);
 }
 .tree-panel__body {
-  min-height: 400px;
 }
 
 /* Category */
@@ -344,6 +367,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  height: 100%;
 }
 </style>
