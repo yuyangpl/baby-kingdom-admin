@@ -1,77 +1,78 @@
 <template>
   <div class="feed-view">
-    <div class="feed-header">
-      <h2 class="page-title">{{ $t('feed.title') }}</h2>
-      <div v-if="feedStore.newFeedCount > 0" class="new-feed-badge" @click="refreshNewFeeds">
-        <el-icon :size="14"><RefreshRight /></el-icon>
-        <span>{{ feedStore.newFeedCount }} {{ $t('feed.newFeeds') }}</span>
+    <!-- Sticky top bar -->
+    <div class="feed-sticky-top">
+      <div class="feed-header">
+        <h2 class="page-title">{{ $t('feed.title') }}</h2>
+        <div v-if="feedStore.newFeedCount > 0" class="new-feed-badge" @click="refreshNewFeeds">
+          <el-icon :size="14"><RefreshRight /></el-icon>
+          <span>{{ feedStore.newFeedCount }} {{ $t('feed.newFeeds') }}</span>
+        </div>
+        <div class="toolbar">
+          <el-button type="primary" @click="showCustomGenerate = true">
+            {{ $t('feed.customGenerate') }}
+          </el-button>
+          <el-button
+            type="success"
+            :disabled="!selectedIds.size"
+            @click="batchApprove"
+          >
+            {{ $t('feed.batchApprove') }} ({{ selectedIds.size }})
+          </el-button>
+          <el-button
+            type="danger"
+            :disabled="!selectedIds.size"
+            @click="batchReject"
+          >
+            {{ $t('feed.batchReject') }} ({{ selectedIds.size }})
+          </el-button>
+        </div>
+      </div>
+
+      <!-- Status Tabs -->
+      <el-tabs v-model="activeTab" @tab-change="onTabChange" class="feed-tabs">
+        <el-tab-pane name="pending">
+          <template #label>
+            {{ $t('feed.tabs.pending') }}
+            <el-badge
+              v-if="pendingCount > 0"
+              :value="pendingCount"
+              :max="99"
+              class="tab-badge"
+            />
+          </template>
+        </el-tab-pane>
+        <el-tab-pane :label="$t('feed.tabs.approved')" name="approved" />
+        <el-tab-pane :label="$t('feed.tabs.posted')" name="posted" />
+        <el-tab-pane :label="$t('feed.tabs.rejected')" name="rejected" />
+        <el-tab-pane :label="$t('feed.tabs.failed')" name="failed" />
+      </el-tabs>
+
+      <!-- Quick filter chips -->
+      <div class="filter-chips">
+        <el-tag
+          v-for="src in ['bk-forum', 'google-trends', 'medialens', 'custom']"
+          :key="src"
+          :type="feedStore.filters.source === src ? '' : 'info'"
+          :effect="feedStore.filters.source === src ? 'dark' : 'plain'"
+          class="filter-chip"
+          @click="toggleSourceFilter(src)"
+        >
+          {{ src }}
+        </el-tag>
+        <el-tag
+          v-if="feedStore.filters.source"
+          type="info"
+          effect="plain"
+          class="filter-chip"
+          @click="clearSourceFilter"
+        >
+          Clear filter
+        </el-tag>
       </div>
     </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <el-button type="primary" @click="showCustomGenerate = true">
-        {{ $t('feed.customGenerate') }}
-      </el-button>
-      <el-button
-        type="success"
-        :disabled="!selectedIds.size"
-        @click="batchApprove"
-      >
-        {{ $t('feed.batchApprove') }} ({{ selectedIds.size }})
-      </el-button>
-      <el-button
-        type="danger"
-        :disabled="!selectedIds.size"
-        @click="batchReject"
-      >
-        {{ $t('feed.batchReject') }} ({{ selectedIds.size }})
-      </el-button>
-    </div>
-
-    <!-- Status Tabs -->
-    <el-tabs v-model="activeTab" @tab-change="onTabChange" class="feed-tabs">
-      <el-tab-pane name="pending">
-        <template #label>
-          {{ $t('feed.tabs.pending') }}
-          <el-badge
-            v-if="pendingCount > 0"
-            :value="pendingCount"
-            :max="99"
-            class="tab-badge"
-          />
-        </template>
-      </el-tab-pane>
-      <el-tab-pane :label="$t('feed.tabs.approved')" name="approved" />
-      <el-tab-pane :label="$t('feed.tabs.posted')" name="posted" />
-      <el-tab-pane :label="$t('feed.tabs.rejected')" name="rejected" />
-      <el-tab-pane :label="$t('feed.tabs.failed')" name="failed" />
-    </el-tabs>
-
-    <!-- Quick filter chips -->
-    <div class="filter-chips">
-      <el-tag
-        v-for="src in ['bk-forum', 'google-trends', 'medialens', 'custom']"
-        :key="src"
-        :type="feedStore.filters.source === src ? '' : 'info'"
-        :effect="feedStore.filters.source === src ? 'dark' : 'plain'"
-        class="filter-chip"
-        @click="toggleSourceFilter(src)"
-      >
-        {{ src }}
-      </el-tag>
-      <el-tag
-        v-if="feedStore.filters.source"
-        type="info"
-        effect="plain"
-        class="filter-chip"
-        @click="clearSourceFilter"
-      >
-        Clear filter
-      </el-tag>
-    </div>
-
-    <!-- Feed Cards -->
+    <!-- Feed Cards (scrollable) -->
     <div v-loading="feedStore.loading" class="feed-cards">
       <div
         v-for="feed in feedStore.feeds"
@@ -452,6 +453,15 @@ onMounted(() => {
 
 <style scoped>
 .feed-view {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--bk-header-height) - 48px);
+}
+
+/* Sticky top area */
+.feed-sticky-top {
+  flex-shrink: 0;
+  background: var(--bk-background);
 }
 
 /* Feed Header */
@@ -459,7 +469,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .new-feed-badge {
   display: inline-flex;
@@ -482,19 +492,22 @@ onMounted(() => {
 .toolbar {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-left: auto;
 }
 
 /* Tabs */
 .feed-tabs {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+.feed-tabs :deep(.el-tabs__content) {
+  display: none; /* tabs are only used for navigation, content is below */
 }
 
 /* Filter chips */
 .filter-chips {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  padding: 8px 0;
   flex-wrap: wrap;
 }
 .filter-chip {
@@ -508,6 +521,9 @@ onMounted(() => {
 
 /* Feed Cards Container */
 .feed-cards {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
