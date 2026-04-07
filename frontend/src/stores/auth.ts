@@ -15,8 +15,8 @@ interface AuthState {
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
-    user: null,
-    accessToken: null,
+    user: JSON.parse(localStorage.getItem('bk-admin-user') || 'null'),
+    accessToken: localStorage.getItem('bk-admin-token'),
   }),
 
   getters: {
@@ -29,12 +29,15 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     setAccessToken(token: string) {
       this.accessToken = token;
+      localStorage.setItem('bk-admin-token', token);
     },
 
     async login(email: string, password: string) {
       const res: any = await api.post('/v1/auth/login', { email, password });
       this.accessToken = res.data.accessToken;
       this.user = res.data.user;
+      localStorage.setItem('bk-admin-token', res.data.accessToken);
+      localStorage.setItem('bk-admin-user', JSON.stringify(res.data.user));
       return res;
     },
 
@@ -53,6 +56,8 @@ export const useAuthStore = defineStore('auth', {
       } catch { /* ignore */ }
       this.user = null;
       this.accessToken = null;
+      localStorage.removeItem('bk-admin-token');
+      localStorage.removeItem('bk-admin-user');
     },
   },
 });
