@@ -182,18 +182,18 @@ describe('Google Trends Matching', () => {
 
   it('findBestMatch returns match above threshold', () => {
     const trends = [
-      { title: '幼稚園面試攻略', traffic: '10K+' },
-      { title: '天氣預報', traffic: '5K+' },
+      { query: '幼稚園面試攻略', peak_volume: 10000 },
+      { query: '天氣預報', peak_volume: 5000 },
     ];
-    const result = findBestMatch('幼稚園面試攻略分享', trends, 0.3);
+    const result = findBestMatch('幼稚園面試攻略分享', trends as any, 0.3);
     expect(result).not.toBeNull();
-    expect(result.matched).toBe(true);
-    expect(result.trendTitle).toContain('幼稚園');
+    expect(result!.matched).toBe(true);
+    expect(result!.trendTitle).toContain('幼稚園');
   });
 
   it('findBestMatch returns null when no match', () => {
-    const trends = [{ title: '股市走勢', traffic: '10K+' }];
-    const result = findBestMatch('幼稚園面試', trends, 0.6);
+    const trends = [{ query: '股市走勢', peak_volume: 10000 }];
+    const result = findBestMatch('幼稚園面試', trends as any, 0.6);
     expect(result).toBeNull();
   });
 });

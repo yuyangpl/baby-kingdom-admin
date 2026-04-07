@@ -3,6 +3,7 @@ import logger from '../../shared/logger.js';
 
 interface GeminiOptions {
   json?: boolean;
+  maxOutputTokens?: number;
 }
 
 interface GeminiUsage {
