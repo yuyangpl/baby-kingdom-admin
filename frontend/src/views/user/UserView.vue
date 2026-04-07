@@ -11,27 +11,21 @@
     <div class="role-cards">
       <div class="role-card role-card--admin">
         <div class="role-card__header">
-          <el-tag type="danger" size="small" effect="dark">Admin</el-tag>
+          <el-tag type="danger" size="small" effect="dark">{{ $t('user.roles.admin') }}</el-tag>
         </div>
-        <p class="role-card__desc">
-          Full system access. Manage users, configure settings, approve/reject content, and access all queues and audit logs.
-        </p>
+        <p class="role-card__desc">{{ $t('user.roleDesc.admin') }}</p>
       </div>
       <div class="role-card role-card--editor">
         <div class="role-card__header">
-          <el-tag size="small" effect="dark">Editor</el-tag>
+          <el-tag type="primary" size="small" effect="dark">{{ $t('user.roles.editor') }}</el-tag>
         </div>
-        <p class="role-card__desc">
-          Content management. Claim feeds, edit and approve AI-generated replies, manage personas and tones.
-        </p>
+        <p class="role-card__desc">{{ $t('user.roleDesc.editor') }}</p>
       </div>
       <div class="role-card role-card--viewer">
         <div class="role-card__header">
-          <el-tag type="info" size="small" effect="dark">Viewer</el-tag>
+          <el-tag type="info" size="small" effect="dark">{{ $t('user.roles.viewer') }}</el-tag>
         </div>
-        <p class="role-card__desc">
-          Read-only access. View dashboard, feeds, queue status, and audit logs without making changes.
-        </p>
+        <p class="role-card__desc">{{ $t('user.roleDesc.viewer') }}</p>
       </div>
     </div>
 
@@ -61,7 +55,7 @@
             effect="plain"
             style="margin-left: 8px"
           >
-            You
+            {{ $t('user.you') }}
           </el-tag>
         </template>
       </el-table-column>
@@ -170,7 +164,7 @@ const handleRoleChange = async (row: any, newRole: string) => {
   try {
     await api.put(`/v1/auth/users/${row._id || row.id}/role`, { role: newRole })
     row.role = newRole
-    ElMessage.success(`Role updated to ${newRole}`)
+    ElMessage.success(t('user.roleUpdated', { role: newRole }))
   } catch (err: any) {
     row.role = oldRole
     ElMessage.error(err.message || t('user.roleFailed'))
@@ -183,7 +177,7 @@ const handleDelete = async (row: any) => {
     ElMessage.success(t('common.success'))
     loadUsers()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to delete user')
+    ElMessage.error(err.message || t('common.deleteFailed'))
   }
 }
 
