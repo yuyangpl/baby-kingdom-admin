@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { createServer } from 'http';
+import http from 'http';
 import app from './app.js';
 import { connectDB, disconnectDB } from './shared/database.js';
 import { getRedis, disconnectRedis } from './shared/redis.js';
@@ -10,16 +10,16 @@ import { seed as seedConfigs } from './modules/config/config.service.js';
 import { CONFIG_PRESETS } from './seeds/config.seeds.js';
 import logger from './shared/logger.js';
 
-const PORT = process.env.PORT || 3000;
+const PORT: string | number = process.env.PORT || 3000;
 
-async function start() {
+async function start(): Promise<void> {
   await connectDB();
   getRedis();
   await seedAdmin();
   await seedConfigs(CONFIG_PRESETS);
 
   // Create HTTP server and attach Socket.io
-  const httpServer = createServer(app);
+  const httpServer: http.Server = http.createServer(app);
   initSocketIO(httpServer);
 
   // Initialize BullMQ queues
@@ -30,7 +30,7 @@ async function start() {
   });
 
   // Graceful shutdown
-  const shutdown = async (signal) => {
+  const shutdown = async (signal: string): Promise<void> => {
     logger.info(`${signal} received, shutting down gracefully`);
     httpServer.close(async () => {
       await disconnectRedis();

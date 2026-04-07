@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import crypto from 'crypto';
-import { Worker } from 'bullmq';
+import { Worker, Job } from 'bullmq';
 import cron from 'node-cron';
 import { connectDB, disconnectDB } from './shared/database.js';
 import { getRedis, connectRedis, disconnectRedis } from './shared/redis.js';
@@ -15,9 +15,9 @@ import logger from './shared/logger.js';
 import { runHealthCheck } from './shared/health-monitor.js';
 
 // Fix 6: Use UUID instead of PID so it is unique across containers
-const WORKER_ID = crypto.randomUUID();
+const WORKER_ID: string = crypto.randomUUID();
 
-async function start() {
+async function start(): Promise<void> {
   await connectDB();
   await connectRedis();
   initQueues();
@@ -25,12 +25,12 @@ async function start() {
   const connection = getRedis();
 
   // Fix 5: Track cron tasks and interval IDs for clean shutdown
-  const cronTasks = [];
-  const intervals = [];
+  const cronTasks: ReturnType<typeof cron.schedule>[] = [];
+  const intervals: ReturnType<typeof setInterval>[] = [];
 
   // --- Queue Processors ---
 
-  const scannerWorker = new Worker('scanner', async (job) => {
+  const scannerWorker = new Worker('scanner', async (job: Job) => {
     logger.info({ jobId: job.id }, 'Scanner job started');
     const startedAt = new Date();
     try {
@@ -52,7 +52,7 @@ async function start() {
     }
   }, { connection, concurrency: 1 });
 
-  const trendsWorker = new Worker('trends', async (job) => {
+  const trendsWorker = new Worker('trends', async (job: Job) => {
     logger.info({ jobId: job.id }, 'Trends job started');
     const startedAt = new Date();
     try {
@@ -73,7 +73,7 @@ async function start() {
     }
   }, { connection, concurrency: 1 });
 
-  const posterWorker = new Worker('poster', async (job) => {
+  const posterWorker = new Worker('poster', async (job: Job) => {
     logger.info({ jobId: job.id, feedId: job.data?.feedId }, 'Poster job started');
     const startedAt = new Date();
     try {
@@ -105,7 +105,7 @@ async function start() {
     limiter: { max: 1, duration: 35000 }, // 35s between posts
   });
 
-  const dailyResetWorker = new Worker('daily-reset', async (job) => {
+  const dailyResetWorker = new Worker('daily-reset', async (job: Job) => {
     logger.info('Daily reset started');
     const startedAt = new Date();
     try {
@@ -126,7 +126,7 @@ async function start() {
     }
   }, { connection, concurrency: 1 });
 
-  const statsWorker = new Worker('stats-aggregator', async (job) => {
+  const statsWorker = new Worker('stats-aggregator', async (job: Job) => {
     logger.info('Stats aggregation started');
     const startedAt = new Date();
     try {
@@ -153,18 +153,18 @@ async function start() {
   const LOCK_TTL = 60; // seconds
 
   // Fix 6: Use WORKER_ID (UUID) instead of process.pid so it is unique per container
-  async function tryAcquireLock() {
+  async function tryAcquireLock(): Promise<boolean> {
     const redis = getRedis();
     const result = await redis.set(LOCK_KEY, WORKER_ID, 'EX', LOCK_TTL, 'NX');
     return result === 'OK';
   }
 
-  async function renewLock() {
+  async function renewLock(): Promise<void> {
     const redis = getRedis();
     await redis.expire(LOCK_KEY, LOCK_TTL);
   }
 
-  function registerCronJobs() {
+  function registerCronJobs(): void {
     logger.info('This worker is the cron leader, registering cron jobs');
 
     // Renew lock every 30s (half of LOCK_TTL)
@@ -241,7 +241,7 @@ async function start() {
   logger.info('Worker started with 5 queue processors');
 
   // Graceful shutdown
-  const shutdown = async (signal) => {
+  const shutdown = async (signal: string): Promise<void> => {
     logger.info(`${signal} received, worker shutting down`);
 
     // Fix 5: Stop all cron tasks and clear intervals before closing workers

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -23,7 +23,7 @@ import posterRoutes from './modules/poster/poster.routes.js';
 import queueRoutes from './modules/queue/queue.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 
-const app = express();
+const app: Express = express();
 
 // Security
 app.use(helmet());

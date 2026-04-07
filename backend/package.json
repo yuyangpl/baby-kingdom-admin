@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "tsx watch src/server.js",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit --detectOpenHandles",
     "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
-    "worker": "tsx src/worker.js"
+    "worker": "tsx src/worker.ts"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
