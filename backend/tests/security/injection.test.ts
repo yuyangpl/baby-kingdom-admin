@@ -59,6 +59,29 @@ describe('NoSQL Injection', () => {
   });
 });
 
+describe('Input validation', () => {
+  it('sort parameter injection has no effect', async () => {
+    // Attempt to inject a malicious sort parameter
+    const res = await request
+      .get('/api/v1/feeds?sort={$where:"sleep(5000)"}')
+      .set('Authorization', `Bearer ${adminToken}`);
+    // Should still return normally (sort sanitized or ignored)
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('oversized payload (>1MB) is rejected', async () => {
+    const bigContent = 'x'.repeat(1.5 * 1024 * 1024); // 1.5MB string → JSON will exceed 1MB limit
+    const res = await request
+      .put(`/api/v1/feeds/${testFeedId}/content`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ content: bigContent }));
+    // Express json parser rejects with 413 (payload too large) or connection error
+    expect([413, 500]).toContain(res.status);
+  });
+});
+
 describe('XSS Sanitization', () => {
   let xssFeedId: string;
 
