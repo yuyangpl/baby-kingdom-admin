@@ -5,8 +5,9 @@
 ```bash
 cp ../.env.development .env
 npm install
-npm run dev       # API server (port 3000)
+npm run dev       # API server (port 3000, via tsx watch)
 npm run worker    # Queue processors + cron
+npm run build     # Compile TypeScript → dist/
 npm test          # 108 tests
 ```
 
@@ -32,28 +33,28 @@ npm test          # 108 tests
 
 ## Adding a New Module
 
-1. Create `src/modules/<name>/` with model, service, controller, routes
-2. Register in `src/app.js`: `import xxxRoutes` + `app.use('/api/v1/xxx', xxxRoutes)`
-3. For simple CRUD: use `buildCrud(Model, 'moduleName')` from `shared/crud.js`
-4. Add tests in `tests/modules/<name>/<name>.test.js`
+1. Create `src/modules/<name>/` with model, service, controller, routes (all `.ts`)
+2. Register in `src/app.ts`: `import xxxRoutes` + `app.use('/api/v1/xxx', xxxRoutes)`
+3. For simple CRUD: use `buildCrud(Model, 'moduleName')` from `shared/crud.ts`
+4. Add tests in `tests/modules/<name>/<name>.test.ts`
 5. Use unique email in test setup to avoid parallel conflicts
 
 ## Shared Utilities
 
-- `shared/database.js` — connectDB, disconnectDB, isDBConnected
-- `shared/redis.js` — getRedis, connectRedis, disconnectRedis, isRedisConnected
-- `shared/socket.js` — initSocketIO, getIO, emitToRoom, emitToAll
-- `shared/logger.js` — pino logger (pretty in dev, JSON in prod)
-- `shared/response.js` — success(res, data), paginated(res, data, pagination), created(res, data)
-- `shared/errors.js` — AppError, ValidationError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, BusinessError
-- `shared/crud.js` — buildCrud(Model, moduleName) → { list, getById, create, update, remove }
-- `shared/swagger.js` — setupSwagger(app) → /api/docs
-- `shared/middleware/auth.js` — authenticate, authorize(...roles)
-- `shared/middleware/error-handler.js` — catches AppError, Mongoose errors, duplicate keys
-- `shared/middleware/request-logger.js` — pino request logging
-- `shared/middleware/not-found.js` — 404 handler
+- `shared/database.ts` — connectDB, disconnectDB, isDBConnected
+- `shared/redis.ts` — getRedis, connectRedis, disconnectRedis, isRedisConnected
+- `shared/socket.ts` — initSocketIO, getIO, emitToRoom, emitToAll
+- `shared/logger.ts` — pino logger (pretty in dev, JSON in prod)
+- `shared/response.ts` — success(res, data), paginated(res, data, pagination), created(res, data)
+- `shared/errors.ts` — AppError, ValidationError, UnauthorizedError, ForbiddenError, NotFoundError, ConflictError, BusinessError
+- `shared/crud.ts` — buildCrud(Model, moduleName) → { list, getById, create, update, remove }
+- `shared/swagger.ts` — setupSwagger(app) → /api/docs
+- `shared/middleware/auth.ts` — authenticate, authorize(...roles)
+- `shared/middleware/error-handler.ts` — catches AppError, Mongoose errors, duplicate keys
+- `shared/middleware/request-logger.ts` — pino request logging
+- `shared/middleware/not-found.ts` — 404 handler
 
-## Worker (src/worker.js)
+## Worker (src/worker.ts)
 
 5 BullMQ processors:
 - `scanner` — calls scanForumThreads()
@@ -66,5 +67,9 @@ Cron via node-cron with Redis leader election (only 1 worker runs cron).
 
 ## Seeds
 
-- `src/seeds/config.seeds.js` — 46 config presets, auto-seeded in server.js
-- `src/seeds/import-data.js` — 30 Personas + 5 Tones + 12 Rules + 34 Boards, run manually once
+- `src/seeds/config.seeds.ts` — 46 config presets, auto-seeded in server.ts
+- `src/seeds/import-data.ts` — 30 Personas + 5 Tones + 12 Rules + 34 Boards, run manually once
+
+```bash
+npx tsx src/seeds/import-data.ts
+```

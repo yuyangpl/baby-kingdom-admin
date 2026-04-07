@@ -72,9 +72,9 @@ personaSchema.pre('save', function (next) {
 });
 
 personaSchema.methods.toJSON = function () {
-  const obj = this.toObject();
-  if (obj.bkPassword) obj.bkPassword = '••••••••';
-  delete obj.__v;
+  const obj = this.toObject() as Record<string, unknown>;
+  if (obj['bkPassword']) obj['bkPassword'] = '••••••••';
+  delete obj['__v'];
   return obj;
 };
 

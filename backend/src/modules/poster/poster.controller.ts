@@ -3,7 +3,7 @@ import * as posterService from './poster.service.js';
 import { success } from '../../shared/response.js';
 
 export async function postFeed(req: Request, res: Response): Promise<void> {
-  const feed = await posterService.postFeed(req.params.id, (req as any).user.id, req.ip);
+  const feed = await posterService.postFeed(req.params.id as string, (req as any).user.id, req.ip ?? '');
   success(res, feed);
 }
 

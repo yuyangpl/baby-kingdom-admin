@@ -8,12 +8,12 @@ export async function getAll(req: Request, res: Response): Promise<void> {
 }
 
 export async function getByCategory(req: Request, res: Response): Promise<void> {
-  const data = await configService.listByCategory(req.params.category);
+  const data = await configService.listByCategory(req.params.category as string);
   success(res, data);
 }
 
 export async function updateValue(req: Request, res: Response): Promise<void> {
   const { value } = req.body;
-  const config = await configService.updateValue(req.params.key, value, (req as any).user.id, req.ip);
+  const config = await configService.updateValue(req.params.key as string, value, (req as any).user.id, req.ip ?? '');
   success(res, { key: config.key, updated: true });
 }

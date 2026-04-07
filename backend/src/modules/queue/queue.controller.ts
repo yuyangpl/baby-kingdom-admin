@@ -9,30 +9,30 @@ export async function getAll(req: Request, res: Response): Promise<void> {
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {
-  const data = await queueService.getQueueStatus(req.params.name);
+  const data = await queueService.getQueueStatus(req.params.name as string);
   if (!data) throw new NotFoundError('Queue');
   success(res, data);
 }
 
 export async function pause(req: Request, res: Response): Promise<void> {
-  await queueService.pauseQueue(req.params.name, (req as any).user.id, req.ip);
+  await queueService.pauseQueue(req.params.name as string, (req as any).user.id, req.ip ?? '');
   success(res, { paused: true });
 }
 
 export async function resume(req: Request, res: Response): Promise<void> {
-  await queueService.resumeQueue(req.params.name, (req as any).user.id, req.ip);
+  await queueService.resumeQueue(req.params.name as string, (req as any).user.id, req.ip ?? '');
   success(res, { resumed: true });
 }
 
 export async function trigger(req: Request, res: Response): Promise<void> {
-  const result = await queueService.triggerQueue(req.params.name, (req as any).user.id, req.ip);
+  const result = await queueService.triggerQueue(req.params.name as string, (req as any).user.id, req.ip ?? '');
   if (!result) throw new NotFoundError('Queue');
   success(res, result);
 }
 
 export async function jobHistory(req: Request, res: Response): Promise<void> {
   const { page, limit } = req.query;
-  const result = await queueService.getJobHistory(req.params.name, {
+  const result = await queueService.getJobHistory(req.params.name as string, {
     page: parseInt(page as string) || 1,
     limit: parseInt(limit as string) || 20,
   });
@@ -40,7 +40,7 @@ export async function jobHistory(req: Request, res: Response): Promise<void> {
 }
 
 export async function retryJob(req: Request, res: Response): Promise<void> {
-  const ok = await queueService.retryJob(req.params.name, req.params.id, (req as any).user.id, req.ip);
+  const ok = await queueService.retryJob(req.params.name as string, req.params.id as string, (req as any).user.id, req.ip ?? '');
   if (!ok) throw new NotFoundError('Job');
   success(res, { retried: true });
 }

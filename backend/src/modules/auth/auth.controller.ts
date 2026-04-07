@@ -78,11 +78,11 @@ export async function updateUserRole(req: Request, res: Response): Promise<void>
     throw new ValidationError('Valid role (admin/editor/viewer) is required');
   }
 
-  const user = await authService.updateUserRole(req.params.id, role, (req as any).user.id);
+  const user = await authService.updateUserRole(req.params.id as string, role, (req as any).user.id);
   success(res, user);
 }
 
 export async function deleteUser(req: Request, res: Response): Promise<void> {
-  await authService.deleteUser(req.params.id, (req as any).user.id);
+  await authService.deleteUser(req.params.id as string, (req as any).user.id);
   success(res, null);
 }

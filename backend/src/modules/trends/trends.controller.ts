@@ -5,7 +5,7 @@ import { success } from '../../shared/response.js';
 export async function list(req: Request, res: Response): Promise<void> {
   const { source, page, limit, sort } = req.query;
   const result = await trendsService.list({
-    source,
+    source: source as string | undefined,
     page: parseInt(page as string) || 1,
     limit: parseInt(limit as string) || 20,
     sort: (sort as string) || '-createdAt',

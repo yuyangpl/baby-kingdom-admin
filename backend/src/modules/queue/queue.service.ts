@@ -20,7 +20,7 @@ export function getQueue(name: string): Queue | undefined {
   return queues[name];
 }
 
-interface QueueStatusItem {
+export interface QueueStatusItem {
   name: string;
   status: string;
   counts: Record<string, number> | object;

@@ -7,8 +7,8 @@ BK论坛自动化运营后台，从 Google Apps Script 完整迁移到 Vue 3 + E
 
 ## Tech Stack
 
-- **Backend:** Express + Mongoose + BullMQ + Socket.io (ES Modules)
-- **Frontend:** Vue 3 + Element Plus + Pinia + Vue Router (Vite)
+- **Backend:** TypeScript + Express + Mongoose + BullMQ + Socket.io (ES Modules, compiled to dist/)
+- **Frontend:** TypeScript + Vue 3 + Element Plus + Pinia + Vue Router (Vite)
 - **Database:** MongoDB 7 + Redis 7
 - **AI:** Google AI SDK for Node.js (@google/generative-ai), mock fallback when no API key
 - **Deploy:** Docker Compose
@@ -44,12 +44,12 @@ cd frontend && npm install && npm run dev
 
 ### Module Structure
 每个模块在 `backend/src/modules/<name>/` 下，统一结构：
-- `<name>.model.js` — Mongoose Schema
-- `<name>.service.js` — 业务逻辑
-- `<name>.controller.js` — 请求处理
-- `<name>.routes.js` — Express Router
+- `<name>.model.ts` — Mongoose Schema
+- `<name>.service.ts` — 业务逻辑
+- `<name>.controller.ts` — 请求处理
+- `<name>.routes.ts` — Express Router
 
-简单 CRUD 模块使用 `shared/crud.js` 工厂函数。
+简单 CRUD 模块使用 `shared/crud.ts` 工厂函数。
 
 ### Response Format
 ```json
@@ -59,7 +59,7 @@ cd frontend && npm install && npm run dev
 ```
 
 ### Error Classes
-使用 `shared/errors.js` 中的自定义错误：
+使用 `shared/errors.ts` 中的自定义错误：
 - `ValidationError` (400), `UnauthorizedError` (401), `ForbiddenError` (403)
 - `NotFoundError` (404), `ConflictError` (409), `BusinessError` (422)
 
@@ -69,8 +69,8 @@ cd frontend && npm install && npm run dev
 - Middleware: `authenticate` (验证 JWT) + `authorize('admin', 'editor')` (角色检查)
 
 ### Route Registration
-新模块路由在 `backend/src/app.js` 中注册：
-```javascript
+新模块路由在 `backend/src/app.ts` 中注册：
+```typescript
 import xxxRoutes from './modules/xxx/xxx.routes.js';
 app.use('/api/v1/xxx', xxxRoutes);
 ```
@@ -83,24 +83,24 @@ app.use('/api/v1/xxx', xxxRoutes);
 ### Config
 业务配置存 MongoDB `configs` 集合（46 项预置），通过 `configService.getValue(key)` 读取。
 敏感配置 (`isSecret: true`) AES 加密存储。
-基础设施配置在 `.env` 文件中。
+基础设施配置在 `.env` 文件中（`.env.development` 为开发环境默认）。
 
 ## Frontend Conventions
 
 ### API Calls
-使用 `src/api/index.js` 的 Axios 实例，自动附带 JWT、401 自动刷新。
-```javascript
+使用 `src/api/index.ts` 的 Axios 实例，自动附带 JWT、401 自动刷新。
+```typescript
 import api from '../../api';
 const res = await api.get('/v1/feeds');
 // res.data = [...], res.pagination = {...}
 ```
 
 ### Permission
-- 路由级: `router/index.js` 的 `meta.role` + `beforeEach` 守卫
+- 路由级: `router/index.ts` 的 `meta.role` + `beforeEach` 守卫
 - 组件级: 用 `v-if="auth.isAdmin"` 控制按钮显隐
 
 ### Socket.io
-- `socket/index.js` 管理连接，`socket/listeners.js` 注册事件
+- `socket/index.ts` 管理连接，`socket/listeners.ts` 注册事件
 - AppLayout 在 mount 时连接，unmount 时断开
 - 8 个事件: feed:new/statusChanged/claimed/unclaimed, queue:status/progress, scanner:result, trends:new
 
@@ -122,7 +122,7 @@ cd backend && npm test    # 108 integration tests, Jest
 ```bash
 # 首次启动自动 seed 46 项 config + admin 用户
 # 手动导入 30 Persona + 5 Tone + 12 Rules + 34 Boards:
-cd backend && node src/seeds/import-data.js
+cd backend && npx tsx src/seeds/import-data.ts
 ```
 
 ## Key Design Decisions

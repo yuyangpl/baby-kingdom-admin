@@ -44,7 +44,7 @@ async function start(): Promise<void> {
       return stats;
     } catch (err) {
       try {
-        await recordJob('scanner', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: err.message, triggeredBy: job.data?.triggeredBy || 'cron' });
+        await recordJob('scanner', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: job.data?.triggeredBy || 'cron' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record scanner job failure');
       }
@@ -65,7 +65,7 @@ async function start(): Promise<void> {
       return { pulled: trends.length };
     } catch (err) {
       try {
-        await recordJob('trends', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: err.message, triggeredBy: job.data?.triggeredBy || 'cron' });
+        await recordJob('trends', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: job.data?.triggeredBy || 'cron' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record trends job failure');
       }
@@ -84,7 +84,7 @@ async function start(): Promise<void> {
         return { posted: false, skipped: true };
       }
 
-      const result = await postFeed(job.data.feedId, null, '');
+      const result = await postFeed(job.data.feedId, undefined, '');
       try {
         await recordJob('poster', { jobId: job.id, status: 'completed', startedAt, completedAt: new Date(), result: { feedId: result.feedId, postId: result.postId }, triggeredBy: 'manual' });
       } catch (recordErr) {
@@ -93,7 +93,7 @@ async function start(): Promise<void> {
       return { posted: true };
     } catch (err) {
       try {
-        await recordJob('poster', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: err.message, triggeredBy: 'manual' });
+        await recordJob('poster', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: 'manual' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record poster job failure');
       }
@@ -118,7 +118,7 @@ async function start(): Promise<void> {
       logger.info('Daily post counters reset');
     } catch (err) {
       try {
-        await recordJob('daily-reset', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: err.message, triggeredBy: 'cron' });
+        await recordJob('daily-reset', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: 'cron' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record daily-reset job failure');
       }
@@ -138,7 +138,7 @@ async function start(): Promise<void> {
       }
     } catch (err) {
       try {
-        await recordJob('stats-aggregator', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: err.message, triggeredBy: 'cron' });
+        await recordJob('stats-aggregator', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: 'cron' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record stats-aggregator job failure');
       }
