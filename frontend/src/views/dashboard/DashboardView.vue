@@ -147,19 +147,16 @@
           </div>
         </template>
         <div v-else class="health-list">
-          <div v-for="svc in services" :key="svc.name" class="health-row">
+          <div v-for="svc in serviceList" :key="svc.name" class="health-row">
             <span
               class="status-dot"
-              :class="{
-                'status-dot--connected': svc.status === 'connected' || svc.status === 'ok' || svc.status === 'running',
-                'status-dot--error': svc.status === 'error' || svc.status === 'disconnected',
-                'status-dot--warning': svc.status === 'degraded',
-                'status-dot--idle': !svc.status || svc.status === 'unknown',
-              }"
+              :class="healthDotClass(svc.status)"
             />
             <div class="health-row__info">
               <span class="health-row__name">{{ svc.name }}</span>
-              <span class="health-row__detail">{{ svc.detail || svc.status }}</span>
+              <span class="health-row__status">{{ healthStatusText(svc.status) }}</span>
+              <span v-if="svc.detail" class="health-row__detail">{{ svc.detail }}</span>
+              <span v-if="svc.checkedAt" class="health-row__time">{{ formatTimeAgo(svc.checkedAt) }}</span>
             </div>
           </div>
         </div>
@@ -200,6 +197,55 @@ interface ServiceHealth {
   name: string;
   status: string;
   detail?: string;
+  checkedAt?: string;
+}
+
+const SERVICE_LABELS: Record<string, string> = {
+  bkForum: 'BK Forum API',
+  mediaLens: 'MediaLens',
+  gemini: 'Gemini API',
+  googleTrends: 'Google Trends API',
+};
+
+const serviceList = computed(() => {
+  const raw = services.value as any;
+  if (Array.isArray(raw)) return raw;
+  // API returns { bkForum: {...}, mediaLens: {...}, ... }
+  return Object.entries(raw).map(([key, val]: [string, any]) => ({
+    name: SERVICE_LABELS[key] || key,
+    status: val?.status || 'unknown',
+    detail: val?.detail || null,
+    checkedAt: val?.checkedAt || null,
+  }));
+});
+
+function healthDotClass(status: string): string {
+  if (['connected', 'valid', 'operational'].includes(status)) return 'status-dot--success';
+  if (['disconnected', 'expired'].includes(status)) return 'status-dot--error';
+  if (['expiring_soon', 'no_recent_activity'].includes(status)) return 'status-dot--warning';
+  return 'status-dot--idle';
+}
+
+function healthStatusText(status: string): string {
+  const map: Record<string, string> = {
+    connected: 'Connected',
+    valid: 'JWT Valid',
+    operational: 'Operational',
+    disconnected: 'Disconnected',
+    expired: 'Expired',
+    expiring_soon: 'Expiring Soon',
+    no_recent_activity: 'No Recent Activity',
+    not_configured: 'Not Configured',
+  };
+  return map[status] || status;
+}
+
+function formatTimeAgo(iso: string): string {
+  if (!iso) return '';
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diff < 1) return 'just now';
+  if (diff < 60) return `${diff}m ago`;
+  return `${Math.floor(diff / 60)}h ago`;
 }
 
 const queues = ref<QueueStatus[]>([]);
@@ -274,16 +320,11 @@ onMounted(async () => {
     weeklyStats.value = res.data || [];
   }).catch(() => {}).finally(() => { loadingWeekly.value = false; });
 
-  // Fetch health
-  api.get('/health/services').then((res) => {
-    services.value = res.data || [];
+  // Fetch health (returns { bkForum, mediaLens, gemini, googleTrends })
+  api.get('/health/services').then((res: any) => {
+    services.value = res.data || res || {};
   }).catch(() => {
-    services.value = [
-      { name: 'MongoDB', status: 'unknown' },
-      { name: 'Redis', status: 'unknown' },
-      { name: 'BullMQ', status: 'unknown' },
-      { name: 'Socket.io', status: 'unknown' },
-    ];
+    services.value = {} as any;
   }).finally(() => { loadingHealth.value = false; });
 });
 </script>
@@ -470,8 +511,16 @@ onMounted(async () => {
   color: var(--bk-foreground);
 }
 
+.health-row__status {
+  font-size: 13px;
+  color: var(--bk-foreground);
+}
 .health-row__detail {
   font-size: 12px;
   color: var(--bk-muted-fg);
+}
+.health-row__time {
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
 }
 </style>
