@@ -12,6 +12,7 @@ vi.mock('@/api', () => ({
 }));
 
 import api from '@/api';
+const mockedApi = api as any;
 
 describe('Auth Store', () => {
   beforeEach(() => {
@@ -27,21 +28,21 @@ describe('Auth Store', () => {
 
   it('isAdmin returns true when user role is admin', () => {
     const store = useAuthStore();
-    store.user = { role: 'admin' };
+    store.user = { role: 'admin' } as any;
     expect(store.isAdmin).toBe(true);
   });
 
   it('isEditor returns true for both admin and editor roles', () => {
     const store = useAuthStore();
-    store.user = { role: 'admin' };
+    store.user = { role: 'admin' } as any;
     expect(store.isEditor).toBe(true);
-    store.user = { role: 'editor' };
+    store.user = { role: 'editor' } as any;
     expect(store.isEditor).toBe(true);
   });
 
   it('login sets accessToken and user from API response', async () => {
     const store = useAuthStore();
-    api.post.mockResolvedValue({
+    mockedApi.post.mockResolvedValue({
       data: { accessToken: 'abc123', user: { _id: '1', role: 'editor' } },
     });
     await store.login('user@example.com', 'password');
@@ -52,8 +53,8 @@ describe('Auth Store', () => {
   it('logout clears token and user', async () => {
     const store = useAuthStore();
     store.accessToken = 'some-token';
-    store.user = { _id: '1', role: 'admin' };
-    api.post.mockResolvedValue({});
+    store.user = { _id: '1', role: 'admin' } as any;
+    mockedApi.post.mockResolvedValue({});
     await store.logout();
     expect(store.accessToken).toBeNull();
     expect(store.user).toBeNull();
@@ -62,9 +63,9 @@ describe('Auth Store', () => {
   it('fetchMe calls logout when API throws', async () => {
     const store = useAuthStore();
     store.accessToken = 'some-token';
-    store.user = { _id: '1', role: 'admin' };
-    api.get.mockRejectedValue(new Error('Unauthorized'));
-    api.post.mockResolvedValue({});
+    store.user = { _id: '1', role: 'admin' } as any;
+    mockedApi.get.mockRejectedValue(new Error('Unauthorized'));
+    mockedApi.post.mockResolvedValue({});
     await store.fetchMe();
     expect(store.accessToken).toBeNull();
     expect(store.user).toBeNull();

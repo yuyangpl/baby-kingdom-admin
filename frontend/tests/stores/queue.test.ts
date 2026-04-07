@@ -12,6 +12,7 @@ vi.mock('@/api', () => ({
 }));
 
 import api from '@/api';
+const mockedApi = api as any;
 
 describe('Queue Store', () => {
   beforeEach(() => {
@@ -28,7 +29,7 @@ describe('Queue Store', () => {
     const store = useQueueStore();
     const mockQueues = [{ name: 'scanner', status: 'active' }, { name: 'poster', status: 'paused' }];
     let loadingDuringFetch = false;
-    api.get.mockImplementation(async () => {
+    mockedApi.get.mockImplementation(async () => {
       loadingDuringFetch = store.loading;
       return { data: mockQueues };
     });

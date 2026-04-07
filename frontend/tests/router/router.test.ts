@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, type Router } from 'vue-router';
 import { setActivePinia, createPinia } from 'pinia';
 import { useAuthStore } from '@/stores/auth';
 
@@ -13,13 +13,14 @@ vi.mock('@/api', () => ({
 }));
 
 import api from '@/api';
+const mockedApi = api as any;
 
 // Dummy component for all routes
 const Dummy = { template: '<div>test</div>' };
 
-const roleHierarchy = { admin: 3, editor: 2, viewer: 1 };
+const roleHierarchy: Record<string, number> = { admin: 3, editor: 2, viewer: 1 };
 
-function createTestRouter() {
+function createTestRouter(): Router {
   const router = createRouter({
     history: createWebHistory(),
     routes: [
@@ -46,8 +47,8 @@ function createTestRouter() {
       await auth.fetchMe();
       if (!auth.user) return { name: 'login' };
     }
-    const requiredRole = to.meta.role;
-    if (requiredRole && roleHierarchy[auth.role] < roleHierarchy[requiredRole]) {
+    const requiredRole = to.meta.role as string | undefined;
+    if (requiredRole && roleHierarchy[auth.role ?? ''] < roleHierarchy[requiredRole]) {
       return { name: 'dashboard' };
     }
   });
@@ -56,7 +57,7 @@ function createTestRouter() {
 }
 
 describe('Router Guards', () => {
-  let router;
+  let router: Router;
 
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -74,7 +75,7 @@ describe('Router Guards', () => {
   it('redirects viewer to dashboard when accessing admin-only route', async () => {
     const auth = useAuthStore();
     auth.accessToken = 'viewer-token';
-    auth.user = { role: 'viewer' };
+    auth.user = { role: 'viewer' } as any;
 
     await router.push('/config');
     expect(router.currentRoute.value.name).toBe('dashboard');
@@ -83,7 +84,7 @@ describe('Router Guards', () => {
   it('allows editor to access editor-only route', async () => {
     const auth = useAuthStore();
     auth.accessToken = 'editor-token';
-    auth.user = { role: 'editor' };
+    auth.user = { role: 'editor' } as any;
 
     await router.push('/feeds');
     expect(router.currentRoute.value.name).toBe('feeds');
@@ -102,11 +103,11 @@ describe('Router Guards', () => {
     // auth.user remains null
 
     // fetchMe will succeed and set the user
-    api.get.mockResolvedValue({ data: { role: 'editor' } });
+    mockedApi.get.mockResolvedValue({ data: { role: 'editor' } });
 
     await router.push('/feeds');
 
-    expect(api.get).toHaveBeenCalledWith('/v1/auth/me');
+    expect(mockedApi.get).toHaveBeenCalledWith('/v1/auth/me');
     // After fetchMe sets role to editor, accessing /feeds (role: editor) should succeed
     expect(router.currentRoute.value.name).toBe('feeds');
   });

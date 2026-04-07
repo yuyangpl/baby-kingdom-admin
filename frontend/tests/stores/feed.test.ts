@@ -12,6 +12,7 @@ vi.mock('@/api', () => ({
 }));
 
 import api from '@/api';
+const mockedApi = api as any;
 
 describe('Feed Store', () => {
   beforeEach(() => {
@@ -22,7 +23,7 @@ describe('Feed Store', () => {
   it('fetchFeeds sets loading during fetch and resets after', async () => {
     const store = useFeedStore();
     let loadingDuringFetch = false;
-    api.get.mockImplementation(async () => {
+    mockedApi.get.mockImplementation(async () => {
       loadingDuringFetch = store.loading;
       return { data: [], pagination: { page: 1, limit: 20, total: 0, pages: 0 } };
     });
@@ -56,8 +57,8 @@ describe('Feed Store', () => {
   it('updateFeedStatus updates status of a specific feed', () => {
     const store = useFeedStore();
     store.feeds = [
-      { _id: 'feed1', status: 'pending' },
-      { _id: 'feed2', status: 'pending' },
+      { _id: 'feed1', status: 'pending' } as any,
+      { _id: 'feed2', status: 'pending' } as any,
     ];
     store.updateFeedStatus('feed1', 'approved');
     expect(store.feeds[0].status).toBe('approved');
@@ -66,15 +67,15 @@ describe('Feed Store', () => {
 
   it('updateFeedClaim sets claimedBy on the feed', () => {
     const store = useFeedStore();
-    store.feeds = [{ _id: 'feed1', claimedBy: null, claimedAt: null }];
-    store.updateFeedClaim('feed1', { _id: 'user1', name: 'Alice' });
+    store.feeds = [{ _id: 'feed1', claimedBy: null, claimedAt: null } as any];
+    store.updateFeedClaim('feed1', { _id: 'user1', name: 'Alice' } as any);
     expect(store.feeds[0].claimedBy).toEqual({ _id: 'user1', name: 'Alice' });
     expect(store.feeds[0].claimedAt).toBeTruthy();
   });
 
   it('updateFeedClaim with null clears the claim', () => {
     const store = useFeedStore();
-    store.feeds = [{ _id: 'feed1', claimedBy: { _id: 'user1' }, claimedAt: '2024-01-01T00:00:00Z' }];
+    store.feeds = [{ _id: 'feed1', claimedBy: { _id: 'user1' }, claimedAt: '2024-01-01T00:00:00Z' } as any];
     store.updateFeedClaim('feed1', null);
     expect(store.feeds[0].claimedBy).toBeNull();
     expect(store.feeds[0].claimedAt).toBeNull();
