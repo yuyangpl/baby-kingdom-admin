@@ -453,15 +453,15 @@ onMounted(() => {
 
 <style scoped>
 .feed-view {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - var(--bk-header-height) - 48px);
 }
 
 /* Sticky top area */
 .feed-sticky-top {
-  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background: var(--bk-background);
+  padding-bottom: 4px;
 }
 
 /* Feed Header */
@@ -521,9 +521,6 @@ onMounted(() => {
 
 /* Feed Cards Container */
 .feed-cards {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
