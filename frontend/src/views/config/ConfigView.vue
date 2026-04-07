@@ -49,14 +49,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 
-const configs = ref([])
-const loading = ref(false)
-const activeTab = ref('')
+const configs = ref<any[]>([])
+const loading = ref<boolean>(false)
+const activeTab = ref<string>('')
 
 const LONG_TEXT_KEYS = [
   'GEMINI_SYSTEM_PROMPT',
@@ -70,11 +70,11 @@ const categories = computed(() => {
   return cats.sort()
 })
 
-const configsByCategory = (cat) => {
+const configsByCategory = (cat: string) => {
   return configs.value.filter((c) => (c.category || 'general') === cat)
 }
 
-const isLongText = (key, value) => {
+const isLongText = (key: string, value: any): boolean => {
   if (LONG_TEXT_KEYS.some((k) => key.toUpperCase().includes(k))) return true
   if (typeof value === 'string' && value.length > 100) return true
   return false
@@ -85,7 +85,7 @@ const loadConfigs = async () => {
   try {
     const { data } = await api.get('/v1/configs')
     const list = data ?? []
-    configs.value = list.map((c) => ({
+    configs.value = list.map((c: any) => ({
       ...c,
       _editValue: c.isSecret ? '' : (c.value ?? ''),
       _saving: false,
@@ -99,7 +99,7 @@ const loadConfigs = async () => {
   }
 }
 
-const saveConfig = async (item) => {
+const saveConfig = async (item: any) => {
   // For secret fields, skip if empty (no change intended)
   if (item.isSecret && !item._editValue) {
     ElMessage.warning('Enter a new value to update this secret config')
@@ -115,7 +115,7 @@ const saveConfig = async (item) => {
     } else {
       item._editValue = ''
     }
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || `Failed to save config "${item.key}"`)
   } finally {
     item._saving = false

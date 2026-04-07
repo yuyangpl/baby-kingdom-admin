@@ -21,12 +21,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api from '../../api'
 
-const history = ref([])
-const loading = ref(false)
+const history = ref<any[]>([])
+const loading = ref<boolean>(false)
 
 const loadHistory = async () => {
   loading.value = true

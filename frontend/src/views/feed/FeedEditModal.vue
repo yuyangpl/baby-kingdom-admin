@@ -72,21 +72,25 @@
   </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import type { FormInstance } from 'element-plus'
 import api from '../../api'
 
-const props = defineProps({
-  modelValue: { type: Boolean, default: false },
-  editData: { type: Object, default: null },
-})
+const props = defineProps<{
+  modelValue: boolean
+  editData: Record<string, any> | null
+}>()
 
-const emit = defineEmits(['update:modelValue', 'saved'])
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
+  saved: []
+}>()
 
-const formRef = ref(null)
-const savingDraft = ref(false)
-const savingApprove = ref(false)
+const formRef = ref<FormInstance>()
+const savingDraft = ref<boolean>(false)
+const savingApprove = ref<boolean>(false)
 
 const form = reactive({
   content: '',
@@ -94,8 +98,8 @@ const form = reactive({
   adminNotes: '',
 })
 
-const tierType = (tier) => {
-  const map = { 1: 'success', 2: 'warning', 3: 'danger' }
+const tierType = (tier: number): string => {
+  const map: Record<number, string> = { 1: 'success', 2: 'warning', 3: 'danger' }
   return map[tier] || 'info'
 }
 
@@ -110,8 +114,8 @@ watch(
   }
 )
 
-const buildPayload = () => {
-  const payload = { content: form.content }
+const buildPayload = (): Record<string, any> => {
+  const payload: Record<string, any> = { content: form.content }
   if (form.toneModeOverride) payload.toneMode = form.toneModeOverride
   if (form.adminNotes) payload.adminNotes = form.adminNotes
   return payload
@@ -130,7 +134,7 @@ const handleSaveDraft = async () => {
     ElMessage.success('Draft saved')
     emit('saved')
     emit('update:modelValue', false)
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to save draft')
   } finally {
     savingDraft.value = false
@@ -146,7 +150,7 @@ const handleSaveAndApprove = async () => {
     ElMessage.success('Feed saved and approved')
     emit('saved')
     emit('update:modelValue', false)
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to save and approve')
   } finally {
     savingApprove.value = false

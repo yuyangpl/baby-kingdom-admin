@@ -20,12 +20,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import api from '../../api'
 
-const audits = ref([])
-const loading = ref(false)
+const audits = ref<any[]>([])
+const loading = ref<boolean>(false)
 
 const loadAudits = async () => {
   loading.value = true

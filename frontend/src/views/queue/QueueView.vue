@@ -27,13 +27,13 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 
-const queues = ref([])
-const loading = ref(false)
+const queues = ref<any[]>([])
+const loading = ref<boolean>(false)
 
 const loadQueues = async () => {
   loading.value = true
@@ -45,13 +45,13 @@ const loadQueues = async () => {
   }
 }
 
-const pauseQueue = async (q) => {
+const pauseQueue = async (q: any) => {
   await api.post(`/v1/queues/${q.name}/pause`)
   ElMessage.success(`${q.name} paused`)
   loadQueues()
 }
 
-const resumeQueue = async (q) => {
+const resumeQueue = async (q: any) => {
   await api.post(`/v1/queues/${q.name}/resume`)
   ElMessage.success(`${q.name} resumed`)
   loadQueues()

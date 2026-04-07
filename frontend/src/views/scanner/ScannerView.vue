@@ -24,14 +24,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 
-const history = ref([])
-const loading = ref(false)
-const triggering = ref(false)
+const history = ref<any[]>([])
+const loading = ref<boolean>(false)
+const triggering = ref<boolean>(false)
 
 const loadHistory = async () => {
   loading.value = true

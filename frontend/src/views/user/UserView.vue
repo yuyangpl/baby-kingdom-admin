@@ -15,7 +15,7 @@
             :model-value="row.role"
             size="small"
             style="width: 120px"
-            @change="(val) => handleRoleChange(row, val)"
+            @change="(val: any) => handleRoleChange(row, val)"
           >
             <el-option value="admin" label="Admin" />
             <el-option value="editor" label="Editor" />
@@ -52,15 +52,15 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 import UserForm from './UserForm.vue'
 
-const users = ref([])
-const loading = ref(false)
-const showForm = ref(false)
+const users = ref<any[]>([])
+const loading = ref<boolean>(false)
+const showForm = ref<boolean>(false)
 
 const loadUsers = async () => {
   loading.value = true
@@ -76,24 +76,24 @@ const openAdd = () => {
   showForm.value = true
 }
 
-const handleRoleChange = async (row, newRole) => {
+const handleRoleChange = async (row: any, newRole: string) => {
   const oldRole = row.role
   try {
     await api.put(`/v1/auth/users/${row._id || row.id}/role`, { role: newRole })
     row.role = newRole
     ElMessage.success(`Role updated to ${newRole}`)
-  } catch (err) {
+  } catch (err: any) {
     row.role = oldRole
     ElMessage.error(err.message || 'Failed to update role')
   }
 }
 
-const handleDelete = async (row) => {
+const handleDelete = async (row: any) => {
   try {
     await api.delete(`/v1/auth/users/${row._id || row.id}`)
     ElMessage.success('User deleted')
     loadUsers()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to delete user')
   }
 }

@@ -46,6 +46,7 @@
             <span>System</span>
           </template>
           <el-menu-item index="config" v-if="auth.isAdmin">Config</el-menu-item>
+          <el-menu-item index="google-trends" v-if="auth.isAdmin">Google Trends Data</el-menu-item>
           <el-menu-item index="queues">Queue Monitor</el-menu-item>
           <el-menu-item index="audit" v-if="auth.isAdmin">Audit Log</el-menu-item>
           <el-menu-item index="users" v-if="auth.isAdmin">Users</el-menu-item>
@@ -89,7 +90,7 @@
   </el-container>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
@@ -101,8 +102,8 @@ import api from '../api';
 const auth = useAuthStore();
 const notifyStore = useNotificationStore();
 const router = useRouter();
-const isCollapsed = ref(false);
-const pendingCount = ref(0);
+const isCollapsed = ref<boolean>(false);
+const pendingCount = ref<number>(0);
 
 const unreadCount = computed(() => notifyStore.unreadCount);
 

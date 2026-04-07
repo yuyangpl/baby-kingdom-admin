@@ -27,13 +27,13 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 
-const treeData = ref([])
-const loading = ref(false)
+const treeData = ref<any[]>([])
+const loading = ref<boolean>(false)
 
 const loadForums = async () => {
   loading.value = true
@@ -45,7 +45,7 @@ const loadForums = async () => {
   }
 }
 
-const toggleScraping = async (board) => {
+const toggleScraping = async (board: any) => {
   try {
     await api.patch(`/v1/forums/${board.fid}`, { enableScraping: board.enableScraping })
     ElMessage.success('Board updated')

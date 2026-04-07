@@ -182,9 +182,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { TableInstance } from 'element-plus'
 import api from '../../api'
 import { useFeedStore } from '../../stores/feed'
 import FeedEditModal from './FeedEditModal.vue'
@@ -192,20 +193,20 @@ import CustomGenerateModal from './CustomGenerateModal.vue'
 
 const feedStore = useFeedStore()
 
-const activeTab = ref('pending')
-const selectedRows = ref([])
-const tableRef = ref(null)
-const showEditModal = ref(false)
-const editRow = ref(null)
-const showCustomGenerate = ref(false)
-const pendingCount = ref(0)
+const activeTab = ref<string>('pending')
+const selectedRows = ref<any[]>([])
+const tableRef = ref<TableInstance>()
+const showEditModal = ref<boolean>(false)
+const editRow = ref<Record<string, any> | null>(null)
+const showCustomGenerate = ref<boolean>(false)
+const pendingCount = ref<number>(0)
 
-const statusType = (status) => {
-  const map = { pending: 'warning', approved: 'success', rejected: 'danger', posted: 'info' }
+const statusType = (status: string): string => {
+  const map: Record<string, string> = { pending: 'warning', approved: 'success', rejected: 'danger', posted: 'info' }
   return map[status] || ''
 }
 
-const truncate = (str, len) => {
+const truncate = (str: string | undefined, len: number): string => {
   if (!str) return ''
   return str.length > len ? str.substring(0, len) + '...' : str
 }
@@ -217,18 +218,18 @@ const loadFeeds = async () => {
 const loadPendingCount = async () => {
   try {
     const res = await api.get('/v1/feeds', { params: { status: 'pending', limit: 1 } })
-    pendingCount.value = res.pagination?.total ?? 0
+    pendingCount.value = (res as any).pagination?.total ?? 0
   } catch {
     // ignore
   }
 }
 
-const onTabChange = (tab) => {
+const onTabChange = (tab: string) => {
   feedStore.setFilter('status', tab)
   loadFeeds()
 }
 
-const toggleSourceFilter = (src) => {
+const toggleSourceFilter = (src: string) => {
   if (feedStore.filters.source === src) {
     feedStore.setFilter('source', '')
   } else {
@@ -242,11 +243,11 @@ const clearSourceFilter = () => {
   loadFeeds()
 }
 
-const onSelectionChange = (rows) => {
+const onSelectionChange = (rows: any[]) => {
   selectedRows.value = rows
 }
 
-const onPageChange = (page) => {
+const onPageChange = (page: number) => {
   feedStore.setPage(page)
   loadFeeds()
 }
@@ -256,7 +257,7 @@ const refreshNewFeeds = () => {
   loadFeeds()
 }
 
-const openEdit = (row) => {
+const openEdit = (row: any) => {
   editRow.value = { ...row }
   showEditModal.value = true
 }
@@ -266,38 +267,38 @@ const onFeedSaved = () => {
   loadPendingCount()
 }
 
-const claim = async (row) => {
+const claim = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/claim`)
     ElMessage.success('Feed claimed')
     loadFeeds()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to claim feed')
   }
 }
 
-const unclaim = async (row) => {
+const unclaim = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/unclaim`)
     ElMessage.success('Feed unclaimed')
     loadFeeds()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to unclaim feed')
   }
 }
 
-const approve = async (row) => {
+const approve = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/approve`)
     ElMessage.success('Feed approved')
     loadFeeds()
     loadPendingCount()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to approve feed')
   }
 }
 
-const rejectWithNotes = async (row) => {
+const rejectWithNotes = async (row: any) => {
   try {
     const { value: notes } = await ElMessageBox.prompt(
       'Enter rejection notes (optional):',
@@ -313,19 +314,19 @@ const rejectWithNotes = async (row) => {
     ElMessage.success('Feed rejected')
     loadFeeds()
     loadPendingCount()
-  } catch (err) {
+  } catch (err: any) {
     // User cancelled the prompt
     if (err === 'cancel') return
     ElMessage.error(err.message || 'Failed to reject feed')
   }
 }
 
-const regenerate = async (row) => {
+const regenerate = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/regenerate`)
     ElMessage.success('Regeneration started')
     loadFeeds()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to regenerate')
   }
 }
@@ -339,7 +340,7 @@ const batchApprove = async () => {
     tableRef.value?.clearSelection()
     loadFeeds()
     loadPendingCount()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Batch approve failed')
   }
 }
@@ -363,7 +364,7 @@ const batchReject = async () => {
     tableRef.value?.clearSelection()
     loadFeeds()
     loadPendingCount()
-  } catch (err) {
+  } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || 'Batch reject failed')
   }

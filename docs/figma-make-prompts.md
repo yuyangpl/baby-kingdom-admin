@@ -13,7 +13,7 @@ Design an admin dashboard layout with:
   - Overview: Dashboard
   - Content: Feed Queue, Scanner, Trends, Poster
   - Configuration: Personas, Tone Modes, Topic Rules, Forum Boards
-  - System: Config, Queue Monitor, Audit Log, Users
+  - System: Config, Google Trends Data, Queue Monitor, Audit Log, Users
   - Each menu item has an icon and label
   - Active item highlighted with accent color
   - Collapse button at bottom
@@ -340,6 +340,69 @@ Email tab:
 - Sender Address: text input (default "BK Admin <noreply@baby-kingdom.com>")
 - "Send Test Email" button → sends a test email to current admin's email to verify configuration
 - Note: Admin notification emails (ADMIN_EMAILS) configured in General tab
+```
+
+---
+
+## 11.5 Google Trends Data
+
+```
+Design a Google Trends data management page (admin only, placed below Config in System menu):
+
+Top section — status bar:
+- Last pull timestamp: "Last updated: 2026-04-07 14:30 (30 min ago)" with auto-refresh countdown
+- "Trigger Pull Now" blue button (with refresh icon), disabled state while pulling
+- Pull frequency indicator: "Auto-pull every 30 minutes via worker cron"
+- API connection status: green dot "Connected" / red dot "Error" / grey dot "Not Configured"
+
+Main content — Trends table (Element Plus table):
+- Columns:
+  - Rank (#, auto-numbered)
+  - Query (bold, the trending search term)
+  - Score (number, bar-width proportional visualization within the cell)
+  - Peak Volume (formatted number, e.g. "12.5K")
+  - Duration (hours, e.g. "48h")
+  - Categories (tag chips, max 3 shown + "+N more" tooltip)
+  - Related Searches (tag chips from trend_breakdown, truncated)
+  - News (count badge, e.g. "5 articles", clickable to expand)
+  - Parenting Relevance (colored tag: high=green, medium=blue, low=grey, none=red, from Gemini analysis)
+  - Safe to Mention (green check / red cross icon)
+  - Suggested Angle (text, from Gemini analysis, truncated with tooltip)
+  - Actions
+
+- Expandable row (click to expand):
+  - Full news list: headline text + source URL link, ordered by relevance
+  - Full categories and related searches
+  - Gemini analysis summary text
+  - "Copy for Prompt" button — copies formatted trend context to clipboard
+
+- Row colors: subtle background tint based on parenting relevance
+  - high: light green tint
+  - medium: light blue tint
+  - none: light grey
+
+- Table toolbar:
+  - Filter by Parenting Relevance dropdown (All / High / Medium / Low)
+  - Filter by Safe to Mention (All / Safe only / Unsafe only)
+  - Search input (filters by query keyword)
+  - Date range picker (filter by pull date)
+
+- Pagination at bottom
+
+Gemini Analysis section (below table, collapsible card):
+- "Top Pick" highlighted card: shows the single most recommended trend for parenting forums
+  - Query name (large), reasoning text, suggested angle
+- "Overall Analysis" text block: Gemini's reasoning summary
+- "Re-analyze" button: triggers fresh Gemini analysis on current trends data
+
+Stats row (bottom of page, 4 mini cards):
+- Total trends pulled: number
+- Parenting-relevant: number (high + medium)
+- Safe to mention: number
+- Last Gemini analysis: timestamp
+
+Use Element Plus card components, subtle shadows, consistent spacing.
+Queue Monitor cards (in Queue Monitor page) should include a "Google Trends" queue card showing the 30-min cron status.
 ```
 
 ---

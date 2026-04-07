@@ -49,16 +49,16 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../api'
 import TopicRuleForm from './TopicRuleForm.vue'
 
-const rules = ref([])
-const loading = ref(false)
-const showForm = ref(false)
-const editData = ref(null)
+const rules = ref<any[]>([])
+const loading = ref<boolean>(false)
+const showForm = ref<boolean>(false)
+const editData = ref<Record<string, any> | null>(null)
 
 const loadRules = async () => {
   loading.value = true
@@ -75,17 +75,17 @@ const openAdd = () => {
   showForm.value = true
 }
 
-const openEdit = (row) => {
+const openEdit = (row: any) => {
   editData.value = { ...row }
   showForm.value = true
 }
 
-const handleDelete = async (row) => {
+const handleDelete = async (row: any) => {
   try {
     await api.delete(`/v1/topic-rules/${row.ruleId}`)
     ElMessage.success('Rule deleted')
     loadRules()
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err.message || 'Failed to delete rule')
   }
 }

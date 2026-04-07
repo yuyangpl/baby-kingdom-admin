@@ -42,7 +42,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["node", "src/worker.js"]
+    command: ["node", "dist/worker.js"]
     env_file:
       - .env.development
     depends_on:

@@ -17,7 +17,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
@@ -26,15 +26,15 @@ import { ElMessage } from 'element-plus';
 const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
-const loading = ref(false);
-const form = ref({ email: '', password: '' });
+const loading = ref<boolean>(false);
+const form = ref<{ email: string; password: string }>({ email: '', password: '' });
 
 async function handleLogin() {
   loading.value = true;
   try {
     await auth.login(form.value.email, form.value.password);
-    router.push(route.query.redirect || '/');
-  } catch (err) {
+    router.push((route.query.redirect as string) || '/');
+  } catch (err: any) {
     ElMessage.error(err?.error?.message || 'Login failed');
   } finally {
     loading.value = false;
