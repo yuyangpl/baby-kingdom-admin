@@ -7,12 +7,12 @@
       </el-button>
     </div>
 
-    <el-card shadow="never" class="table-card">
-      <el-table
+    <el-table
         :data="tones"
         v-loading="loading"
+        stripe
+        border
         style="width: 100%"
-        highlight-current-row
         row-key="toneId"
       >
         <!-- Expand row -->
@@ -78,7 +78,6 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
 
     <ToneForm
       v-model="showForm"
