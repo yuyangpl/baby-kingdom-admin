@@ -7,6 +7,7 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<a
   (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 router.get('/', authenticate, wrap(ctrl.getAll));
+router.get('/jobs', authenticate, wrap(ctrl.allJobs));
 router.get('/:name', authenticate, wrap(ctrl.getOne));
 router.post('/:name/pause', authenticate, authorize('admin'), wrap(ctrl.pause));
 router.post('/:name/resume', authenticate, authorize('admin'), wrap(ctrl.resume));

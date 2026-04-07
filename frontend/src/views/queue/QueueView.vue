@@ -177,7 +177,7 @@ const resumeQueue = async (q: any) => {
 
 const retryJob = async (job: any) => {
   try {
-    await api.post(`/v1/queues/jobs/${job.jobId ?? job.id}/retry`)
+    await api.post(`/v1/queues/${job.queueName ?? job.queue}/jobs/${job.jobId ?? job.id}/retry`)
     ElMessage.success('Job retried')
     loadJobs()
   } catch (err: any) {

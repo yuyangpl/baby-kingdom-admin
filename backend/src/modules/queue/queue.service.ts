@@ -90,6 +90,15 @@ export async function triggerQueue(name: string, userId: string, ip: string) {
   return { jobId: job.id, queueName: name };
 }
 
+export async function getAllJobs({ page = 1, limit = 20 }: { page?: number; limit?: number }) {
+  const skip = (page - 1) * limit;
+  const [data, total] = await Promise.all([
+    QueueJob.find().sort('-createdAt').skip(skip).limit(limit),
+    QueueJob.countDocuments(),
+  ]);
+  return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+}
+
 export async function getJobHistory(name: string, { page = 1, limit = 20 }: { page?: number; limit?: number }) {
   const skip = (page - 1) * limit;
   const filter = { queueName: name };

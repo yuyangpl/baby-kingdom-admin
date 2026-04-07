@@ -30,6 +30,15 @@ export async function trigger(req: Request, res: Response): Promise<void> {
   success(res, result);
 }
 
+export async function allJobs(req: Request, res: Response): Promise<void> {
+  const { page, limit } = req.query;
+  const result = await queueService.getAllJobs({
+    page: parseInt(page as string) || 1,
+    limit: parseInt(limit as string) || 20,
+  });
+  res.json({ success: true, data: result.data, pagination: result.pagination });
+}
+
 export async function jobHistory(req: Request, res: Response): Promise<void> {
   const { page, limit } = req.query;
   const result = await queueService.getJobHistory(req.params.name as string, {
