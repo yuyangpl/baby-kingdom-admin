@@ -18,6 +18,7 @@ export const useAppStore = defineStore('app', {
 
     setLanguage(lang: string) {
       this.language = lang;
+      localStorage.setItem('bk-admin-lang', lang);
     },
   },
 });
