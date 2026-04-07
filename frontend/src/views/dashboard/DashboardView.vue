@@ -275,7 +275,7 @@ onMounted(async () => {
   }).catch(() => {}).finally(() => { loadingWeekly.value = false; });
 
   // Fetch health
-  api.get('/api/health/services').then((res) => {
+  api.get('/health/services').then((res) => {
     services.value = res.data || [];
   }).catch(() => {
     services.value = [
