@@ -75,7 +75,7 @@
           >
             <div class="config-header">
               <span class="config-key">{{ item.key }}</span>
-              <span v-if="item.description" class="config-desc">{{ item.description }}</span>
+              <span class="config-desc">{{ configDescText(item) }}</span>
             </div>
             <div class="config-value-row">
               <el-input
@@ -299,6 +299,12 @@ const sendTestEmail = async () => {
   } finally {
     testEmailLoading.value = false
   }
+}
+
+const configDescText = (item: any): string => {
+  const key = `configDesc.${item.key}`
+  const translated = t(key)
+  return translated !== key ? translated : (item.description || '')
 }
 
 onMounted(() => {

@@ -318,6 +318,67 @@ export default {
     enterOtp: '輸入 OTP 驗證碼',
   },
 
+  configDesc: {
+    // bk-forum
+    BK_APP: 'BK 平台參數',
+    BK_BASE_URL: 'BK 論壇 API 基礎 URL',
+    BK_MAX_POSTS_PER_ACCOUNT_DAY: '每個帳號每日最大發帖+回覆數',
+    BK_POST_INTERVAL_SEC: '發帖間隔秒數',
+    BK_RATE_LIMIT_SECONDS: '寫入操作最小間隔秒數',
+    BK_VER: 'BK 版本參數',
+    // email
+    SMTP_FROM: '告警郵件發件人地址',
+    SMTP_HOST: 'SMTP 伺服器主機名',
+    SMTP_PASS: 'SMTP 認證密碼',
+    SMTP_PORT: 'SMTP 伺服器端口',
+    SMTP_USER: 'SMTP 認證用戶名',
+    // gemini
+    CONTENT_LANGUAGE: '輸出語言',
+    GCP_PROJECT_ID: 'GCP 項目 ID',
+    GEMINI_API_KEY: 'Gemini API 密鑰',
+    GEMINI_GCP_PROJECT_ID: 'Gemini GCP 項目 ID',
+    GEMINI_MAX_OUTPUT_TOKENS: '最大輸出 Token 數',
+    GEMINI_MODEL: 'Gemini 模型名稱',
+    GEMINI_SYSTEM_PROMPT: 'Gemini 系統提示詞',
+    GEMINI_TASK_TEMPLATE: 'Gemini 任務模板',
+    GEMINI_TEMPERATURE: '生成溫度（0-1）',
+    GEMINI_VERTEX_REGION: 'Vertex AI 區域',
+    LONG_POST_MAX_CHARS: '長帖字數上限',
+    MEDIUM_POST_MAX_CHARS: '中帖字數上限',
+    SENTIMENT_NEGATIVE_THRESHOLD: '低於此情感分數自動切換為 EMPATHISE 語氣',
+    SHORT_POST_MAX_CHARS: '短帖字數上限',
+    TONE_OVERRIDE_ON_TIER3: 'Tier 3 話題強制使用此語氣',
+    // general
+    ADMIN_EMAILS: '管理員通知郵箱地址（逗號分隔）',
+    LOG_RETENTION_DAYS: '審計日誌保留天數',
+    MAX_POSTS_PER_DAY: '全局每日最大發帖數',
+    TIMEZONE: '系統時區',
+    // google-trends
+    GOOGLE_TRENDS_API_KEY: 'Google Trends 自建 API 密鑰',
+    GOOGLE_TRENDS_BASE_URL: 'Google Trends API 基礎 URL',
+    GOOGLE_TRENDS_ENABLED: '啟用 Google Trends 匹配',
+    GOOGLE_TRENDS_MATCH_THRESHOLD: '關鍵詞匹配閾值',
+    GOOGLE_TRENDS_REGION: '趨勢地區',
+    GTRENDS_GEO: 'Google Trends 地區代碼',
+    GTRENDS_LOOKBACK_HOURS: '趨勢回顧小時數',
+    GTRENDS_TOP_N: '拉取 Top N 條趨勢',
+    // medialens
+    ENABLE_FB_VIRAL: '包含 Facebook 熱門帖子',
+    ENABLE_LIHKG: '包含 LIHKG 熱門話題',
+    FEEDS_PER_TREND_PULL: '每次拉取最大生成 Feed 數',
+    MAX_PENDING_QUEUE: '待審隊列超過此數量暫停生成',
+    MEDIALENS_AUTH_EMAIL: 'MediaLens OTP 認證郵箱',
+    MEDIALENS_BASE_URL: 'MediaLens API 基礎 URL',
+    MEDIALENS_COUNTRY: 'MediaLens 國家/地區篩選',
+    MEDIALENS_JWT_TOKEN: 'MediaLens JWT Token（自動緩存）',
+    TREND_LIMIT: '每次拉取最大話題數',
+    TREND_LOOKBACK_DAYS: '趨勢回顧天數',
+    TREND_PULL_INTERVAL_HRS: '趨勢拉取間隔（小時）',
+    // scanner
+    SCANNER_RELEVANCE_THRESHOLD: 'Gemini 相關性評分閾值',
+    SCANNER_TIMEOUT_MINUTES: '掃描器超時分鐘數',
+  },
+
   // Queue
   queue: {
     title: '隊列監控',
