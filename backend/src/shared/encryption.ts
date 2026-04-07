@@ -2,8 +2,8 @@ import crypto from 'crypto';
 
 const ALGO = 'aes-256-cbc';
 
-export function encrypt(text) {
-  const key = Buffer.from(process.env.ENCRYPTION_KEY.padEnd(32).slice(0, 32));
+export function encrypt(text: string): string {
+  const key = Buffer.from(process.env.ENCRYPTION_KEY!.padEnd(32).slice(0, 32));
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(ALGO, key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -11,8 +11,8 @@ export function encrypt(text) {
   return iv.toString('hex') + ':' + encrypted;
 }
 
-export function decrypt(text) {
-  const key = Buffer.from(process.env.ENCRYPTION_KEY.padEnd(32).slice(0, 32));
+export function decrypt(text: string): string {
+  const key = Buffer.from(process.env.ENCRYPTION_KEY!.padEnd(32).slice(0, 32));
   const [ivHex, encrypted] = text.split(':');
   const iv = Buffer.from(ivHex, 'hex');
   const decipher = crypto.createDecipheriv(ALGO, key, iv);
@@ -21,7 +21,7 @@ export function decrypt(text) {
   return decrypted;
 }
 
-export function isEncrypted(text) {
+export function isEncrypted(text: unknown): boolean {
   // Encrypted format is "hex:hex" — IV (32 hex chars) : ciphertext
   if (!text || typeof text !== 'string') return false;
   const parts = text.split(':');

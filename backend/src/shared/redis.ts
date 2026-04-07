@@ -1,28 +1,28 @@
 import Redis from 'ioredis';
 import logger from './logger.js';
 
-let client = null;
+let client: Redis.Redis | null = null;
 
-export function getRedis() {
+export function getRedis(): Redis.Redis {
   if (client) return client;
 
-  client = new Redis({
+  client = new Redis.default({
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
     maxRetriesPerRequest: null, // required by BullMQ
-    retryStrategy(times) {
+    retryStrategy(times: number) {
       const delay = Math.min(times * 200, 5000);
       return delay;
     },
   });
 
   client.on('connect', () => logger.info('Redis connected'));
-  client.on('error', (err) => logger.error({ err }, 'Redis connection error'));
+  client.on('error', (err: Error) => logger.error({ err }, 'Redis connection error'));
 
   return client;
 }
 
-export async function connectRedis() {
+export async function connectRedis(): Promise<Redis.Redis> {
   const redis = getRedis();
   if (redis.status === 'ready') return redis;
   return new Promise((resolve, reject) => {
@@ -31,13 +31,13 @@ export async function connectRedis() {
   });
 }
 
-export async function disconnectRedis() {
+export async function disconnectRedis(): Promise<void> {
   if (client) {
     await client.quit();
     client = null;
   }
 }
 
-export function isRedisConnected() {
-  return client?.status === 'ready';
+export function isRedisConnected(): boolean {
+  return client !== null && client.status === 'ready';
 }

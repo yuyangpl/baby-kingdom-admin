@@ -1,5 +1,10 @@
 export class AppError extends Error {
-  constructor(message, statusCode, code) {
+  statusCode: number;
+  code: string;
+  isOperational: boolean;
+  fields?: unknown;
+
+  constructor(message: string, statusCode: number, code: string) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
@@ -8,7 +13,9 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
-  constructor(message, fields = null) {
+  override fields: unknown;
+
+  constructor(message: string, fields: unknown = null) {
     super(message, 400, 'VALIDATION_ERROR');
     this.fields = fields;
   }
@@ -39,7 +46,7 @@ export class ConflictError extends AppError {
 }
 
 export class BusinessError extends AppError {
-  constructor(message, code = 'BUSINESS_ERROR') {
+  constructor(message: string, code = 'BUSINESS_ERROR') {
     super(message, 422, code);
   }
 }

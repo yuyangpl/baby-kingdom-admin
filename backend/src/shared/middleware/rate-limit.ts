@@ -1,23 +1,27 @@
 import rateLimit from 'express-rate-limit';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 
 // Skip rate limiting in test environment to avoid interfering with existing tests
 const isTest = process.env.NODE_ENV === 'test';
 
+interface RateLimitOptions {
+  windowMs: number;
+  max: number;
+  message?: string;
+}
+
 /**
  * Create a rate limiter middleware.
  * In NODE_ENV=test returns a no-op pass-through unless `forceEnable` is true.
- *
- * @param {{ windowMs: number, max: number, message?: string }} options
- * @param {boolean} [forceEnable=false] - bypass test-skip (used by rate-limit tests themselves)
  */
-export function createRateLimit(options, forceEnable = false) {
+export function createRateLimit(options: RateLimitOptions, forceEnable = false): RequestHandler {
   if (isTest && !forceEnable) {
-    return (_req, _res, next) => next();
+    return (_req: Request, _res: Response, next: NextFunction) => next();
   }
   return rateLimit({
     standardHeaders: true,  // Return rate limit info in `RateLimit-*` headers
     legacyHeaders: false,   // Disable `X-RateLimit-*` headers
-    handler: (_req, res) => {
+    handler: (_req: Request, res: Response) => {
       res.status(429).json({
         success: false,
         error: {

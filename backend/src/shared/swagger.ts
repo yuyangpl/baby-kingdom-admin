@@ -1,7 +1,8 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import type { Express, Request, Response } from 'express';
 
-const options = {
+const options: { definition: Record<string, unknown>; apis: string[] } = {
   definition: {
     openapi: '3.0.0',
     info: {
@@ -66,12 +67,12 @@ const options = {
 
 const spec = swaggerJsdoc(options);
 
-export function setupSwagger(app) {
+export function setupSwagger(app: Express): void {
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(spec, {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'BK Admin API Docs',
   }));
 
   // JSON spec endpoint
-  app.get('/api/docs.json', (req, res) => res.json(spec));
+  app.get('/api/docs.json', (_req: Request, res: Response) => res.json(spec));
 }

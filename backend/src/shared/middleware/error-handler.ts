@@ -1,9 +1,19 @@
+import { Request, Response, NextFunction } from 'express';
 import logger from '../logger.js';
 import { AppError } from '../errors.js';
 
-export function errorHandler(err, req, res, _next) {
+interface MongooseValidationError extends Error {
+  errors: Record<string, { message: string }>;
+}
+
+interface MongoDuplicateKeyError extends Error {
+  code: number;
+  keyValue?: Record<string, unknown>;
+}
+
+export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): Response {
   if (err instanceof AppError) {
-    const body = {
+    const body: { success: boolean; error: { code: string; message: string; fields?: unknown } } = {
       success: false,
       error: { code: err.code, message: err.message },
     };
@@ -12,8 +22,8 @@ export function errorHandler(err, req, res, _next) {
   }
 
   // Mongoose validation error
-  if (err.name === 'ValidationError' && err.errors) {
-    const fields = Object.entries(err.errors).map(([field, e]) => ({
+  if (err.name === 'ValidationError' && (err as MongooseValidationError).errors) {
+    const fields = Object.entries((err as MongooseValidationError).errors).map(([field, e]) => ({
       field,
       message: e.message,
     }));
@@ -24,8 +34,8 @@ export function errorHandler(err, req, res, _next) {
   }
 
   // Mongoose duplicate key
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue || {})[0] || 'unknown';
+  if ((err as MongoDuplicateKeyError).code === 11000) {
+    const field = Object.keys((err as MongoDuplicateKeyError).keyValue || {})[0] || 'unknown';
     return res.status(409).json({
       success: false,
       error: { code: 'DUPLICATE_KEY', message: `Duplicate value for ${field}` },

@@ -7,10 +7,16 @@ import logger from './logger.js';
 
 const ALERT_TTL = 3 * 24 * 60 * 60; // 3 days in seconds
 
+interface ServiceCheckResult {
+  status: string;
+  detail: string | null;
+  checkedAt?: string;
+}
+
 /**
  * Check BK Forum API connectivity.
  */
-export async function checkBkForum() {
+export async function checkBkForum(): Promise<ServiceCheckResult> {
   const baseUrl = await configService.getValue('BK_BASE_URL');
   if (!baseUrl) return { status: 'not_configured', detail: null };
 
@@ -20,19 +26,19 @@ export async function checkBkForum() {
       ? { status: 'connected', detail: null }
       : { status: 'disconnected', detail: `HTTP ${res.status}` };
   } catch (err) {
-    return { status: 'disconnected', detail: err.message };
+    return { status: 'disconnected', detail: (err as Error).message };
   }
 }
 
 /**
  * Check MediaLens JWT token validity by decoding exp claim.
  */
-export async function checkMediaLens() {
+export async function checkMediaLens(): Promise<ServiceCheckResult> {
   const token = await configService.getValue('MEDIALENS_JWT_TOKEN');
   if (!token) return { status: 'not_configured', detail: null };
 
   try {
-    const decoded = jwt.decode(token);
+    const decoded = jwt.decode(token) as jwt.JwtPayload | null;
     if (!decoded || !decoded.exp) return { status: 'expired', detail: 'No exp claim in JWT' };
 
     const now = Math.floor(Date.now() / 1000);
@@ -58,12 +64,12 @@ export async function checkMediaLens() {
 /**
  * Check Gemini API: key configured + recent generation activity.
  */
-export async function checkGemini() {
+export async function checkGemini(): Promise<ServiceCheckResult> {
   const apiKey = await configService.getValue('GEMINI_API_KEY');
   if (!apiKey) return { status: 'not_configured', detail: null };
 
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const recentFeed = await Feed.findOne({
+  const recentFeed = await (Feed as any).findOne({
     createdAt: { $gte: oneHourAgo },
     draftContent: { $ne: null },
     source: { $in: ['scanner', 'custom'] },
@@ -80,7 +86,7 @@ export async function checkGemini() {
 /**
  * Check Google Trends API connectivity.
  */
-export async function checkGoogleTrends() {
+export async function checkGoogleTrends(): Promise<ServiceCheckResult> {
   const baseUrl = await configService.getValue('GOOGLE_TRENDS_BASE_URL');
   const enabled = await configService.getValue('GOOGLE_TRENDS_ENABLED');
   if (!baseUrl || enabled === 'false') return { status: 'not_configured', detail: null };
@@ -91,14 +97,21 @@ export async function checkGoogleTrends() {
       ? { status: 'connected', detail: null }
       : { status: 'disconnected', detail: `HTTP ${res.status}` };
   } catch (err) {
-    return { status: 'disconnected', detail: err.message };
+    return { status: 'disconnected', detail: (err as Error).message };
   }
+}
+
+interface AllServicesResult {
+  bkForum: ServiceCheckResult;
+  mediaLens: ServiceCheckResult;
+  gemini: ServiceCheckResult;
+  googleTrends: ServiceCheckResult;
 }
 
 /**
  * Run all 4 service checks and return results.
  */
-export async function checkAllServices() {
+export async function checkAllServices(): Promise<AllServicesResult> {
   const now = new Date().toISOString();
   const [bkForum, mediaLens, gemini, googleTrends] = await Promise.all([
     checkBkForum(),
@@ -122,7 +135,7 @@ const UNHEALTHY = new Set(['disconnected', 'expired', 'expiring_soon']);
  * Check all services, send alerts for unhealthy ones, send recovery for restored ones.
  * Uses Redis keys with 3-day TTL: first alert immediately, no repeat for 3 days, then re-alert if still unhealthy.
  */
-export async function runHealthCheck() {
+export async function runHealthCheck(): Promise<AllServicesResult> {
   const results = await checkAllServices();
   const adminEmails = await configService.getValue('ADMIN_EMAILS');
   if (!adminEmails) {

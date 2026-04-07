@@ -3,7 +3,7 @@ import logger from './logger.js';
 
 let isConnected = false;
 
-export async function connectDB() {
+export async function connectDB(): Promise<void> {
   if (isConnected) return;
 
   const uri = process.env.MONGO_URI;
@@ -14,7 +14,7 @@ export async function connectDB() {
     logger.info('MongoDB connected');
   });
 
-  mongoose.connection.on('error', (err) => {
+  mongoose.connection.on('error', (err: Error) => {
     isConnected = false;
     logger.error({ err }, 'MongoDB connection error');
   });
@@ -27,11 +27,11 @@ export async function connectDB() {
   await mongoose.connect(uri);
 }
 
-export async function disconnectDB() {
+export async function disconnectDB(): Promise<void> {
   await mongoose.disconnect();
   isConnected = false;
 }
 
-export function isDBConnected() {
+export function isDBConnected(): boolean {
   return mongoose.connection.readyState === 1;
 }

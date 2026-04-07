@@ -5,13 +5,8 @@ import logger from './logger.js';
  * Send an alert email to specified recipients.
  * Reads SMTP config from environment variables.
  * Returns false (never throws) if SMTP is not configured or send fails.
- *
- * @param {string} to - Comma-separated recipient emails
- * @param {string} subject - Email subject
- * @param {string} html - Email body (HTML)
- * @returns {Promise<boolean>}
  */
-export async function sendAlert(to, subject, html) {
+export async function sendAlert(to: string, subject: string, html: string): Promise<boolean> {
   const host = process.env.SMTP_HOST;
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const user = process.env.SMTP_USER;
