@@ -138,10 +138,9 @@ const loadHistory = async () => {
 const loadQueue = async () => {
   loadingQueue.value = true
   try {
-    const res = await api.get('/v1/poster/queue')
+    const res: any = await api.get('/v1/queues/poster/jobs')
     const payload = res.data ?? res
     pendingQueue.value = Array.isArray(payload) ? payload : (payload.data ?? [])
-    metrics.waiting = pendingQueue.value.length
   } catch {
     // queue endpoint may not exist yet
   } finally {
@@ -163,7 +162,7 @@ const loadMetrics = async () => {
 
 const resumeQueue = async () => {
   try {
-    await api.post('/v1/poster/resume')
+    await api.post('/v1/queues/poster/resume')
     ElMessage.success('Queue resumed')
   } catch (err: any) {
     ElMessage.error(err.message || 'Failed to resume queue')
@@ -172,7 +171,7 @@ const resumeQueue = async () => {
 
 const pauseQueue = async () => {
   try {
-    await api.post('/v1/poster/pause')
+    await api.post('/v1/queues/poster/pause')
     ElMessage.success('Queue paused')
   } catch (err: any) {
     ElMessage.error(err.message || 'Failed to pause queue')
@@ -181,7 +180,7 @@ const pauseQueue = async () => {
 
 const cancelJob = async (row: any) => {
   try {
-    await api.delete(`/v1/poster/queue/${row.postId || row._id}`)
+    await api.delete(`/v1/queues/poster/jobs/${row.postId || row._id}`)
     ElMessage.success('Job cancelled')
     loadQueue()
     loadMetrics()
