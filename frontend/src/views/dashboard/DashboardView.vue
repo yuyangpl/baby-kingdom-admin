@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2>Dashboard</h2>
+    <h2>{{ $t('dashboard.title') }}</h2>
 
     <!-- Section A: Real-time Status -->
     <el-row :gutter="16" style="margin-bottom: 20px">
@@ -16,7 +16,7 @@
         <el-card shadow="hover">
           <div class="queue-card">
             <span class="pending-count">{{ pendingFeeds }}</span>
-            <span class="pending-label">Pending Feeds</span>
+            <span class="pending-label">{{ $t('dashboard.pendingFeeds') }}</span>
           </div>
         </el-card>
       </el-col>
@@ -33,7 +33,7 @@
     <el-row :gutter="16">
       <el-col :span="14">
         <el-card>
-          <template #header>Recent Activity</template>
+          <template #header>{{ $t('dashboard.recentActivity') }}</template>
           <el-timeline>
             <el-timeline-item v-for="item in recentFeeds" :key="item._id"
               :timestamp="new Date(item.updatedAt).toLocaleString()" placement="top"
@@ -45,7 +45,7 @@
       </el-col>
       <el-col :span="10">
         <el-card>
-          <template #header>Weekly Trend</template>
+          <template #header>{{ $t('dashboard.weeklyTrend') }}</template>
           <p v-for="day in weeklyStats" :key="day.date">
             {{ day.date }}: {{ day.feeds?.posted || 0 }} posted
           </p>

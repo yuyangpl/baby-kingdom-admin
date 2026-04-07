@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    title="Custom Generate"
+    :title="$t('feed.customGenerate')"
     width="500px"
     :close-on-click-modal="false"
   >
@@ -13,19 +13,19 @@
       label-position="top"
       class="generate-form"
     >
-      <el-form-item label="Topic" prop="topic">
-        <el-input v-model="form.topic" placeholder="Enter topic or subject" />
+      <el-form-item :label="$t('feed.topic')" prop="topic">
+        <el-input v-model="form.topic" :placeholder="$t('feed.placeholder.topic')" />
       </el-form-item>
 
-      <el-form-item label="Persona Account ID" prop="personaAccountId">
-        <el-input v-model="form.personaAccountId" placeholder="Optional - leave empty for auto" />
+      <el-form-item :label="$t('feed.persona')" prop="personaAccountId">
+        <el-input v-model="form.personaAccountId" :placeholder="$t('feed.placeholder.toneMode')" />
       </el-form-item>
 
-      <el-form-item label="Tone Mode" prop="toneMode">
+      <el-form-item :label="$t('feed.toneMode')" prop="toneMode">
         <el-input v-model="form.toneMode" placeholder="auto" />
       </el-form-item>
 
-      <el-form-item label="Post Type" prop="postType">
+      <el-form-item :label="$t('topicRules.postType')" prop="postType">
         <el-radio-group v-model="form.postType">
           <el-radio value="new-post">New Post</el-radio>
           <el-radio value="reply">Reply</el-radio>
@@ -37,16 +37,16 @@
           v-model="form.targetFid"
           :min="0"
           controls-position="right"
-          placeholder="Optional thread FID for replies"
+          :placeholder="$t('feed.placeholder.targetFid')"
           style="width: 100%"
         />
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="$emit('update:modelValue', false)">Cancel</el-button>
+      <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
       <el-button type="primary" :loading="generating" @click="handleGenerate">
-        {{ generating ? 'Generating...' : 'Generate' }}
+        {{ generating ? $t('common.loading') : $t('feed.customGenerate') }}
       </el-button>
     </template>
   </el-dialog>
@@ -56,7 +56,10 @@
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -90,7 +93,7 @@ const defaultForm = (): GenerateForm => ({
 const form = reactive(defaultForm())
 
 const rules = {
-  topic: [{ required: true, message: 'Topic is required', trigger: 'blur' }],
+  topic: [{ required: true, message: t('common.required'), trigger: 'blur' }],
 }
 
 watch(
@@ -120,11 +123,11 @@ const handleGenerate = async () => {
     if (form.targetFid) payload.targetFid = form.targetFid
 
     await api.post('/v1/feeds/custom-generate', payload)
-    ElMessage.success('Content generated successfully')
+    ElMessage.success(t('common.success'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || 'Generation failed')
+    ElMessage.error(err.message || t('common.error'))
   } finally {
     generating.value = false
   }

@@ -1,39 +1,39 @@
 <template>
   <div class="feed-view">
-    <h2>Feed Queue</h2>
+    <h2>{{ $t('feed.title') }}</h2>
 
     <!-- New feeds banner -->
     <el-alert
       v-if="feedStore.newFeedCount > 0"
-      :title="`${feedStore.newFeedCount} new feed(s) available`"
+      :title="`${feedStore.newFeedCount} ${$t('feed.newFeeds')}`"
       type="info"
       show-icon
       :closable="false"
       style="margin-bottom: 12px"
     >
       <el-button type="primary" size="small" link @click="refreshNewFeeds">
-        Load new feeds
+        {{ $t('feed.loadNew') }}
       </el-button>
     </el-alert>
 
     <!-- Toolbar -->
     <div class="toolbar">
       <el-button type="primary" @click="showCustomGenerate = true">
-        Custom Generate
+        {{ $t('feed.customGenerate') }}
       </el-button>
       <el-button
         type="success"
         :disabled="!selectedRows.length"
         @click="batchApprove"
       >
-        Batch Approve ({{ selectedRows.length }})
+        {{ $t('feed.batchApprove') }} ({{ selectedRows.length }})
       </el-button>
       <el-button
         type="danger"
         :disabled="!selectedRows.length"
         @click="batchReject"
       >
-        Batch Reject ({{ selectedRows.length }})
+        {{ $t('feed.batchReject') }} ({{ selectedRows.length }})
       </el-button>
     </div>
 
@@ -41,7 +41,7 @@
     <el-tabs v-model="activeTab" @tab-change="onTabChange" style="margin-bottom: 8px">
       <el-tab-pane name="pending">
         <template #label>
-          Pending
+          {{ $t('feed.tabs.pending') }}
           <el-badge
             v-if="pendingCount > 0"
             :value="pendingCount"
@@ -50,9 +50,9 @@
           />
         </template>
       </el-tab-pane>
-      <el-tab-pane label="Approved" name="approved" />
-      <el-tab-pane label="Posted" name="posted" />
-      <el-tab-pane label="Rejected" name="rejected" />
+      <el-tab-pane :label="$t('feed.tabs.approved')" name="approved" />
+      <el-tab-pane :label="$t('feed.tabs.posted')" name="posted" />
+      <el-tab-pane :label="$t('feed.tabs.rejected')" name="rejected" />
     </el-tabs>
 
     <!-- Quick filter chips -->
@@ -90,30 +90,30 @@
     >
       <el-table-column type="selection" width="45" />
       <el-table-column prop="feedId" label="Feed ID" width="120" />
-      <el-table-column prop="status" label="Status" width="110">
+      <el-table-column prop="status" :label="$t('common.status')" width="110">
         <template #default="{ row }">
           <el-tag :type="statusType(row.status)" size="small">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="source" label="Source" width="120">
+      <el-table-column prop="source" :label="$t('trends.source')" width="120">
         <template #default="{ row }">
           <el-tag size="small" effect="plain">{{ row.source }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="threadSubject" label="Thread Subject" min-width="200" show-overflow-tooltip>
+      <el-table-column prop="threadSubject" :label="$t('feed.threadSubject')" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
           {{ truncate(row.threadSubject, 40) }}
         </template>
       </el-table-column>
-      <el-table-column prop="personaId" label="Persona" width="120" />
-      <el-table-column prop="toneMode" label="Tone" width="100" />
+      <el-table-column prop="personaId" :label="$t('feed.persona')" width="120" />
+      <el-table-column prop="toneMode" :label="$t('feed.toneMode')" width="100" />
       <el-table-column prop="charCount" label="Chars" width="80" />
-      <el-table-column prop="createdAt" label="Created" width="170">
+      <el-table-column prop="createdAt" :label="$t('common.createdAt')" width="170">
         <template #default="{ row }">
           {{ new Date(row.createdAt).toLocaleString() }}
         </template>
       </el-table-column>
-      <el-table-column label="Actions" width="280" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="280" fixed="right">
         <template #default="{ row }">
           <el-button
             v-if="!row.claimedBy"
@@ -122,7 +122,7 @@
             link
             @click="claim(row)"
           >
-            Claim
+            {{ $t('feed.claim') }}
           </el-button>
           <el-button
             v-else
@@ -131,9 +131,9 @@
             link
             @click="unclaim(row)"
           >
-            Unclaim
+            {{ $t('feed.unclaim') }}
           </el-button>
-          <el-button type="primary" size="small" link @click="openEdit(row)">Edit</el-button>
+          <el-button type="primary" size="small" link @click="openEdit(row)">{{ $t('common.edit') }}</el-button>
           <el-button
             v-if="row.status !== 'approved'"
             type="success"
@@ -141,7 +141,7 @@
             link
             @click="approve(row)"
           >
-            Approve
+            {{ $t('feed.approve') }}
           </el-button>
           <el-button
             v-if="row.status !== 'rejected'"
@@ -150,9 +150,9 @@
             link
             @click="rejectWithNotes(row)"
           >
-            Reject
+            {{ $t('feed.reject') }}
           </el-button>
-          <el-button type="warning" size="small" link @click="regenerate(row)">Regen</el-button>
+          <el-button type="warning" size="small" link @click="regenerate(row)">{{ $t('feed.regenerate') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -186,11 +186,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { TableInstance } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
 import { useFeedStore } from '../../stores/feed'
 import FeedEditModal from './FeedEditModal.vue'
 import CustomGenerateModal from './CustomGenerateModal.vue'
 
+const { t } = useI18n()
 const feedStore = useFeedStore()
 
 const activeTab = ref<string>('pending')
@@ -270,64 +272,64 @@ const onFeedSaved = () => {
 const claim = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/claim`)
-    ElMessage.success('Feed claimed')
+    ElMessage.success(t('feed.claim'))
     loadFeeds()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to claim feed')
+    ElMessage.error(err.message || t('common.error'))
   }
 }
 
 const unclaim = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/unclaim`)
-    ElMessage.success('Feed unclaimed')
+    ElMessage.success(t('feed.unclaim'))
     loadFeeds()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to unclaim feed')
+    ElMessage.error(err.message || t('common.error'))
   }
 }
 
 const approve = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/approve`)
-    ElMessage.success('Feed approved')
+    ElMessage.success(t('feed.approve'))
     loadFeeds()
     loadPendingCount()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to approve feed')
+    ElMessage.error(err.message || t('common.error'))
   }
 }
 
 const rejectWithNotes = async (row: any) => {
   try {
     const { value: notes } = await ElMessageBox.prompt(
-      'Enter rejection notes (optional):',
-      'Reject Feed',
+      t('feed.placeholder.notes'),
+      t('feed.reject'),
       {
-        confirmButtonText: 'Reject',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: t('feed.reject'),
+        cancelButtonText: t('common.cancel'),
         inputType: 'textarea',
-        inputPlaceholder: 'Reason for rejection...',
+        inputPlaceholder: t('feed.placeholder.notes'),
       }
     )
     await api.post(`/v1/feeds/${row.feedId}/reject`, { notes: notes || '' })
-    ElMessage.success('Feed rejected')
+    ElMessage.success(t('feed.reject'))
     loadFeeds()
     loadPendingCount()
   } catch (err: any) {
     // User cancelled the prompt
     if (err === 'cancel') return
-    ElMessage.error(err.message || 'Failed to reject feed')
+    ElMessage.error(err.message || t('common.error'))
   }
 }
 
 const regenerate = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/regenerate`)
-    ElMessage.success('Regeneration started')
+    ElMessage.success(t('feed.regenerate'))
     loadFeeds()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to regenerate')
+    ElMessage.error(err.message || t('common.error'))
   }
 }
 
@@ -336,12 +338,12 @@ const batchApprove = async () => {
   if (!ids.length) return
   try {
     await api.post('/v1/feeds/batch-approve', { feedIds: ids })
-    ElMessage.success(`${ids.length} feed(s) approved`)
+    ElMessage.success(`${ids.length} ${t('feed.approve')}`)
     tableRef.value?.clearSelection()
     loadFeeds()
     loadPendingCount()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Batch approve failed')
+    ElMessage.error(err.message || t('common.error'))
   }
 }
 
@@ -350,23 +352,23 @@ const batchReject = async () => {
   if (!ids.length) return
   try {
     const { value: notes } = await ElMessageBox.prompt(
-      'Enter rejection notes for all selected feeds (optional):',
-      'Batch Reject',
+      t('feed.placeholder.notes'),
+      t('feed.batchReject'),
       {
-        confirmButtonText: 'Reject All',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: t('feed.reject'),
+        cancelButtonText: t('common.cancel'),
         inputType: 'textarea',
-        inputPlaceholder: 'Reason for rejection...',
+        inputPlaceholder: t('feed.placeholder.notes'),
       }
     )
     await api.post('/v1/feeds/batch-reject', { feedIds: ids, notes: notes || '' })
-    ElMessage.success(`${ids.length} feed(s) rejected`)
+    ElMessage.success(`${ids.length} ${t('feed.reject')}`)
     tableRef.value?.clearSelection()
     loadFeeds()
     loadPendingCount()
   } catch (err: any) {
     if (err === 'cancel') return
-    ElMessage.error(err.message || 'Batch reject failed')
+    ElMessage.error(err.message || t('common.error'))
   }
 }
 

@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    title="Edit Feed Content"
+    :title="$t('feed.editContent')"
     width="700px"
     :close-on-click-modal="false"
   >
@@ -10,14 +10,14 @@
       <!-- Read-only section -->
       <el-descriptions :column="2" border size="small" class="readonly-section">
         <el-descriptions-item label="Feed ID">{{ editData.feedId }}</el-descriptions-item>
-        <el-descriptions-item label="Source">
+        <el-descriptions-item :label="$t('trends.source')">
           <el-tag size="small">{{ editData.source }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="Thread Subject" :span="2">
+        <el-descriptions-item :label="$t('feed.threadSubject')" :span="2">
           {{ editData.threadSubject || '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="Persona ID">{{ editData.personaId }}</el-descriptions-item>
-        <el-descriptions-item label="Tone Mode">{{ editData.toneMode }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('feed.persona')">{{ editData.personaId }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('feed.toneMode')">{{ editData.toneMode }}</el-descriptions-item>
         <el-descriptions-item label="Sensitivity Tier">
           <el-tag
             :type="tierType(editData.sensitivityTier)"
@@ -35,26 +35,26 @@
         label-position="top"
         class="edit-section"
       >
-        <el-form-item label="Content" prop="content">
+        <el-form-item :label="$t('feed.content')" prop="content">
           <el-input
             v-model="form.content"
             type="textarea"
             :rows="8"
-            placeholder="Edit generated content..."
+            :placeholder="$t('feed.content')"
           />
           <div class="char-counter">{{ form.content.length }} characters</div>
         </el-form-item>
 
-        <el-form-item label="Tone Mode Override" prop="toneModeOverride">
-          <el-input v-model="form.toneModeOverride" placeholder="Leave empty to keep current tone" />
+        <el-form-item :label="$t('feed.toneMode')" prop="toneModeOverride">
+          <el-input v-model="form.toneModeOverride" :placeholder="$t('feed.placeholder.toneMode')" />
         </el-form-item>
 
-        <el-form-item label="Admin Notes" prop="adminNotes">
+        <el-form-item :label="$t('feed.adminNotes')" prop="adminNotes">
           <el-input
             v-model="form.adminNotes"
             type="textarea"
             :rows="2"
-            placeholder="Internal notes (not published)"
+            :placeholder="$t('feed.adminNotes')"
           />
         </el-form-item>
       </el-form>
@@ -62,10 +62,10 @@
 
     <template #footer>
       <div class="modal-footer">
-        <el-button @click="$emit('update:modelValue', false)">Cancel</el-button>
-        <el-button :loading="savingDraft" @click="handleSaveDraft">Save Draft</el-button>
+        <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
+        <el-button :loading="savingDraft" @click="handleSaveDraft">{{ $t('common.save') }}</el-button>
         <el-button type="success" :loading="savingApprove" @click="handleSaveAndApprove">
-          Save &amp; Approve
+          {{ $t('common.save') }} &amp; {{ $t('feed.approve') }}
         </el-button>
       </div>
     </template>
@@ -76,7 +76,10 @@
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -131,11 +134,11 @@ const handleSaveDraft = async () => {
   savingDraft.value = true
   try {
     await saveContent()
-    ElMessage.success('Draft saved')
+    ElMessage.success(t('common.success'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to save draft')
+    ElMessage.error(err.message || t('common.error'))
   } finally {
     savingDraft.value = false
   }
@@ -147,11 +150,11 @@ const handleSaveAndApprove = async () => {
     await saveContent()
     const feedId = props.editData?.feedId
     await api.post(`/v1/feeds/${feedId}/approve`)
-    ElMessage.success('Feed saved and approved')
+    ElMessage.success(t('common.success'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to save and approve')
+    ElMessage.error(err.message || t('common.error'))
   } finally {
     savingApprove.value = false
   }
