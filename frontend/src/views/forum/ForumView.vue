@@ -7,14 +7,14 @@
       <el-card class="forum-tree-panel" shadow="never">
         <template #header>
           <div class="tree-panel__header">
-            <span class="tree-panel__title">Boards</span>
+            <span class="tree-panel__title">{{ $t('forum.title') }}</span>
             <el-button
               size="small"
               :icon="Refresh"
               :loading="syncing"
               @click="syncFromBK"
             >
-              Sync from BK
+              {{ $t('forum.syncFromBk') }}
             </el-button>
           </div>
         </template>
@@ -56,12 +56,12 @@
           <el-form label-position="top" class="board-form">
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="Board Name">
+                <el-form-item :label="$t('forum.boardName')">
                   <el-input :model-value="selectedBoard.name" disabled />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="FID">
+                <el-form-item :label="$t('forum.fid')">
                   <el-input :model-value="String(selectedBoard.fid)" disabled />
                 </el-form-item>
               </el-col>
@@ -69,14 +69,14 @@
 
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="Enable Scanning">
+                <el-form-item :label="$t('forum.enableScraping')">
                   <el-switch v-model="formData.enableScraping" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item>
                   <template #label>
-                    <span>Enable Auto Reply</span>
+                    <span>{{ $t('forum.enableAutoReply') }}</span>
                     <el-tooltip content="When enabled, approved replies will be automatically posted" placement="top">
                       <el-icon style="margin-left: 4px; vertical-align: middle; cursor: help"><QuestionFilled /></el-icon>
                     </el-tooltip>
@@ -88,12 +88,12 @@
 
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="Reply Threshold (Min)">
+                <el-form-item :label="$t('forum.replyThresholdMin')">
                   <el-input-number v-model="formData.replyThresholdMin" :min="0" :max="formData.replyThresholdMax" style="width: 100%" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="Reply Threshold (Max)">
+                <el-form-item :label="$t('forum.replyThresholdMax')">
                   <el-input-number v-model="formData.replyThresholdMax" :min="formData.replyThresholdMin" style="width: 100%" />
                 </el-form-item>
               </el-col>
@@ -101,29 +101,29 @@
 
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="Scan Interval">
+                <el-form-item :label="$t('forum.scanInterval')">
                   <el-input v-model="formData.scanInterval" placeholder="e.g. 30m, 1h" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="Default Tone">
-                  <el-select v-model="formData.defaultTone" placeholder="Select tone" style="width: 100%">
+                <el-form-item :label="$t('forum.defaultTone')">
+                  <el-select v-model="formData.defaultTone" :placeholder="$t('forum.selectTone')" style="width: 100%">
                     <el-option v-for="t in toneOptions" :key="t" :label="t" :value="t" />
                   </el-select>
                 </el-form-item>
               </el-col>
             </el-row>
 
-            <el-form-item label="Sensitivity">
+            <el-form-item :label="$t('forum.sensitivity')">
               <el-select v-model="formData.sensitivityTier" style="width: 100%">
-                <el-option :value="1" label="Tier 1 - Low" />
-                <el-option :value="2" label="Tier 2 - Medium" />
-                <el-option :value="3" label="Tier 3 - High" />
+                <el-option :value="1" :label="$t('forum.tierLow')" />
+                <el-option :value="2" :label="$t('forum.tierMedium')" />
+                <el-option :value="3" :label="$t('forum.tierHigh')" />
               </el-select>
             </el-form-item>
 
-            <el-form-item label="Notes">
-              <el-input v-model="formData.notes" type="textarea" :rows="3" placeholder="Optional notes..." />
+            <el-form-item :label="$t('forum.notes')">
+              <el-input v-model="formData.notes" type="textarea" :rows="3" :placeholder="$t('forum.notesPlaceholder')" />
             </el-form-item>
 
             <el-form-item>
@@ -135,7 +135,7 @@
         </template>
 
         <div v-else class="forum-detail-empty">
-          <el-empty description="Select a board from the left panel" />
+          <el-empty :description="$t('forum.selectBoard')" />
         </div>
       </el-card>
     </div>

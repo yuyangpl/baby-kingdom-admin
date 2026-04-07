@@ -18,7 +18,7 @@
       </el-form-item>
 
       <el-form-item :label="$t('tone.displayName')" prop="displayName">
-        <el-input v-model="form.displayName" placeholder="Human-readable name" />
+        <el-input v-model="form.displayName" :placeholder="$t('tone.displayNamePlaceholder')" />
       </el-form-item>
 
       <el-form-item :label="$t('tone.whenToUse')" prop="whenToUse">
@@ -77,7 +77,10 @@
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -154,11 +157,11 @@ const handleSave = async () => {
     } else {
       await api.post('/v1/tones', form)
     }
-    ElMessage.success(isEdit.value ? 'Tone updated' : 'Tone created')
+    ElMessage.success(t(isEdit.value ? 'tone.toneUpdated' : 'tone.toneCreated'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to save tone')
+    ElMessage.error(err.message || t('common.saveFailed'))
   } finally {
     saving.value = false
   }

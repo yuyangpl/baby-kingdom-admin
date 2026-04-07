@@ -47,8 +47,8 @@
           </template>
         </el-table-column>
         <el-table-column prop="displayName" :label="$t('tone.displayName')" min-width="160" />
-        <el-table-column prop="whenToUse" label="When to Use" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="emotionalRegister" label="Emotional Register" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="whenToUse" :label="$t('tone.whenToUse')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="emotionalRegister" :label="$t('tone.emotionalRegister')" min-width="160" show-overflow-tooltip />
         <el-table-column prop="suitableForTier3" :label="$t('tone.tier3Suitable')" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.suitableForTier3 ? 'success' : 'info'" size="small">
@@ -90,8 +90,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
 import ToneForm from './ToneForm.vue'
+
+const { t } = useI18n()
 
 const tones = ref<any[]>([])
 const loading = ref(false)
@@ -121,17 +124,17 @@ const openEdit = (row: any) => {
 const handleDelete = async (row: any) => {
   try {
     await api.delete(`/v1/tones/${row.toneId}`)
-    ElMessage.success('Tone deleted')
+    ElMessage.success(t('tone.toneDeleted'))
     loadTones()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to delete tone')
+    ElMessage.error(err.message || t('common.deleteFailed'))
   }
 }
 
 const toggleActive = async (row: any) => {
   try {
     await api.patch(`/v1/tones/${row.toneId}`, { isActive: row.isActive })
-    ElMessage.success('Tone updated')
+    ElMessage.success(t('tone.toneUpdated'))
   } catch {
     row.isActive = !row.isActive
   }

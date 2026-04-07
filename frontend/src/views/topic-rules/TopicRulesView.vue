@@ -48,7 +48,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="sentimentTrigger" label="Sentiment Trigger" width="150">
+      <el-table-column prop="sentimentTrigger" :label="$t('topicRules.sentimentTrigger')" width="150">
         <template #default="{ row }">
           <el-tag
             v-if="row.sentimentTrigger"
@@ -61,7 +61,7 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="priorityAccounts" label="Priority Accounts" min-width="180">
+      <el-table-column prop="priorityAccounts" :label="$t('topicRules.priorityAccounts')" min-width="180">
         <template #default="{ row }">
           <template v-if="row.priorityAccounts?.length">
             <code
@@ -78,7 +78,7 @@
 
       <el-table-column prop="assignToneMode" :label="$t('topicRules.assignToneMode')" width="140" />
 
-      <el-table-column prop="postType" label="Post Type" width="120">
+      <el-table-column prop="postType" :label="$t('topicRules.postType')" width="120">
         <template #default="{ row }">
           <el-tag
             v-if="row.postType"
@@ -123,8 +123,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
 import TopicRuleForm from './TopicRuleForm.vue'
+
+const { t } = useI18n()
 
 const rules = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -154,10 +157,10 @@ const openEdit = (row: any) => {
 const handleDelete = async (row: any) => {
   try {
     await api.delete(`/v1/topic-rules/${row.ruleId}`)
-    ElMessage.success('Rule deleted')
+    ElMessage.success(t('topicRules.ruleDeleted'))
     loadRules()
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to delete rule')
+    ElMessage.error(err.message || t('common.deleteFailed'))
   }
 }
 

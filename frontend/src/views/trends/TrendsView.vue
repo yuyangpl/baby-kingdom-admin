@@ -52,12 +52,12 @@
         :row-class-name="sentimentRowClass"
         highlight-current-row
       >
-        <el-table-column prop="pullId" label="Pull ID" width="110">
+        <el-table-column prop="pullId" :label="$t('trends.pullId')" width="110">
           <template #default="{ row }">
             <code class="mono">{{ row.pullId }}</code>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="Time" width="170">
+        <el-table-column prop="createdAt" :label="$t('common.time')" width="170">
           <template #default="{ row }">
             {{ row.createdAt ? new Date(row.createdAt).toLocaleString() : '--' }}
           </template>
@@ -73,7 +73,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="rank" label="Rank" width="70" align="center" />
+        <el-table-column prop="rank" :label="$t('trends.rank')" width="70" align="center" />
         <el-table-column prop="topicLabel" :label="$t('trends.topicLabel')" min-width="180" show-overflow-tooltip />
         <el-table-column prop="sentimentScore" :label="$t('trends.sentiment')" width="120">
           <template #default="{ row }">
@@ -85,7 +85,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="sensitivityTier" label="Tier" width="80" align="center">
+        <el-table-column prop="sensitivityTier" :label="$t('trends.tier')" width="80" align="center">
           <template #default="{ row }">
             <span
               v-if="row.sensitivityTier"
@@ -96,7 +96,7 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="toneMode" label="Tone Mode" width="110" />
+        <el-table-column prop="toneMode" :label="$t('trends.toneMode')" width="110" />
         <el-table-column prop="isUsed" :label="$t('trends.used')" width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.isUsed ? 'success' : 'info'" size="small">
@@ -104,7 +104,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="feedIds" label="Feed IDs" min-width="140">
+        <el-table-column prop="feedIds" :label="$t('trends.feedIds')" min-width="140">
           <template #default="{ row }">
             <span v-if="row.feedIds && row.feedIds.length">
               <a

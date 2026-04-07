@@ -22,7 +22,7 @@
           v-model="form.topicKeywords"
           type="textarea"
           :rows="2"
-          placeholder="Comma separated"
+          :placeholder="$t('common.commasSeparated')"
         />
       </el-form-item>
 
@@ -53,7 +53,7 @@
           v-model="form.priorityAccountIds"
           type="textarea"
           :rows="2"
-          placeholder="Comma separated account IDs"
+          :placeholder="$t('topicRules.accountIdsPlaceholder')"
         />
       </el-form-item>
 
@@ -102,7 +102,10 @@
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -184,11 +187,11 @@ const handleSave = async () => {
     } else {
       await api.post('/v1/topic-rules', payload)
     }
-    ElMessage.success(isEdit.value ? 'Rule updated' : 'Rule created')
+    ElMessage.success(t(isEdit.value ? 'topicRules.ruleUpdated' : 'topicRules.ruleCreated'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to save rule')
+    ElMessage.error(err.message || t('common.saveFailed'))
   } finally {
     saving.value = false
   }
