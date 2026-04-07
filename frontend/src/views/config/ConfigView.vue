@@ -9,6 +9,7 @@
         :label="$t(`config.tabs.${tab.i18nKey}`)"
         :name="tab.key"
       >
+        <el-card shadow="never" class="config-tab-card">
         <!-- Config fields -->
         <div class="config-group">
           <div
@@ -103,6 +104,7 @@
             </p>
           </div>
         </template>
+        </el-card>
       </el-tab-pane>
     </el-tabs>
 
