@@ -53,7 +53,7 @@
         <el-tag
           v-for="src in ['bk-forum', 'google-trends', 'medialens', 'custom']"
           :key="src"
-          :type="feedStore.filters.source === src ? '' : 'info'"
+          :type="feedStore.filters.source === src ? 'primary' : 'info'"
           :effect="feedStore.filters.source === src ? 'dark' : 'plain'"
           class="filter-chip"
           @click="toggleSourceFilter(src)"
@@ -116,7 +116,7 @@
               {{ avatarInitial(feed.bkUsername) }}
             </div>
             <div class="feed-card__persona-name">{{ feed.bkUsername }}</div>
-            <el-tag v-if="feed.archetype" size="small" :type="archetypeColor[feed.archetype] || ''">
+            <el-tag v-if="feed.archetype" size="small" :type="archetypeColor[feed.archetype] || 'primary'">
               {{ feed.archetype }}
             </el-tag>
             <el-tag v-if="feed.toneMode" size="small" effect="plain" class="feed-card__tone-tag">

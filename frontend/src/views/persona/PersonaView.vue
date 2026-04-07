@@ -44,7 +44,7 @@
 
           <!-- Archetype tag -->
           <el-tag
-            :type="archetypeColor[p.archetype] || ''"
+            :type="archetypeColor[p.archetype] || 'primary'"
             size="small"
           >
             {{ p.archetype }}
