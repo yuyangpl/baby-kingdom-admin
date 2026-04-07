@@ -6,7 +6,7 @@ import { ForumBoard, ForumCategory } from '../../../src/modules/forum/forum.mode
 import Feed from '../../../src/modules/feed/feed.model.js';
 import Config from '../../../src/modules/config/config.model.js';
 
-let adminToken;
+let adminToken: string;
 
 beforeAll(async () => {
   await setupDB();

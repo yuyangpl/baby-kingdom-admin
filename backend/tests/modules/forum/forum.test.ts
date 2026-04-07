@@ -3,7 +3,7 @@ import User from '../../../src/modules/auth/auth.model.js';
 import Persona from '../../../src/modules/persona/persona.model.js';
 import { ForumCategory, ForumBoard } from '../../../src/modules/forum/forum.model.js';
 
-let adminToken, categoryId, boardId, personaId;
+let adminToken: string, categoryId: string, boardId: string, personaId: string;
 
 beforeAll(async () => {
   await setupDB();

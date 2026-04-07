@@ -2,7 +2,7 @@ import { request, setupDB, teardownDB } from '../../helpers.js';
 import User from '../../../src/modules/auth/auth.model.js';
 import Persona from '../../../src/modules/persona/persona.model.js';
 
-let adminToken, personaId;
+let adminToken: string, personaId: string;
 
 beforeAll(async () => {
   await setupDB();

@@ -3,7 +3,7 @@ import User from '../../../src/modules/auth/auth.model.js';
 import AuditLog from '../../../src/modules/audit/audit.model.js';
 import ToneMode from '../../../src/modules/tone/tone.model.js';
 
-let adminToken;
+let adminToken: string;
 
 beforeAll(async () => {
   await setupDB();

@@ -5,7 +5,7 @@ import Persona from '../../../src/modules/persona/persona.model.js';
 import ToneMode from '../../../src/modules/tone/tone.model.js';
 import Config from '../../../src/modules/config/config.model.js';
 
-let adminToken, editorToken, viewerToken, adminId, editorId, feedId, feedObjectId;
+let adminToken: string, editorToken: string, viewerToken: string, adminId: string, editorId: string, feedId: string, feedObjectId: string;
 
 beforeAll(async () => {
   await setupDB();
@@ -165,7 +165,7 @@ describe('Custom Generate', () => {
 });
 
 describe('Edit & Regenerate', () => {
-  let editFeedId;
+  let editFeedId: string;
 
   beforeAll(async () => {
     const feed = await Feed.create({
@@ -202,7 +202,7 @@ describe('Edit & Regenerate', () => {
 });
 
 describe('Batch', () => {
-  let batchIds;
+  let batchIds: string[];
 
   beforeAll(async () => {
     const feeds = await Promise.all([
@@ -233,9 +233,9 @@ describe('Poster History', () => {
 });
 
 describe('Reject', () => {
-  let rejectFeedId;
-  let rejectFeedId2;
-  let batchRejectIds;
+  let rejectFeedId: string;
+  let rejectFeedId2: string;
+  let batchRejectIds: string[];
 
   beforeAll(async () => {
     const feed1 = await Feed.create({

@@ -9,7 +9,7 @@ import User from '../../src/modules/auth/auth.model.js';
 import Persona from '../../src/modules/persona/persona.model.js';
 import Feed from '../../src/modules/feed/feed.model.js';
 
-let adminToken, personaId;
+let adminToken: string, personaId: string;
 
 beforeAll(async () => {
   await setupDB();

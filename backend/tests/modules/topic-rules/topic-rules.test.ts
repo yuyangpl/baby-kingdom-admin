@@ -2,7 +2,7 @@ import { request, setupDB, teardownDB } from '../../helpers.js';
 import User from '../../../src/modules/auth/auth.model.js';
 import TopicRule from '../../../src/modules/topic-rules/topic-rules.model.js';
 
-let adminToken, ruleId;
+let adminToken: string, ruleId: string;
 
 beforeAll(async () => {
   await setupDB();

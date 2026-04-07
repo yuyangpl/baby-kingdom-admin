@@ -7,7 +7,7 @@ import Feed from '../../src/modules/feed/feed.model.js';
 import Persona from '../../src/modules/persona/persona.model.js';
 
 const ADMIN_EMAIL = 'admin-injection@test.com';
-let adminToken, testFeedId;
+let adminToken: string, testFeedId: string;
 
 beforeAll(async () => {
   await setupDB();
@@ -60,7 +60,7 @@ describe('NoSQL Injection', () => {
 });
 
 describe('XSS Sanitization', () => {
-  let xssFeedId;
+  let xssFeedId: string;
 
   beforeAll(async () => {
     const feed = await Feed.create({

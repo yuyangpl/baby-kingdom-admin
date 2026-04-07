@@ -6,9 +6,9 @@ import Persona from '../../../src/modules/persona/persona.model.js';
 const ADMIN_EMAIL = 'admin-poster@test.com';
 const PERSONA_ID = 'BK-POSTER-TEST';
 
-let adminToken;
-let approvedFeedId; // MongoDB ObjectId string
-let noPersonaFeedId; // feed whose personaId has no matching persona
+let adminToken: string;
+let approvedFeedId: string; // MongoDB ObjectId string
+let noPersonaFeedId: string; // feed whose personaId has no matching persona
 
 beforeAll(async () => {
   await setupDB();

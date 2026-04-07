@@ -2,7 +2,7 @@ import { request, setupDB, teardownDB } from '../../helpers.js';
 import User from '../../../src/modules/auth/auth.model.js';
 import { initQueues } from '../../../src/modules/queue/queue.service.js';
 
-let adminToken;
+let adminToken: string;
 
 beforeAll(async () => {
   await setupDB();

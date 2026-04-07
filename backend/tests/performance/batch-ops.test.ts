@@ -17,8 +17,8 @@ const PERF_PREFIX = 'BO-PERF-';
 const ADMIN_EMAIL = 'admin-perf-bo@test.com';
 const BATCH_SIZE = 50;
 
-let adminToken;
-let batchFeedIds = [];
+let adminToken: string;
+let batchFeedIds: string[] = [];
 
 beforeAll(async () => {
   if (!process.env.RUN_PERF_TESTS) return;

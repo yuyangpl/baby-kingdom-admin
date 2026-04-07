@@ -3,7 +3,7 @@ import User from '../../../src/modules/auth/auth.model.js';
 import Trend from '../../../src/modules/trends/trends.model.js';
 import Config from '../../../src/modules/config/config.model.js';
 
-let adminToken;
+let adminToken: string;
 
 beforeAll(async () => {
   await setupDB();

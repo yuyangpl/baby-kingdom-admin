@@ -2,7 +2,7 @@ import { request, setupDB, teardownDB } from '../../helpers.js';
 import User from '../../../src/modules/auth/auth.model.js';
 import ToneMode from '../../../src/modules/tone/tone.model.js';
 
-let adminToken, editorToken;
+let adminToken: string, editorToken: string;
 
 beforeAll(async () => {
   await setupDB();
@@ -25,7 +25,7 @@ afterAll(async () => {
   await teardownDB();
 });
 
-let toneId;
+let toneId: string;
 
 describe('ToneMode CRUD', () => {
   it('POST creates a tone mode (admin)', async () => {

@@ -16,7 +16,7 @@ const PERF_PREFIX = 'FQ-PERF-';
 const SEED_COUNT = 10000; // 10k feeds (reduce if still too slow)
 const ADMIN_EMAIL = 'admin-perf-fq@test.com';
 
-let adminToken;
+let adminToken: string;
 
 beforeAll(async () => {
   if (!process.env.RUN_PERF_TESTS) return;

@@ -11,9 +11,9 @@ const EDITOR_A_EMAIL = 'editor-a-authz@test.com';
 const EDITOR_B_EMAIL = 'editor-b-authz@test.com';
 const VIEWER_EMAIL = 'viewer-authz@test.com';
 
-let adminToken, editorAToken, editorBToken, viewerToken;
-let adminUserId, editorAId, editorBId, viewerUserId;
-let testFeedId, claimFeedId, crossClaimFeedId;
+let adminToken: string, editorAToken: string, editorBToken: string, viewerToken: string;
+let adminUserId: string, editorAId: string, editorBId: string, viewerUserId: string;
+let testFeedId: string, claimFeedId: string, crossClaimFeedId: string;
 
 beforeAll(async () => {
   await setupDB();

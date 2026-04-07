@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 import { request, setupDB, teardownDB, expectSuccess, expectError } from '../../helpers.js';
 import User from '../../../src/modules/auth/auth.model.js';
 
-let adminToken;
-let adminCookie;
+let adminToken: string;
+let adminCookie: string[];
 
 beforeAll(async () => {
   await setupDB();

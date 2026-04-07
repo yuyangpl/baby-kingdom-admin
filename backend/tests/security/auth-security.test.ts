@@ -8,8 +8,8 @@ import User from '../../src/modules/auth/auth.model.js';
 const ADMIN_EMAIL = 'admin-authsec@test.com';
 const VIEWER_EMAIL = 'viewer-authsec@test.com';
 
-let adminToken;
-let adminCookie;
+let adminToken: string;
+let adminCookie: string[];
 
 beforeAll(async () => {
   await setupDB();
