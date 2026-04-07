@@ -22,6 +22,7 @@ import feedRoutes from './modules/feed/feed.routes.js';
 import posterRoutes from './modules/poster/poster.routes.js';
 import queueRoutes from './modules/queue/queue.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
+import googleTrendsRoutes from './modules/google-trends/google-trends.routes.js';
 
 const app: Express = express();
 
@@ -60,6 +61,7 @@ app.use('/api/v1/feeds', feedRoutes);
 app.use('/api/v1/poster', posterRoutes);
 app.use('/api/v1/queues', queueRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/google-trends', googleTrendsRoutes);
 
 // Swagger API docs
 setupSwagger(app);
