@@ -125,8 +125,14 @@ html, body {
   font-weight: 600;
 }
 
-/* Dialog max-height with scrollable body */
+/* Dialog centered + max-height with scrollable body */
+.el-overlay-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .el-dialog {
+  margin: 0 auto !important;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
