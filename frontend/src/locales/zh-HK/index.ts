@@ -51,7 +51,7 @@ export default {
     overview: '總覽',
     dashboard: '儀表板',
     content: '內容管理',
-    feedQueue: 'Feed 佇列',
+    feedQueue: 'Feed 隊列',
     scanner: '掃描器',
     trends: '熱門趨勢',
     poster: '發帖器',
@@ -63,7 +63,7 @@ export default {
     system: '系統',
     config: '全局配置',
     googleTrends: 'Google 趨勢數據',
-    queueMonitor: '佇列監控',
+    queueMonitor: '隊列監控',
     auditLog: '審計日誌',
     users: '用戶管理',
     home: '首頁',
@@ -95,7 +95,7 @@ export default {
 
   // Feed
   feed: {
-    title: 'Feed 佇列',
+    title: 'Feed 隊列',
     newFeeds: '條新 Feed 可用',
     loadNew: '載入新 Feed',
     customGenerate: '自訂生成',
@@ -271,7 +271,7 @@ export default {
     syncFromBk: '從 BK 同步',
     enableScraping: '啟用掃描',
     enableAutoReply: '啟用自動回覆',
-    autoReplyTip: '審批通過後自動入 Poster 佇列發帖',
+    autoReplyTip: '審批通過後自動入 Poster 隊列發帖',
     replyThreshold: '回覆數閾值',
     scanInterval: '掃描間隔',
     defaultTone: '預設語氣',
@@ -320,7 +320,7 @@ export default {
 
   // Queue
   queue: {
-    title: '佇列監控',
+    title: '隊列監控',
     pause: '暫停',
     resume: '恢復',
     trigger: '觸發',
@@ -329,7 +329,7 @@ export default {
     completed: '已完成',
     failed: '失敗',
     jobHistory: '任務歷史',
-    queue: '佇列',
+    queue: '隊列',
     startedAt: '開始時間',
   },
 
