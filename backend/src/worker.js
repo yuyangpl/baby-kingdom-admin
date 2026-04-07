@@ -12,6 +12,7 @@ import { aggregateDailyStats } from './modules/dashboard/dashboard.service.js';
 import Persona from './modules/persona/persona.model.js';
 import Feed from './modules/feed/feed.model.js';
 import logger from './shared/logger.js';
+import { runHealthCheck } from './shared/health-monitor.js';
 
 // Fix 6: Use UUID instead of PID so it is unique across containers
 const WORKER_ID = crypto.randomUUID();
@@ -205,7 +206,17 @@ async function start() {
       }
     }));
 
-    logger.info('Cron jobs registered: scanner(30m), trends(1h), daily-reset(midnight), stats(1h)');
+    // Health monitor: every 5 minutes
+    cronTasks.push(cron.schedule('*/5 * * * *', async () => {
+      try {
+        await runHealthCheck();
+        logger.info('Cron: health check completed');
+      } catch (err) {
+        logger.error({ err }, 'Cron: health check failed');
+      }
+    }));
+
+    logger.info('Cron jobs registered: scanner(30m), trends(1h), daily-reset(midnight), stats(1h), health(5m)');
   }
 
   const isLeader = await tryAcquireLock();
