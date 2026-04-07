@@ -200,6 +200,13 @@ interface ServiceHealth {
   checkedAt?: string;
 }
 
+const queues = ref<QueueStatus[]>([]);
+const pendingFeeds = ref<number>(0);
+const todayStats = ref<TodayStat[]>([]);
+const recentFeeds = ref<RecentFeed[]>([]);
+const weeklyStats = ref<WeeklyDay[]>([]);
+const services = ref<any>({});
+
 const SERVICE_LABELS: Record<string, string> = {
   bkForum: 'BK Forum API',
   mediaLens: 'MediaLens',
@@ -208,9 +215,8 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 const serviceList = computed(() => {
-  const raw = services.value as any;
+  const raw = services.value;
   if (Array.isArray(raw)) return raw;
-  // API returns { bkForum: {...}, mediaLens: {...}, ... }
   return Object.entries(raw).map(([key, val]: [string, any]) => ({
     name: SERVICE_LABELS[key] || key,
     status: val?.status || 'unknown',
@@ -247,13 +253,6 @@ function formatTimeAgo(iso: string): string {
   if (diff < 60) return `${diff}m ago`;
   return `${Math.floor(diff / 60)}h ago`;
 }
-
-const queues = ref<QueueStatus[]>([]);
-const pendingFeeds = ref<number>(0);
-const todayStats = ref<TodayStat[]>([]);
-const recentFeeds = ref<RecentFeed[]>([]);
-const weeklyStats = ref<WeeklyDay[]>([]);
-const services = ref<ServiceHealth[]>([]);
 
 const loadingRealtime = ref(true);
 const loadingToday = ref(true);
