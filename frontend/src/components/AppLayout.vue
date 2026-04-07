@@ -9,7 +9,7 @@
 
       <nav class="sidebar-nav">
         <div class="nav-group">
-          <div v-if="!isCollapsed" class="nav-group__title">OVERVIEW</div>
+          <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.overview') }}</div>
           <router-link to="/" class="nav-item" :class="{ 'nav-item--active': $route.name === 'dashboard' }">
             <el-icon class="nav-item__icon"><DataAnalysis /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.dashboard') }}</span>
@@ -17,7 +17,7 @@
         </div>
 
         <div class="nav-group">
-          <div v-if="!isCollapsed" class="nav-group__title">CONTENT</div>
+          <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.content') }}</div>
           <router-link to="/feeds" class="nav-item" :class="{ 'nav-item--active': $route.name === 'feeds' }">
             <el-icon class="nav-item__icon"><Document /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.feedQueue') }}</span>
@@ -37,7 +37,7 @@
         </div>
 
         <div class="nav-group">
-          <div v-if="!isCollapsed" class="nav-group__title">CONFIGURATION</div>
+          <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.configuration') }}</div>
           <router-link to="/personas" class="nav-item" :class="{ 'nav-item--active': $route.name === 'personas' }">
             <el-icon class="nav-item__icon"><User /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.personas') }}</span>
@@ -57,7 +57,7 @@
         </div>
 
         <div class="nav-group">
-          <div v-if="!isCollapsed" class="nav-group__title">SYSTEM</div>
+          <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.system') }}</div>
           <router-link v-if="auth.isAdmin" to="/config" class="nav-item" :class="{ 'nav-item--active': $route.name === 'config' }">
             <el-icon class="nav-item__icon"><Setting /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.config') }}</span>

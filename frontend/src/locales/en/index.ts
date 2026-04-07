@@ -46,6 +46,7 @@ export default {
     appTitle: 'Baby Kingdom Admin',
     appName: 'BK Admin',
     appNameShort: 'BK',
+    overview: 'Overview',
     dashboard: 'Dashboard',
     content: 'Content',
     feedQueue: 'Feed Queue',
