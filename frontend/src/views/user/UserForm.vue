@@ -131,15 +131,25 @@ const handleSave = async () => {
 .role-radio-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  width: 100%;
 }
 .role-option {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius-sm);
+  transition: var(--bk-transition);
+}
+.role-option:hover {
+  border-color: var(--bk-primary-light);
+  background: var(--bk-muted);
 }
 .role-desc {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--bk-muted-fg);
+  line-height: 1.4;
 }
 </style>
