@@ -133,11 +133,11 @@ const loadHistory = async () => {
 
 const loadStatus = async () => {
   try {
-    const res = await api.get('/v1/scanner/status')
+    const res: any = await api.get('/v1/queues/scanner')
     const data = res.data ?? res
     scanStatus.value = data.status || 'idle'
-    if (data.nextScheduled) {
-      nextScheduled.value = new Date(data.nextScheduled).toLocaleString()
+    if (data.nextRun) {
+      nextScheduled.value = new Date(data.nextRun).toLocaleString()
     }
   } catch {
     // status endpoint may not exist yet

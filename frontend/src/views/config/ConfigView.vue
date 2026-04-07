@@ -251,7 +251,7 @@ const resetDefaults = async () => {
 const requestOtp = async () => {
   otpLoading.value = true
   try {
-    await api.post('/v1/medialens/request-otp')
+    await api.post('/v1/trends/medialens/request-otp')
     otpRequested.value = true
     ElMessage.success(t('config.otpSent'))
   } catch (err: any) {
@@ -264,7 +264,7 @@ const requestOtp = async () => {
 const verifyOtp = async () => {
   otpLoading.value = true
   try {
-    await api.post('/v1/medialens/verify-otp', { otp: otpCode.value })
+    await api.post('/v1/trends/medialens/verify-otp', { otp: otpCode.value })
     ElMessage.success(t('config.otpVerified'))
     otpRequested.value = false
     otpCode.value = ''
@@ -279,7 +279,7 @@ const verifyOtp = async () => {
 
 const loadTokenStatus = async () => {
   try {
-    const res = await api.get('/v1/medialens/token-status')
+    const res = await api.get('/v1/trends/medialens/token-status')
     const data = (res as any).data || res
     tokenValid.value = !!data.valid
     tokenExpiry.value = data.expiresAt ? new Date(data.expiresAt).toLocaleString() : ''

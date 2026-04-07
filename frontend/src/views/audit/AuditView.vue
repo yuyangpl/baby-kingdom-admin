@@ -138,6 +138,7 @@
           <el-tag
             v-if="row.sessionId"
             size="small"
+            type="info"
             effect="plain"
           >
             {{ row.sessionId.slice(0, 8) }}
@@ -171,14 +172,19 @@ const operatorOptions = ref<string[]>([])
 
 const moduleTagType = (mod: string): string => {
   const map: Record<string, string> = {
-    Feed: '',
-    Persona: 'warning',
-    Scanner: 'success',
-    Config: 'warning',
-    Trends: 'danger',
-    Queue: 'info',
+    feed: 'primary',
+    persona: 'warning',
+    scanner: 'success',
+    config: 'warning',
+    trends: 'danger',
+    queue: 'info',
+    auth: 'info',
+    poster: 'success',
+    'google-trends': 'primary',
+    'topic-rules': 'warning',
+    tone: 'info',
   }
-  return map[mod] ?? ''
+  return map[mod?.toLowerCase()] ?? 'info'
 }
 
 const handleExpand = (row: any, expanded: any[]) => {

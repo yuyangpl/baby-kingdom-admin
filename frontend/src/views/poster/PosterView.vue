@@ -151,10 +151,10 @@ const loadQueue = async () => {
 
 const loadMetrics = async () => {
   try {
-    const res = await api.get('/v1/poster/metrics')
+    const res: any = await api.get('/v1/queues/poster')
     const data = res.data ?? res
     metrics.waiting = data.waiting ?? 0
-    metrics.success = data.success ?? data.completed ?? 0
+    metrics.success = data.completed ?? 0
     metrics.failed = data.failed ?? 0
   } catch {
     // metrics endpoint may not exist yet
