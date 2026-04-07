@@ -206,6 +206,8 @@ export default {
     sentiment: 'Sentiment',
     used: 'Used',
     tokenStatus: 'Token Status',
+    tokenValidUntil: 'MediaLens Token Valid until {date}',
+    tokenExpiredOrMissing: 'MediaLens Token Expired or Missing',
     requestOtp: 'Request OTP',
     verifyOtp: 'Verify OTP',
     pullId: 'Pull ID',

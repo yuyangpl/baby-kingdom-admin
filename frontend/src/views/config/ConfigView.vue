@@ -30,10 +30,7 @@
                   class="status-dot"
                   :class="tokenValid ? 'status-dot--active' : 'status-dot--expired'"
                 />
-                <span>{{ tokenValid ? t('dashboard.serviceStatus.valid') : t('dashboard.serviceStatus.expired') }}</span>
-                <span v-if="tokenExpiry" class="token-status-card__expiry">
-                  {{ tokenExpiry }}
-                </span>
+                <span>{{ tokenValid ? $t('trends.tokenValidUntil', { date: tokenExpiry || '--' }) : $t('trends.tokenExpiredOrMissing') }}</span>
               </div>
             </div>
 

@@ -213,6 +213,8 @@ export default {
     sentiment: '情感',
     used: '已使用',
     tokenStatus: 'Token 狀態',
+    tokenValidUntil: 'MediaLens Token 有效至 {date}',
+    tokenExpiredOrMissing: 'MediaLens Token 已過期或未設置',
     requestOtp: '請求 OTP',
     verifyOtp: '驗證 OTP',
     pullId: 'Pull ID',

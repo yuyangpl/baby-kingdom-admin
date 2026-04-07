@@ -18,7 +18,7 @@
           <CircleCheckFilled v-if="tokenValid" />
           <WarningFilled v-else />
         </el-icon>
-        <span>{{ tokenValid ? `MediaLens Token Valid until ${tokenExpiry}` : 'MediaLens Token Expired or Missing' }}</span>
+        <span>{{ tokenValid ? $t('trends.tokenValidUntil', { date: tokenExpiry }) : $t('trends.tokenExpiredOrMissing') }}</span>
       </div>
     </el-card>
 
