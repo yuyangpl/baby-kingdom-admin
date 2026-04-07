@@ -1,16 +1,11 @@
 <template>
   <div class="feed-view">
-    <h2 class="page-title">{{ $t('feed.title') }}</h2>
-
-    <!-- New Feed Banner -->
-    <div v-if="feedStore.newFeedCount > 0" class="new-feed-banner card--info">
-      <div class="new-feed-banner__left">
-        <el-icon :size="18"><RefreshRight /></el-icon>
+    <div class="feed-header">
+      <h2 class="page-title">{{ $t('feed.title') }}</h2>
+      <div v-if="feedStore.newFeedCount > 0" class="new-feed-badge" @click="refreshNewFeeds">
+        <el-icon :size="14"><RefreshRight /></el-icon>
         <span>{{ feedStore.newFeedCount }} {{ $t('feed.newFeeds') }}</span>
       </div>
-      <el-button type="primary" size="small" @click="refreshNewFeeds">
-        {{ $t('feed.loadNew') }}
-      </el-button>
     </div>
 
     <!-- Toolbar -->
@@ -459,21 +454,28 @@ onMounted(() => {
 .feed-view {
 }
 
-/* New Feed Banner */
-.new-feed-banner {
+/* Feed Header */
+.feed-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-radius: var(--bk-radius);
+  gap: 12px;
   margin-bottom: 16px;
 }
-.new-feed-banner__left {
-  display: flex;
+.new-feed-badge {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: var(--bk-primary);
+  gap: 4px;
+  padding: 4px 12px;
+  background: var(--bk-primary);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--bk-transition);
+}
+.new-feed-badge:hover {
+  background: var(--bk-primary-hover);
 }
 
 /* Toolbar */
