@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { encrypt, isEncrypted } from '../../shared/encryption.js';
 
 const personaSchema = new mongoose.Schema(
   {
@@ -30,6 +31,13 @@ const personaSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+personaSchema.pre('save', function (next) {
+  if (this.isModified('bkPassword') && this.bkPassword && !isEncrypted(this.bkPassword)) {
+    this.bkPassword = encrypt(this.bkPassword);
+  }
+  next();
+});
 
 personaSchema.methods.toJSON = function () {
   const obj = this.toObject();

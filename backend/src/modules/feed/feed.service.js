@@ -1,11 +1,14 @@
 import Feed from './feed.model.js';
 import Persona from '../persona/persona.model.js';
+import { ForumBoard } from '../forum/forum.model.js';
 import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { checkQuality } from '../gemini/quality-guard.js';
 import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
 import { emitToRoom } from '../../shared/socket.js';
 import * as auditService from '../audit/audit.service.js';
+import logger from '../../shared/logger.js';
+import xss from 'xss';
 
 const CLAIM_EXPIRY_MINUTES = 10;
 
@@ -16,6 +19,7 @@ export async function list({ status, source, threadFid, personaId, page = 1, lim
   if (threadFid) filter.threadFid = parseInt(threadFid, 10);
   if (personaId) filter.personaId = personaId;
 
+  limit = Math.min(parseInt(limit) || 20, 200);
   const skip = (page - 1) * limit;
   const [data, total] = await Promise.all([
     Feed.find(filter).sort(sort).skip(skip).limit(limit)
@@ -88,6 +92,28 @@ export async function approve(feedId, userId, ip) {
   });
 
   emitToRoom('room:feed', 'feed:statusChanged', { feedId: feed._id, status: 'approved' });
+
+  // Auto-post: if the board has enableAutoReply, enqueue to poster queue
+  if (feed.threadFid) {
+    try {
+      const board = await ForumBoard.findOne({ fid: feed.threadFid });
+      if (board?.enableAutoReply) {
+        const { getQueue } = await import('../queue/queue.service.js');
+        const posterQueue = getQueue('poster');
+        if (posterQueue) {
+          await posterQueue.add('auto-post', {
+            feedId: feed._id.toString(),
+            triggeredBy: 'auto-approve',
+          });
+          logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Auto-post queued after approval');
+        }
+      }
+    } catch (err) {
+      // Auto-post failure should not block approval
+      logger.error({ err, feedId: feed.feedId }, 'Failed to queue auto-post');
+    }
+  }
+
   return feed;
 }
 
@@ -119,9 +145,10 @@ export async function updateContent(feedId, content, userId, ip) {
   const feed = await Feed.findById(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
-  feed.finalContent = content;
+  const cleanContent = xss(content);
+  feed.finalContent = cleanContent;
   feed.adminEdit = true;
-  feed.charCount = content.length;
+  feed.charCount = cleanContent.length;
   await feed.save();
 
   await auditService.log({
@@ -196,9 +223,10 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
   });
 
   const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
-  const content = typeof result.text === 'string' ? result.text : result.text.replyText || '';
+  const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
+  const draftContent = xss(rawContent);
 
-  const quality = checkQuality(content, persona);
+  const quality = checkQuality(draftContent, persona);
 
   const feedId = generateFeedId();
   const feed = await Feed.create({
@@ -215,8 +243,8 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
     toneMode: promptResult.resolvedToneMode,
     sensitivityTier: `Tier ${tier}`,
     postType: postType || 'reply',
-    draftContent: content,
-    charCount: content.length,
+    draftContent,
+    charCount: draftContent.length,
     qualityWarnings: quality.warnings,
   });
 

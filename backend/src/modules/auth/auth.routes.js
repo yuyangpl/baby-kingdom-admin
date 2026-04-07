@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../../shared/middleware/auth.js';
+import { loginLimiter, refreshLimiter } from '../../shared/middleware/rate-limit.js';
 import * as ctrl from './auth.controller.js';
 
 const router = Router();
@@ -8,8 +9,8 @@ const router = Router();
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 // Public
-router.post('/login', wrap(ctrl.login));
-router.post('/refresh', wrap(ctrl.refresh));
+router.post('/login', loginLimiter, wrap(ctrl.login));
+router.post('/refresh', refreshLimiter, wrap(ctrl.refresh));
 router.post('/logout', wrap(ctrl.logout));
 
 // Authenticated

@@ -104,3 +104,118 @@ describe('Scanner', () => {
     expect(afterCount).toBe(beforeCount); // no new feeds since same mock tids
   });
 });
+
+describe('Scanner — deep behaviour tests', () => {
+  // Helper: reset configs to defaults after each test
+  afterEach(async () => {
+    await Config.updateOne({ key: 'MAX_PENDING_QUEUE' }, { value: '100' });
+    await Config.updateOne({ key: 'SCANNER_RELEVANCE_THRESHOLD' }, { value: '35' });
+    await Config.updateOne({ key: 'SCANNER_TIMEOUT_MINUTES' }, { value: '5' });
+    await ForumBoard.updateMany({}, { enableScraping: true });
+    await Persona.updateMany({}, { postsToday: 0 });
+    // Remove any extra pending feeds created during queue-full test
+    await Feed.deleteMany({ feedId: { $regex: /^FQ-QFULL-/ } });
+  });
+
+  it('Test 1: skips scan when pending queue is full (>= MAX_PENDING_QUEUE)', async () => {
+    // Create 100 pending feeds to fill the queue (use 'custom' source, unique feedId prefix for cleanup)
+    const dummyFeeds = Array.from({ length: 100 }, (_, i) => ({
+      feedId: `FQ-QFULL-${String(i).padStart(3, '0')}`,
+      type: 'reply',
+      status: 'pending',
+      source: 'custom',
+      threadTid: 9990000 + i,
+      threadFid: 162,
+      threadSubject: `Dummy feed ${i}`,
+      personaId: 'BK001',
+      bkUsername: 'testmom',
+      archetype: 'pregnant',
+      toneMode: 'CASUAL',
+      sensitivityTier: 'Tier 1',
+      postType: 'reply',
+      draftContent: 'dummy content',
+      charCount: 13,
+      relevanceScore: 75,
+      worthReplying: true,
+    }));
+    await Feed.insertMany(dummyFeeds);
+
+    const res = await request
+      .post('/api/v1/scanner/trigger')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.skipped.queueFull).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.feeds).toBe(0);
+  });
+
+  it('Test 2: returns 0 scanned when no boards have enableScraping=true', async () => {
+    await ForumBoard.updateMany({}, { enableScraping: false });
+
+    const res = await request
+      .post('/api/v1/scanner/trigger')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.scanned).toBe(0);
+    expect(res.body.data.feeds).toBe(0);
+  });
+
+  it('Test 3: board with enableScraping=false is not scanned', async () => {
+    // Disable the only board; scanner should return no scanned threads
+    await ForumBoard.updateMany({ fid: 162 }, { enableScraping: false });
+
+    const res = await request
+      .post('/api/v1/scanner/trigger')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    // No boards with enableScraping=true → nothing scanned
+    expect(res.body.data.scanned).toBe(0);
+  });
+
+  it('Test 4: persona daily limit reached increments noPersona counter', async () => {
+    // Exhaust the persona's daily limit
+    await Persona.updateMany({ accountId: 'BK001' }, { postsToday: 10, maxPostsPerDay: 10 });
+
+    // Remove existing scanner feeds so duplicate-check doesn't mask the noPersona path
+    await Feed.deleteMany({ source: 'scanner' });
+
+    const res = await request
+      .post('/api/v1/scanner/trigger')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    // With all candidates exhausted, each thread that reaches Layer 7 is counted as noPersona
+    expect(res.body.data.skipped.noPersona).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.feeds).toBe(0);
+  });
+
+  it('Test 5: timeout circuit breaker exits immediately when SCANNER_TIMEOUT_MINUTES=0', async () => {
+    await Config.updateOne({ key: 'SCANNER_TIMEOUT_MINUTES' }, { value: '0' });
+
+    const res = await request
+      .post('/api/v1/scanner/trigger')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    // With 0-minute timeout the inner loop breaks before any feed is generated
+    expect(res.body.data.feeds).toBe(0);
+  });
+
+  it('Test 6: high relevance threshold (100) prevents any feeds from being generated', async () => {
+    await Config.updateOne({ key: 'SCANNER_RELEVANCE_THRESHOLD' }, { value: '100' });
+
+    // Remove existing scanner feeds so duplicates don't interfere
+    await Feed.deleteMany({ source: 'scanner' });
+
+    const res = await request
+      .post('/api/v1/scanner/trigger')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    // Mock Gemini returns relevanceScore=75, which is below 100 → all filtered as lowRelevance
+    expect(res.body.data.feeds).toBe(0);
+    expect(res.body.data.skipped.lowRelevance).toBeGreaterThanOrEqual(1);
+  });
+});

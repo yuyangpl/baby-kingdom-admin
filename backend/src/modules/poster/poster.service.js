@@ -4,6 +4,7 @@ import * as configService from '../config/config.service.js';
 import * as auditService from '../audit/audit.service.js';
 import { NotFoundError, BusinessError } from '../../shared/errors.js';
 import logger from '../../shared/logger.js';
+import { decrypt } from '../../shared/encryption.js';
 
 // In-memory token cache (per process, keyed by accountId)
 const _bkTokens = {};
@@ -106,10 +107,17 @@ async function ensureBkLogin(persona, baseUrl, bkApp, bkVer) {
 
   if (!persona.bkPassword) throw new Error(`Password not set for ${persona.accountId}`);
 
+  let password;
+  try {
+    password = decrypt(persona.bkPassword);
+  } catch {
+    throw new Error(`Failed to decrypt password for ${persona.accountId}`);
+  }
+
   const params = new URLSearchParams({
     mod: 'member', op: 'login',
     username: persona.username,
-    password: persona.bkPassword,
+    password,
     app: bkApp, ver: bkVer,
   });
 

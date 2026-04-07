@@ -30,3 +30,18 @@ describe('GET /api/nonexistent', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 });
+
+describe('GET /api/health/services', () => {
+  it('returns 4 service statuses', async () => {
+    const res = await request.get('/api/health/services');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toHaveProperty('bkForum');
+    expect(res.body.data).toHaveProperty('mediaLens');
+    expect(res.body.data).toHaveProperty('gemini');
+    expect(res.body.data).toHaveProperty('googleTrends');
+    expect(res.body.data.bkForum.status).toBe('not_configured');
+    expect(res.body.data.bkForum.checkedAt).toBeDefined();
+  });
+});

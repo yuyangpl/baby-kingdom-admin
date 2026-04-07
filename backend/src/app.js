@@ -2,9 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import mongoSanitize from 'express-mongo-sanitize';
 import { requestLogger } from './shared/middleware/request-logger.js';
 import { errorHandler } from './shared/middleware/error-handler.js';
 import { notFound } from './shared/middleware/not-found.js';
+import { globalLimiter } from './shared/middleware/rate-limit.js';
 import { setupSwagger } from './shared/swagger.js';
 import healthRoutes from './modules/health/health.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
@@ -34,8 +36,14 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
+// NoSQL injection defense — strips $ and . from req.body/query/params keys
+app.use(mongoSanitize());
+
 // Logging
 app.use(requestLogger);
+
+// Global rate limit (100 req/min per IP)
+app.use('/api/', globalLimiter);
 
 // Routes
 app.use('/api/health', healthRoutes);

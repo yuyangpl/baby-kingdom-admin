@@ -62,6 +62,7 @@ export async function customGenerate(req, res) {
 export async function batchApprove(req, res) {
   const { feedIds } = req.body;
   if (!Array.isArray(feedIds) || feedIds.length === 0) throw new ValidationError('feedIds array is required');
+  if (feedIds.length > 50) throw new ValidationError('Cannot batch approve more than 50 feeds at once');
   const result = await feedService.batchApprove(feedIds, req.user.id, req.ip);
   return success(res, result);
 }
@@ -69,6 +70,7 @@ export async function batchApprove(req, res) {
 export async function batchReject(req, res) {
   const { feedIds, notes } = req.body;
   if (!Array.isArray(feedIds) || feedIds.length === 0) throw new ValidationError('feedIds array is required');
+  if (feedIds.length > 50) throw new ValidationError('Cannot batch reject more than 50 feeds at once');
   const result = await feedService.batchReject(feedIds, req.user.id, notes, req.ip);
   return success(res, result);
 }

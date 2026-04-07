@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../../shared/middleware/auth.js';
+import { generateLimiter } from '../../shared/middleware/rate-limit.js';
 import * as ctrl from './feed.controller.js';
 
 const router = Router();
@@ -7,7 +8,7 @@ const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 // Static routes MUST come before parameterized routes
 router.get('/', authenticate, wrap(ctrl.list));
-router.post('/custom-generate', authenticate, authorize('admin', 'editor'), wrap(ctrl.customGenerate));
+router.post('/custom-generate', generateLimiter, authenticate, authorize('admin', 'editor'), wrap(ctrl.customGenerate));
 router.post('/batch/approve', authenticate, authorize('admin', 'editor'), wrap(ctrl.batchApprove));
 router.post('/batch/reject', authenticate, authorize('admin', 'editor'), wrap(ctrl.batchReject));
 
@@ -18,6 +19,6 @@ router.post('/:id/reject', authenticate, authorize('admin', 'editor'), wrap(ctrl
 router.put('/:id/content', authenticate, authorize('admin', 'editor'), wrap(ctrl.updateContent));
 router.post('/:id/claim', authenticate, authorize('admin', 'editor'), wrap(ctrl.claim));
 router.post('/:id/unclaim', authenticate, authorize('admin', 'editor'), wrap(ctrl.unclaim));
-router.post('/:id/regenerate', authenticate, authorize('admin', 'editor'), wrap(ctrl.regenerate));
+router.post('/:id/regenerate', generateLimiter, authenticate, authorize('admin', 'editor'), wrap(ctrl.regenerate));
 
 export default router;
