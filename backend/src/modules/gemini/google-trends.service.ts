@@ -1,6 +1,7 @@
 import * as configService from '../config/config.service.js';
 import { callGemini } from './gemini.service.js';
 import logger from '../../shared/logger.js';
+import GoogleTrend from '../google-trends/google-trends.model.js';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -279,33 +280,40 @@ export function formatTrendsContext(analysis: TrendsAnalysis | null): string {
 
 /**
  * Match a topic against current Google Trends.
+ * Reads from DB (populated by worker cron every 30 min) instead of calling the API directly.
  * Used by Scanner to check if a thread topic is trending.
  */
 export async function matchGoogleTrends(topic: string): Promise<TrendMatch | null> {
   const enabled = await configService.getValue('GOOGLE_TRENDS_ENABLED');
   if (enabled === 'false') return null;
 
-  const apiKey = await configService.getValue('GOOGLE_TRENDS_API_KEY');
-  const baseUrl = await configService.getValue('GOOGLE_TRENDS_BASE_URL') || 'https://seo-hk-mac.rankwriteai.com';
   const threshold = parseFloat(await configService.getValue('GOOGLE_TRENDS_MATCH_THRESHOLD') || '0.6');
 
-  if (!apiKey) {
-    logger.debug('GOOGLE_TRENDS_API_KEY not configured, skipping trends matching');
-    return null;
-  }
-
   try {
-    const geo = await configService.getValue('GTRENDS_GEO') || 'HK';
-    const lookDays = parseInt(await configService.getValue('GTRENDS_LOOKBACK_DAYS') || '1', 10);
-    const endDate = utcDateStr();
-    const startDate = utcDaysAgoDateStr(lookDays);
+    // Read from DB instead of calling API
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentTrends = await GoogleTrend.find({ pulledAt: { $gte: oneHourAgo } })
+      .sort({ score: -1 })
+      .lean();
 
-    const data = await callTrendsSummary(baseUrl, apiKey, geo, startDate, endDate);
-    if (!data?.trends?.length) return null;
+    if (!recentTrends || recentTrends.length === 0) {
+      logger.debug('matchGoogleTrends: no recent trends in DB');
+      return null;
+    }
 
-    return findBestMatch(topic, data.trends, threshold);
+    // Convert DB records to RawTrend format for findBestMatch
+    const rawTrends: RawTrend[] = recentTrends.map(t => ({
+      query: t.query,
+      score: t.score,
+      peak_volume: t.peakVolume,
+      duration_hours: t.durationHours,
+      categories: t.categories,
+      trend_breakdown: t.trendBreakdown,
+    }));
+
+    return findBestMatch(topic, rawTrends, threshold);
   } catch (err) {
-    logger.warn({ err }, 'Google Trends matching failed, skipping');
+    logger.warn({ err }, 'Google Trends matching from DB failed');
     return null;
   }
 }

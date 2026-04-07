@@ -13,6 +13,7 @@ import Persona from './modules/persona/persona.model.js';
 import Feed from './modules/feed/feed.model.js';
 import logger from './shared/logger.js';
 import { runHealthCheck } from './shared/health-monitor.js';
+import { pullAndStore } from './modules/google-trends/google-trends.service.js';
 
 // Fix 6: Use UUID instead of PID so it is unique across containers
 const WORKER_ID: string = crypto.randomUUID();
@@ -206,6 +207,16 @@ async function start(): Promise<void> {
       }
     }));
 
+    // Google Trends: every 30 minutes
+    cronTasks.push(cron.schedule('*/30 * * * *', async () => {
+      try {
+        const result = await pullAndStore();
+        logger.info({ pullId: result.pullId, count: result.count }, 'Cron: google-trends pull completed');
+      } catch (err) {
+        logger.error({ err }, 'Cron: google-trends pull failed');
+      }
+    }));
+
     // Health monitor: every 5 minutes
     cronTasks.push(cron.schedule('*/5 * * * *', async () => {
       try {
@@ -216,7 +227,7 @@ async function start(): Promise<void> {
       }
     }));
 
-    logger.info('Cron jobs registered: scanner(30m), trends(1h), daily-reset(midnight), stats(1h), health(5m)');
+    logger.info('Cron jobs registered: scanner(30m), trends(1h), daily-reset(midnight), stats(1h), google-trends(30m), health(5m)');
   }
 
   const isLeader = await tryAcquireLock();
