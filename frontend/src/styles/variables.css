@@ -83,32 +83,29 @@ html, body {
   --el-font-size-base: 14px;
 }
 
-/* Table rounded corners — natural radius without clipping content */
+/* Table rounded corners — use overflow:hidden on wrapper + hide border patches */
 .el-table {
-  --el-table-border-radius: var(--bk-radius);
   border-radius: var(--bk-radius);
+  border: 1px solid var(--bk-border);
 }
 .el-table__inner-wrapper {
   border-radius: var(--bk-radius);
+  overflow: hidden;
 }
-.el-table__header-wrapper {
-  border-radius: var(--bk-radius) var(--bk-radius) 0 0;
+/* Hide the absolute-positioned border patch divs that don't follow border-radius */
+.el-table__border-left-patch,
+.el-table__border-bottom-patch,
+.el-table__border-right-patch {
+  display: none !important;
 }
-.el-table__header-wrapper th.el-table__cell:first-child {
-  border-top-left-radius: var(--bk-radius);
-}
-.el-table__header-wrapper th.el-table__cell:last-child {
-  border-top-right-radius: var(--bk-radius);
-}
-.el-table__body-wrapper {
-  border-radius: 0 0 var(--bk-radius) var(--bk-radius);
-}
-.el-table--border {
-  border-radius: var(--bk-radius);
-}
+/* Remove default el-table border since we set it on .el-table itself */
 .el-table--border::after,
 .el-table--border::before {
-  border-radius: var(--bk-radius);
+  display: none !important;
+}
+.el-table::before,
+.el-table::after {
+  display: none !important;
 }
 
 /* Dialog max-height with scrollable body */
