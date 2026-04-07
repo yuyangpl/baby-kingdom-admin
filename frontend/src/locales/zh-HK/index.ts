@@ -17,10 +17,35 @@ export default {
     success: '操作成功',
     error: '操作失敗',
     required: '必填',
+    noChanges: '沒有更改',
+    deleted: '已刪除',
+    created: '已建立',
+    updated: '已更新',
+    failed: '操作失敗',
+    saveFailed: '儲存失敗',
+    deleteFailed: '刪除失敗',
+    loadFailed: '載入失敗',
+    avatar: '頭像',
+    time: '時間',
+    duration: '持續時間',
+    triggeredBy: '觸發者',
+    jobId: '任務 ID',
+    session: '會話',
+    targetId: '目標 ID',
+    retry: '重試',
+    selectPlaceholder: '請選擇',
+    optional: '可選',
+    commasSeparated: '逗號分隔',
+    onePerLine: '每行一個',
+    high: '高',
+    medium: '中',
+    low: '低',
+    none: '無',
   },
 
   // App Layout / Navigation
   nav: {
+    appTitle: 'Baby Kingdom Admin',
     appName: 'BK Admin',
     appNameShort: 'BK',
     dashboard: '儀表板',
@@ -97,6 +122,9 @@ export default {
     persona: '人設',
     toneMode: '語氣模式',
     charCount: '{count} 字',
+    feedId: 'Feed ID',
+    sensitivityTier: '敏感等級',
+    targetFid: '目標 FID',
     adminNotes: '管理員備註',
     placeholder: {
       topic: '輸入話題或主題',
@@ -130,6 +158,11 @@ export default {
     tokenStatus: 'Token 狀態',
     requestOtp: '請求 OTP',
     verifyOtp: '驗證 OTP',
+    pullId: 'Pull ID',
+    toneMode: '語氣模式',
+    feedIds: 'Feed IDs',
+    tier: '等級',
+    dataSources: '數據來源',
   },
 
   // Google Trends
@@ -157,6 +190,7 @@ export default {
       all: '全部',
     },
     pulled: '已拉取 {count} 條趨勢',
+    pullFailed: '拉取失敗',
   },
 
   // Persona
@@ -179,6 +213,9 @@ export default {
     postsToday: '今日發帖',
     active: '啟用',
     inactive: '停用',
+    usernamePlaceholder: '顯示用戶名',
+    selectArchetype: '選擇角色類型',
+    bkPasswordPlaceholder: 'Baby Kingdom 登入密碼',
     deleteConfirm: '確定刪除此人設？',
     archetypes: {
       pregnant: '孕媽媽',
@@ -202,6 +239,10 @@ export default {
     exampleOpening: '示例開場',
     tier3Suitable: '適合 Tier3',
     priority: '優先級',
+    toneUpdated: '語氣已更新',
+    toneCreated: '語氣已建立',
+    toneDeleted: '語氣已刪除',
+    displayNamePlaceholder: '可讀名稱',
   },
 
   // Topic Rules
@@ -217,6 +258,10 @@ export default {
     postType: '發帖類型',
     avoidIf: '避免條件',
     promptHint: 'Gemini 提示',
+    ruleUpdated: '規則已更新',
+    ruleCreated: '規則已建立',
+    ruleDeleted: '規則已刪除',
+    accountIdsPlaceholder: '逗號分隔帳號 ID',
   },
 
   // Forum
@@ -234,6 +279,17 @@ export default {
     addPersona: '新增人設',
     weight: '權重',
     dailyLimit: '每日上限',
+    boardName: '版塊名稱',
+    fid: 'FID',
+    replyThresholdMin: '回覆數閾值（最小）',
+    replyThresholdMax: '回覆數閾值（最大）',
+    notes: '備註',
+    notesPlaceholder: '可選備註...',
+    selectBoard: '請從左側面板選擇版塊',
+    selectTone: '選擇語氣',
+    tierLow: 'Tier 1 - 低',
+    tierMedium: 'Tier 2 - 中',
+    tierHigh: 'Tier 3 - 高',
   },
 
   // Config
@@ -251,6 +307,14 @@ export default {
       general: '通用',
     },
     sendTestEmail: '發送測試郵件',
+    otpSent: 'OTP 已發送',
+    otpFailed: 'OTP 請求失敗',
+    otpVerified: 'OTP 已驗證，Token 已刷新',
+    otpVerifyFailed: 'OTP 驗證失敗',
+    testEmailSent: '測試郵件已發送',
+    testEmailFailed: '發送測試郵件失敗',
+    configsReset: '配置已重置為預設值',
+    enterOtp: '輸入 OTP 驗證碼',
   },
 
   // Queue
@@ -264,6 +328,8 @@ export default {
     completed: '已完成',
     failed: '失敗',
     jobHistory: '任務歷史',
+    queue: '佇列',
+    startedAt: '開始時間',
   },
 
   // Audit
@@ -277,6 +343,13 @@ export default {
     ip: 'IP 地址',
     before: '變更前',
     after: '變更後',
+    session: '會話',
+    placeholder: {
+      module: '模組',
+      eventType: '事件類型',
+      operator: '操作者',
+      targetId: '目標 ID',
+    },
   },
 
   // Users
@@ -300,6 +373,8 @@ export default {
     },
     deleteConfirm: '確定刪除此用戶？',
     cannotDeleteSelf: '不能刪除自己',
+    passwordPlaceholder: '最少 8 個字元',
+    roleFailed: '更新角色失敗',
   },
 
   // Poster

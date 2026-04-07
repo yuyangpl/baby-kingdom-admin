@@ -16,9 +16,34 @@ export default {
     success: 'Operation successful',
     error: 'Operation failed',
     required: 'Required',
+    noChanges: 'No changes to save',
+    deleted: 'Deleted',
+    created: 'Created',
+    updated: 'Updated',
+    failed: 'Operation failed',
+    saveFailed: 'Failed to save',
+    deleteFailed: 'Failed to delete',
+    loadFailed: 'Failed to load',
+    avatar: 'Avatar',
+    time: 'Time',
+    duration: 'Duration',
+    triggeredBy: 'Triggered By',
+    jobId: 'Job ID',
+    session: 'Session',
+    targetId: 'Target ID',
+    retry: 'Retry',
+    selectPlaceholder: 'Please select',
+    optional: 'Optional',
+    commasSeparated: 'Comma separated',
+    onePerLine: 'One per line',
+    high: 'High',
+    medium: 'Medium',
+    low: 'Low',
+    none: 'None',
   },
 
   nav: {
+    appTitle: 'Baby Kingdom Admin',
     appName: 'BK Admin',
     appNameShort: 'BK',
     dashboard: 'Dashboard',
@@ -92,6 +117,9 @@ export default {
     persona: 'Persona',
     toneMode: 'Tone Mode',
     charCount: '{count} chars',
+    feedId: 'Feed ID',
+    sensitivityTier: 'Sensitivity Tier',
+    targetFid: 'Target FID',
     adminNotes: 'Admin Notes',
     placeholder: {
       topic: 'Enter topic or subject',
@@ -123,6 +151,11 @@ export default {
     tokenStatus: 'Token Status',
     requestOtp: 'Request OTP',
     verifyOtp: 'Verify OTP',
+    pullId: 'Pull ID',
+    toneMode: 'Tone Mode',
+    feedIds: 'Feed IDs',
+    tier: 'Tier',
+    dataSources: 'Data Sources',
   },
 
   googleTrends: {
@@ -149,6 +182,7 @@ export default {
       all: 'All',
     },
     pulled: 'Pulled {count} trends',
+    pullFailed: 'Pull failed',
   },
 
   persona: {
@@ -170,6 +204,9 @@ export default {
     postsToday: 'Posts Today',
     active: 'Active',
     inactive: 'Inactive',
+    usernamePlaceholder: 'Display username',
+    selectArchetype: 'Select archetype',
+    bkPasswordPlaceholder: 'Baby Kingdom login password',
     deleteConfirm: 'Delete this persona?',
     archetypes: {
       pregnant: 'Pregnant',
@@ -192,6 +229,10 @@ export default {
     exampleOpening: 'Example Opening',
     tier3Suitable: 'Tier3 Suitable',
     priority: 'Priority',
+    toneUpdated: 'Tone updated',
+    toneCreated: 'Tone created',
+    toneDeleted: 'Tone deleted',
+    displayNamePlaceholder: 'Human-readable name',
   },
 
   topicRules: {
@@ -206,6 +247,10 @@ export default {
     postType: 'Post Type',
     avoidIf: 'Avoid If',
     promptHint: 'Gemini Prompt Hint',
+    ruleUpdated: 'Rule updated',
+    ruleCreated: 'Rule created',
+    ruleDeleted: 'Rule deleted',
+    accountIdsPlaceholder: 'Comma separated account IDs',
   },
 
   forum: {
@@ -222,6 +267,17 @@ export default {
     addPersona: 'Add Persona',
     weight: 'Weight',
     dailyLimit: 'Daily Limit',
+    boardName: 'Board Name',
+    fid: 'FID',
+    replyThresholdMin: 'Reply Threshold (Min)',
+    replyThresholdMax: 'Reply Threshold (Max)',
+    notes: 'Notes',
+    notesPlaceholder: 'Optional notes...',
+    selectBoard: 'Select a board from the left panel',
+    selectTone: 'Select tone',
+    tierLow: 'Tier 1 - Low',
+    tierMedium: 'Tier 2 - Medium',
+    tierHigh: 'Tier 3 - High',
   },
 
   config: {
@@ -238,6 +294,14 @@ export default {
       general: 'General',
     },
     sendTestEmail: 'Send Test Email',
+    otpSent: 'OTP sent',
+    otpFailed: 'Failed to request OTP',
+    otpVerified: 'OTP verified, token refreshed',
+    otpVerifyFailed: 'OTP verification failed',
+    testEmailSent: 'Test email sent',
+    testEmailFailed: 'Failed to send test email',
+    configsReset: 'Configs reset to defaults',
+    enterOtp: 'Enter OTP code',
   },
 
   queue: {
@@ -250,6 +314,8 @@ export default {
     completed: 'Completed',
     failed: 'Failed',
     jobHistory: 'Job History',
+    queue: 'Queue',
+    startedAt: 'Started At',
   },
 
   audit: {
@@ -262,6 +328,13 @@ export default {
     ip: 'IP Address',
     before: 'Before',
     after: 'After',
+    session: 'Session',
+    placeholder: {
+      module: 'Module',
+      eventType: 'Event Type',
+      operator: 'Operator',
+      targetId: 'Target ID',
+    },
   },
 
   user: {
@@ -284,6 +357,8 @@ export default {
     },
     deleteConfirm: 'Delete this user?',
     cannotDeleteSelf: 'Cannot delete yourself',
+    passwordPlaceholder: 'Min 8 characters',
+    roleFailed: 'Failed to update role',
   },
 
   poster: {
