@@ -421,7 +421,5 @@ onMounted(() => {
   gap: 12px;
   padding-top: 16px;
   flex-shrink: 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--bk-border);
 }
 </style>
