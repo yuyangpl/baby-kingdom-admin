@@ -60,4 +60,11 @@ export const CONFIG_PRESETS = [
   { key: 'TIMEZONE', value: 'Asia/Hong_Kong', category: 'general', description: 'System timezone' },
   { key: 'LOG_RETENTION_DAYS', value: '90', category: 'general', description: 'Audit log retention days' },
   { key: 'MAX_POSTS_PER_DAY', value: '3', category: 'general', description: 'Global max posts per day' },
+
+  // --- Email ---
+  { key: 'SMTP_HOST', value: '', category: 'email', description: 'SMTP server hostname' },
+  { key: 'SMTP_PORT', value: '587', category: 'email', description: 'SMTP server port' },
+  { key: 'SMTP_USER', value: '', category: 'email', description: 'SMTP authentication username' },
+  { key: 'SMTP_PASS', value: '', category: 'email', description: 'SMTP authentication password', isSecret: true },
+  { key: 'SMTP_FROM', value: 'BK Admin <noreply@baby-kingdom.com>', category: 'email', description: 'Sender address for alert emails' },
 ];
