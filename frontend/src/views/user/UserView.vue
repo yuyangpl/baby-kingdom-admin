@@ -1,15 +1,15 @@
 <template>
   <div class="user-view">
-    <h2>User Management</h2>
+    <h2>{{ $t('user.title') }}</h2>
 
     <el-button type="primary" @click="openAdd" style="margin-bottom: 16px">
-      Add User
+      {{ $t('user.addUser') }}
     </el-button>
 
     <el-table :data="users" v-loading="loading" stripe border style="width: 100%">
-      <el-table-column prop="username" label="Username" width="150" />
-      <el-table-column prop="email" label="Email" min-width="200" />
-      <el-table-column prop="role" label="Role" width="160">
+      <el-table-column prop="username" :label="$t('user.username')" width="150" />
+      <el-table-column prop="email" :label="$t('user.email')" min-width="200" />
+      <el-table-column prop="role" :label="$t('user.role')" width="160">
         <template #default="{ row }">
           <el-select
             :model-value="row.role"
@@ -17,27 +17,27 @@
             style="width: 120px"
             @change="(val: any) => handleRoleChange(row, val)"
           >
-            <el-option value="admin" label="Admin" />
-            <el-option value="editor" label="Editor" />
-            <el-option value="viewer" label="Viewer" />
+            <el-option value="admin" :label="$t('user.roles.admin')" />
+            <el-option value="editor" :label="$t('user.roles.editor')" />
+            <el-option value="viewer" :label="$t('user.roles.viewer')" />
           </el-select>
         </template>
       </el-table-column>
-      <el-table-column prop="lastLoginAt" label="Last Login" width="170">
+      <el-table-column prop="lastLoginAt" :label="$t('user.lastLogin')" width="170">
         <template #default="{ row }">
           {{ row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleString() : '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="Actions" width="100" fixed="right">
+      <el-table-column :label="$t('common.actions')" width="100" fixed="right">
         <template #default="{ row }">
           <el-popconfirm
-            title="Are you sure you want to delete this user?"
-            confirm-button-text="Delete"
-            cancel-button-text="Cancel"
+            :title="$t('user.deleteConfirm')"
+            :confirm-button-text="$t('common.delete')"
+            :cancel-button-text="$t('common.cancel')"
             @confirm="handleDelete(row)"
           >
             <template #reference>
-              <el-button type="danger" size="small" link>Delete</el-button>
+              <el-button type="danger" size="small" link>{{ $t('common.delete') }}</el-button>
             </template>
           </el-popconfirm>
         </template>
@@ -55,8 +55,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
 import UserForm from './UserForm.vue'
+
+const { t } = useI18n()
 
 const users = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -91,7 +94,7 @@ const handleRoleChange = async (row: any, newRole: string) => {
 const handleDelete = async (row: any) => {
   try {
     await api.delete(`/v1/auth/users/${row._id || row.id}`)
-    ElMessage.success('User deleted')
+    ElMessage.success(t('common.success'))
     loadUsers()
   } catch (err: any) {
     ElMessage.error(err.message || 'Failed to delete user')

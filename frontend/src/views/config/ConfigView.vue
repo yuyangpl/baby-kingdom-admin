@@ -1,6 +1,6 @@
 <template>
   <div class="config-view">
-    <h2>System Config</h2>
+    <h2>{{ $t('config.title') }}</h2>
 
     <el-tabs v-model="activeTab" v-loading="loading">
       <el-tab-pane v-for="cat in categories" :key="cat" :label="cat" :name="cat">
@@ -40,7 +40,7 @@
               @click="saveConfig(item)"
               style="margin-left: 8px"
             >
-              Save
+              {{ $t('config.saveChanges') }}
             </el-button>
           </div>
         </div>
@@ -52,7 +52,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const configs = ref<any[]>([])
 const loading = ref<boolean>(false)

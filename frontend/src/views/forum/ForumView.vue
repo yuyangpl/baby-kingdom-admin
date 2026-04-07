@@ -1,6 +1,6 @@
 <template>
   <div class="forum-view">
-    <h2>Forum Boards</h2>
+    <h2>{{ $t('forum.title') }}</h2>
 
     <el-tree
       v-loading="loading"
@@ -17,7 +17,7 @@
             <el-switch
               v-model="data.enableScraping"
               style="margin-left: 12px"
-              active-text="Scraping"
+              :active-text="$t('forum.enableScraping')"
               @change="toggleScraping(data)"
             />
           </template>
@@ -30,7 +30,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const treeData = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -48,7 +51,7 @@ const loadForums = async () => {
 const toggleScraping = async (board: any) => {
   try {
     await api.patch(`/v1/forums/${board.fid}`, { enableScraping: board.enableScraping })
-    ElMessage.success('Board updated')
+    ElMessage.success(t('common.success'))
   } catch {
     board.enableScraping = !board.enableScraping
   }

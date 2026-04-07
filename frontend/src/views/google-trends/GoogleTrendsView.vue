@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { useI18n } from 'vue-i18n';
 import api, { type ApiResponse } from '../../api';
+
+const { t } = useI18n();
 
 interface GoogleTrendNews {
   headline: string;
@@ -57,10 +60,10 @@ async function loadTrends() {
 
 async function triggerPull() {
   try {
-    await ElMessageBox.confirm('Trigger a new Google Trends pull now?', 'Confirm', { type: 'info' });
+    await ElMessageBox.confirm(t('googleTrends.triggerPull'), t('common.confirm'), { type: 'info' });
     triggering.value = true;
     const res = await api.post('/v1/google-trends/trigger') as unknown as ApiResponse<{ count: number; pullId: string }>;
-    ElMessage.success(`Pulled ${res.data?.count || 0} trends (${res.data?.pullId})`);
+    ElMessage.success(t('googleTrends.pulled', { count: res.data?.count || 0 }));
     await loadTrends();
   } catch (err: any) {
     if (err !== 'cancel') ElMessage.error('Pull failed');
@@ -104,28 +107,28 @@ onMounted(() => loadTrends());
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
       <div>
         <span v-if="trends.length" style="color: #909399; font-size: 13px;">
-          Last pull: {{ formatTime(trends[0]?.pulledAt) }}
+          {{ $t('googleTrends.lastPull', { time: formatTime(trends[0]?.pulledAt) }) }}
         </span>
-        <span v-else style="color: #909399; font-size: 13px;">No data yet</span>
-        <el-tag size="small" style="margin-left: 8px;">Auto-pull every 30 min</el-tag>
+        <span v-else style="color: #909399; font-size: 13px;">{{ $t('googleTrends.noData') }}</span>
+        <el-tag size="small" style="margin-left: 8px;">{{ $t('googleTrends.autoPull') }}</el-tag>
       </div>
       <el-button type="primary" :loading="triggering" @click="triggerPull">
-        Trigger Pull Now
+        {{ $t('googleTrends.triggerPull') }}
       </el-button>
     </div>
 
     <!-- Filters -->
     <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-      <el-select v-model="filters.relevance" placeholder="Relevance" clearable @change="handleFilterChange" style="width: 160px;">
-        <el-option label="All" value="" />
+      <el-select v-model="filters.relevance" :placeholder="$t('googleTrends.filter.relevance')" clearable @change="handleFilterChange" style="width: 160px;">
+        <el-option :label="$t('googleTrends.filter.all')" value="" />
         <el-option label="High" value="high" />
         <el-option label="Medium" value="medium" />
         <el-option label="Low" value="low" />
         <el-option label="None" value="none" />
       </el-select>
-      <el-select v-model="filters.safeOnly" placeholder="Safe to Mention" clearable @change="handleFilterChange" style="width: 160px;">
-        <el-option label="All" value="" />
-        <el-option label="Safe Only" value="true" />
+      <el-select v-model="filters.safeOnly" :placeholder="$t('googleTrends.safe')" clearable @change="handleFilterChange" style="width: 160px;">
+        <el-option :label="$t('googleTrends.filter.all')" value="" />
+        <el-option :label="$t('googleTrends.filter.safeOnly')" value="true" />
       </el-select>
     </div>
 
@@ -135,19 +138,19 @@ onMounted(() => loadTrends());
         <template #default="{ row }">
           <div style="padding: 12px 20px;">
             <div v-if="row.analysis" style="margin-bottom: 12px;">
-              <strong>Gemini Analysis:</strong> {{ row.analysis.summary }}<br/>
-              <strong>Suggested Angle:</strong> {{ row.analysis.suggestedAngle || '-' }}
+              <strong>{{ $t('googleTrends.geminiAnalysis') }}:</strong> {{ row.analysis.summary }}<br/>
+              <strong>{{ $t('googleTrends.suggestedAngle') }}:</strong> {{ row.analysis.suggestedAngle || '-' }}
             </div>
             <div v-if="row.categories?.length" style="margin-bottom: 8px;">
-              <strong>Categories:</strong>
+              <strong>{{ $t('googleTrends.categories') }}:</strong>
               <el-tag v-for="c in row.categories" :key="c" size="small" style="margin: 2px;">{{ c }}</el-tag>
             </div>
             <div v-if="row.trendBreakdown?.length" style="margin-bottom: 8px;">
-              <strong>Related:</strong>
+              <strong>{{ $t('googleTrends.relatedSearches') }}:</strong>
               <el-tag v-for="t in row.trendBreakdown" :key="t" size="small" type="info" style="margin: 2px;">{{ t }}</el-tag>
             </div>
             <div v-if="row.news?.length">
-              <strong>News ({{ row.news.length }}):</strong>
+              <strong>{{ $t('googleTrends.news') }} ({{ row.news.length }}):</strong>
               <ul style="margin: 4px 0; padding-left: 20px;">
                 <li v-for="(n, i) in row.news" :key="i">
                   <a v-if="n.url" :href="n.url" target="_blank">{{ n.headline }}</a>
@@ -159,20 +162,20 @@ onMounted(() => loadTrends());
         </template>
       </el-table-column>
       <el-table-column label="#" width="50" type="index" />
-      <el-table-column label="Query" prop="query" min-width="180" />
-      <el-table-column label="Score" prop="score" width="80" sortable />
-      <el-table-column label="Peak Volume" width="110">
+      <el-table-column :label="$t('googleTrends.query')" prop="query" min-width="180" />
+      <el-table-column :label="$t('googleTrends.score')" prop="score" width="80" sortable />
+      <el-table-column :label="$t('googleTrends.peakVolume')" width="110">
         <template #default="{ row }">{{ formatVolume(row.peakVolume) }}</template>
       </el-table-column>
-      <el-table-column label="Duration" width="90">
+      <el-table-column :label="$t('googleTrends.duration')" width="90">
         <template #default="{ row }">{{ row.durationHours }}h</template>
       </el-table-column>
-      <el-table-column label="News" width="70">
+      <el-table-column :label="$t('googleTrends.news')" width="70">
         <template #default="{ row }">
           <el-badge :value="row.news?.length || 0" type="info" />
         </template>
       </el-table-column>
-      <el-table-column label="Relevance" width="110">
+      <el-table-column :label="$t('googleTrends.relevance')" width="110">
         <template #default="{ row }">
           <el-tag v-if="row.analysis" :type="relevanceColor(row.analysis.parentingRelevance)" size="small">
             {{ row.analysis.parentingRelevance }}
@@ -180,14 +183,14 @@ onMounted(() => loadTrends());
           <span v-else style="color: #c0c4cc;">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="Safe" width="60" align="center">
+      <el-table-column :label="$t('googleTrends.safe')" width="60" align="center">
         <template #default="{ row }">
           <el-icon v-if="row.analysis?.safeToMention" color="#67c23a"><CircleCheck /></el-icon>
           <el-icon v-else-if="row.analysis" color="#f56c6c"><CircleClose /></el-icon>
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="Pulled At" width="160">
+      <el-table-column :label="$t('googleTrends.pulledAt')" width="160">
         <template #default="{ row }">{{ formatTime(row.pulledAt) }}</template>
       </el-table-column>
     </el-table>

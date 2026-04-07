@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
-    title="Create User"
+    :title="$t('user.addUser')"
     width="480px"
     :close-on-click-modal="false"
   >
@@ -13,39 +13,39 @@
       label-position="top"
       class="user-form"
     >
-      <el-form-item label="Username" prop="username">
-        <el-input v-model="form.username" placeholder="Enter username" />
+      <el-form-item :label="$t('user.username')" prop="username">
+        <el-input v-model="form.username" :placeholder="$t('user.username')" />
       </el-form-item>
 
-      <el-form-item label="Email" prop="email">
+      <el-form-item :label="$t('user.email')" prop="email">
         <el-input v-model="form.email" type="email" placeholder="user@example.com" />
       </el-form-item>
 
-      <el-form-item label="Password" prop="password">
+      <el-form-item :label="$t('user.password')" prop="password">
         <el-input v-model="form.password" type="password" show-password placeholder="Min 8 characters" />
       </el-form-item>
 
-      <el-form-item label="Role" prop="role">
+      <el-form-item :label="$t('user.role')" prop="role">
         <el-radio-group v-model="form.role" class="role-radio-group">
           <div class="role-option">
-            <el-radio value="admin">Admin</el-radio>
-            <span class="role-desc">Full access to all settings and actions</span>
+            <el-radio value="admin">{{ $t('user.roles.admin') }}</el-radio>
+            <span class="role-desc">{{ $t('user.roleDesc.admin') }}</span>
           </div>
           <div class="role-option">
-            <el-radio value="editor">Editor</el-radio>
-            <span class="role-desc">Can manage content, approve feeds, edit personas</span>
+            <el-radio value="editor">{{ $t('user.roles.editor') }}</el-radio>
+            <span class="role-desc">{{ $t('user.roleDesc.editor') }}</span>
           </div>
           <div class="role-option">
-            <el-radio value="viewer">Viewer</el-radio>
-            <span class="role-desc">Read-only access to dashboards and reports</span>
+            <el-radio value="viewer">{{ $t('user.roles.viewer') }}</el-radio>
+            <span class="role-desc">{{ $t('user.roleDesc.viewer') }}</span>
           </div>
         </el-radio-group>
       </el-form-item>
     </el-form>
 
     <template #footer>
-      <el-button @click="$emit('update:modelValue', false)">Cancel</el-button>
-      <el-button type="primary" :loading="saving" @click="handleSave">Create User</el-button>
+      <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="saving" @click="handleSave">{{ $t('user.addUser') }}</el-button>
     </template>
   </el-dialog>
 </template>
@@ -54,7 +54,10 @@
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -79,16 +82,16 @@ const defaultForm = () => ({
 const form = reactive(defaultForm())
 
 const rules = {
-  username: [{ required: true, message: 'Username is required', trigger: 'blur' }],
+  username: [{ required: true, message: t('user.username') + ' ' + t('common.required'), trigger: 'blur' }],
   email: [
-    { required: true, message: 'Email is required', trigger: 'blur' },
+    { required: true, message: t('user.email') + ' ' + t('common.required'), trigger: 'blur' },
     { type: 'email', message: 'Please enter a valid email', trigger: 'blur' },
   ],
   password: [
-    { required: true, message: 'Password is required', trigger: 'blur' },
+    { required: true, message: t('user.password') + ' ' + t('common.required'), trigger: 'blur' },
     { min: 8, message: 'Password must be at least 8 characters', trigger: 'blur' },
   ],
-  role: [{ required: true, message: 'Role is required', trigger: 'change' }],
+  role: [{ required: true, message: t('user.role') + ' ' + t('common.required'), trigger: 'change' }],
 }
 
 watch(
@@ -110,11 +113,11 @@ const handleSave = async () => {
   saving.value = true
   try {
     await api.post('/v1/auth/users', form)
-    ElMessage.success('User created successfully')
+    ElMessage.success(t('common.success'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || 'Failed to create user')
+    ElMessage.error(err.message || t('common.error'))
   } finally {
     saving.value = false
   }

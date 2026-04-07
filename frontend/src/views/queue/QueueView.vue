@@ -1,6 +1,6 @@
 <template>
   <div class="queue-view">
-    <h2>Queue Monitor</h2>
+    <h2>{{ $t('queue.title') }}</h2>
 
     <el-row :gutter="16" v-loading="loading">
       <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="q in queues" :key="q.name" style="margin-bottom: 16px">
@@ -13,13 +13,13 @@
               </el-tag>
             </div>
           </template>
-          <p><strong>Waiting:</strong> {{ q.waiting ?? 0 }}</p>
-          <p><strong>Active:</strong> {{ q.active ?? 0 }}</p>
-          <p><strong>Completed:</strong> {{ q.completed ?? 0 }}</p>
-          <p><strong>Failed:</strong> {{ q.failed ?? 0 }}</p>
+          <p><strong>{{ $t('queue.waiting') }}:</strong> {{ q.waiting ?? 0 }}</p>
+          <p><strong>{{ $t('queue.active') }}:</strong> {{ q.active ?? 0 }}</p>
+          <p><strong>{{ $t('queue.completed') }}:</strong> {{ q.completed ?? 0 }}</p>
+          <p><strong>{{ $t('queue.failed') }}:</strong> {{ q.failed ?? 0 }}</p>
           <div style="margin-top: 12px">
-            <el-button v-if="q.status === 'running'" type="warning" size="small" @click="pauseQueue(q)">Pause</el-button>
-            <el-button v-else type="success" size="small" @click="resumeQueue(q)">Resume</el-button>
+            <el-button v-if="q.status === 'running'" type="warning" size="small" @click="pauseQueue(q)">{{ $t('queue.pause') }}</el-button>
+            <el-button v-else type="success" size="small" @click="resumeQueue(q)">{{ $t('queue.resume') }}</el-button>
           </div>
         </el-card>
       </el-col>
@@ -30,7 +30,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import api from '../../api'
+
+const { t } = useI18n()
 
 const queues = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -47,13 +50,13 @@ const loadQueues = async () => {
 
 const pauseQueue = async (q: any) => {
   await api.post(`/v1/queues/${q.name}/pause`)
-  ElMessage.success(`${q.name} paused`)
+  ElMessage.success(`${q.name} ${t('queue.pause').toLowerCase()}d`)
   loadQueues()
 }
 
 const resumeQueue = async (q: any) => {
   await api.post(`/v1/queues/${q.name}/resume`)
-  ElMessage.success(`${q.name} resumed`)
+  ElMessage.success(`${q.name} ${t('queue.resume').toLowerCase()}d`)
   loadQueues()
 }
 
