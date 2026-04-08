@@ -20,6 +20,8 @@ export interface IFeed {
   subject?: string;
   // Trend source info
   trendSource?: string;
+  trendTopic?: string;
+  trendSummary?: string;
   trendSentiment?: number;
   trendEngagement?: number;
   pullTime?: Date;

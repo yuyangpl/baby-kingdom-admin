@@ -58,7 +58,7 @@ export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { d
     },
 
     async getById(req: Request, res: Response) {
-      const doc = await findDoc(req.params.id);
+      const doc = await findDoc(req.params.id as string);
       if (!doc) throw new NotFoundError(resourceName);
       return success(res, doc);
     },
@@ -80,7 +80,7 @@ export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { d
     },
 
     async update(req: Request, res: Response) {
-      const doc = await findDoc(req.params.id);
+      const doc = await findDoc(req.params.id as string);
       if (!doc) throw new NotFoundError(resourceName);
 
       const before = doc.toObject();
@@ -102,7 +102,7 @@ export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { d
     },
 
     async remove(req: Request, res: Response) {
-      const doc = await findDoc(req.params.id);
+      const doc = await findDoc(req.params.id as string);
       if (!doc) throw new NotFoundError(resourceName);
 
       await ModelRef.findByIdAndDelete(doc._id);

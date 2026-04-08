@@ -14,7 +14,7 @@ interface ConfigPreset {
 export const CONFIG_PRESETS: ConfigPreset[] = [
   // -- MediaLens API --
   { key: 'MEDIALENS_BASE_URL', value: 'https://medialens-skills-api-1012814233357.asia-east1.run.app/api/v1', category: 'medialens', description: 'MediaLens API base URL' },
-  { key: 'MEDIALENS_AUTH_EMAIL', value: 'info@tapnow.com', category: 'medialens', description: 'MediaLens OTP auth email' },
+  { key: 'MEDIALENS_AUTH_EMAIL', value: 'yu.yang@mintinglabs.com', category: 'medialens', description: 'MediaLens OTP auth email' },
   { key: 'MEDIALENS_JWT_TOKEN', value: '', category: 'medialens', description: 'MediaLens JWT token (auto-cached)', isSecret: true },
   { key: 'MEDIALENS_COUNTRY', value: 'HK', category: 'medialens', description: 'MediaLens country filter' },
   { key: 'TREND_PULL_INTERVAL_HRS', value: '1', category: 'medialens', description: 'Trend pull interval (hours)' },
@@ -65,15 +65,15 @@ export const CONFIG_PRESETS: ConfigPreset[] = [
   { key: 'SCANNER_TIMEOUT_MINUTES', value: '5', category: 'scanner', description: 'Scanner timeout minutes' },
 
   // -- General --
-  { key: 'ADMIN_EMAILS', value: 'admin@presslogic.com', category: 'general', description: 'Admin email addresses' },
+  { key: 'ADMIN_EMAILS', value: 'yu.yang@mintinglabs.com', category: 'general', description: 'Admin email addresses' },
   { key: 'TIMEZONE', value: 'Asia/Hong_Kong', category: 'general', description: 'System timezone' },
   { key: 'LOG_RETENTION_DAYS', value: '90', category: 'general', description: 'Audit log retention days' },
   { key: 'MAX_POSTS_PER_DAY', value: '3', category: 'general', description: 'Global max posts per day' },
 
   // --- Email ---
-  { key: 'SMTP_HOST', value: '', category: 'email', description: 'SMTP server hostname' },
+  { key: 'SMTP_HOST', value: 'smtp.gmail.com', category: 'email', description: 'SMTP server hostname' },
   { key: 'SMTP_PORT', value: '587', category: 'email', description: 'SMTP server port' },
-  { key: 'SMTP_USER', value: '', category: 'email', description: 'SMTP authentication username' },
+  { key: 'SMTP_USER', value: 'yu.yang@mintinglabs.com', category: 'email', description: 'SMTP authentication username' },
   { key: 'SMTP_PASS', value: '', category: 'email', description: 'SMTP authentication password', isSecret: true },
-  { key: 'SMTP_FROM', value: 'BK Admin <noreply@baby-kingdom.com>', category: 'email', description: 'Sender address for alert emails' },
+  { key: 'SMTP_FROM', value: 'BK Admin <yu.yang@mintinglabs.com>', category: 'email', description: 'Sender address for alert emails' },
 ];

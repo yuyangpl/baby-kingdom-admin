@@ -3,11 +3,11 @@
     <h1 class="page-title">{{ $t('dashboard.title') }}</h1>
 
     <!-- Section 1: Real-time Status -->
-    <div class="grid grid--5" style="margin-top: 20px">
+    <div class="grid grid--5 section-gap-sm">
       <template v-if="loadingRealtime">
         <div v-for="i in 5" :key="'skel-rt-' + i" class="dash-card">
-          <div class="skeleton" style="width: 60%; height: 14px; margin-bottom: 12px" />
-          <div class="skeleton" style="width: 40%; height: 24px" />
+          <div class="skeleton skel--label" />
+          <div class="skeleton skel--value" />
         </div>
       </template>
       <template v-else>
@@ -43,45 +43,53 @@
     <div class="grid grid--5">
       <template v-if="loadingToday">
         <div v-for="i in 5" :key="'skel-ts-' + i" class="dash-card">
-          <div class="skeleton" style="width: 50%; height: 12px; margin-bottom: 12px" />
-          <div class="skeleton" style="width: 60%; height: 28px" />
+          <div class="skeleton skel--label" />
+          <div class="skeleton skel--value" />
         </div>
       </template>
       <template v-else>
-        <div v-for="stat in todayStats" :key="stat.label" class="dash-card">
-          <span class="dash-card__label">{{ stat.label }}</span>
-          <span class="dash-card__value">{{ stat.value }}</span>
-          <span v-if="stat.sub" class="dash-card__sub">{{ stat.sub }}</span>
+        <div v-for="stat in todayStats" :key="stat.label" class="dash-card dash-card--stat">
+          <div class="dash-card__body">
+            <span class="dash-card__label">{{ stat.label }}</span>
+            <span class="dash-card__value">{{ stat.value }}</span>
+            <span v-if="stat.sub" class="dash-card__sub">{{ stat.sub }}</span>
+          </div>
+          <el-icon v-if="stat.icon" class="dash-card__icon">
+            <component :is="stat.icon" />
+          </el-icon>
         </div>
       </template>
     </div>
 
-    <!-- Section 3: Recent Activity + 7-Day Trends -->
-    <div class="grid grid--3-2" style="margin-top: 24px">
-      <!-- Recent Activity (2/3) -->
+    <!-- Section 3: System Health + 7-Day Trends -->
+    <div class="grid grid--3-2 grid--stretch section-gap">
+      <!-- System Health (2/3) -->
       <el-card class="dash-section-card" shadow="never">
-        <template #header>{{ $t('dashboard.recentActivity') }}</template>
-        <template v-if="loadingRecent">
-          <div v-for="i in 5" :key="'skel-ra-' + i" style="display: flex; gap: 12px; margin-bottom: 16px">
+        <template #header>{{ $t('dashboard.systemHealth') }}</template>
+        <template v-if="loadingHealth">
+          <div v-for="i in 4" :key="'skel-sh-' + i" style="display: flex; gap: 12px; margin-bottom: 14px">
             <div class="skeleton" style="width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px" />
             <div style="flex: 1">
-              <div class="skeleton" style="width: 80%; height: 14px; margin-bottom: 6px" />
+              <div class="skeleton" style="width: 60%; height: 14px; margin-bottom: 4px" />
               <div class="skeleton" style="width: 40%; height: 12px" />
             </div>
           </div>
         </template>
-        <div v-else-if="recentFeeds.length === 0" class="dash-empty">{{ $t('common.noData') }}</div>
-        <el-timeline v-else>
-          <el-timeline-item
-            v-for="item in recentFeeds"
-            :key="item._id"
-            :timestamp="new Date(item.updatedAt).toLocaleString()"
-            placement="top"
-            :color="getTimelineColor(item.status)"
-          >
-            {{ item.feedId }} - {{ item.status }} - {{ item.threadSubject?.substring(0, 40) }}
-          </el-timeline-item>
-        </el-timeline>
+        <div v-else class="health-grid">
+          <div v-for="svc in serviceList" :key="svc.name" class="health-card" :class="'health-card--' + healthCardType(svc.status)">
+            <div class="health-card__header">
+              <el-icon class="health-card__icon" :class="'health-card__icon--' + healthCardType(svc.status)">
+                <CircleCheckFilled v-if="healthCardType(svc.status) === 'ok'" />
+                <WarningFilled v-else-if="healthCardType(svc.status) === 'warn'" />
+                <CircleCloseFilled v-else-if="healthCardType(svc.status) === 'error'" />
+                <InfoFilled v-else />
+              </el-icon>
+              <span class="health-card__name">{{ svc.name }}</span>
+            </div>
+            <div class="health-card__status">{{ healthStatusText(svc.status) }}</div>
+            <div v-if="svc.detail" class="health-card__detail">{{ svc.detail }}</div>
+          </div>
+        </div>
       </el-card>
 
       <!-- 7-Day Trends (1/3) -->
@@ -93,7 +101,10 @@
             <div class="skeleton" style="width: 100%; height: 16px; border-radius: 8px" />
           </div>
         </template>
-        <div v-else-if="weeklyStats.length === 0" class="dash-empty">{{ $t('common.noData') }}</div>
+        <div v-else-if="weeklyStats.length === 0" class="dash-empty">
+          <el-icon class="dash-empty__icon"><TrendCharts /></el-icon>
+          <span>{{ $t('common.noData') }}</span>
+        </div>
         <div v-else class="weekly-bars">
           <div v-for="day in weeklyStats" :key="day.date" class="weekly-bar-row">
             <span class="weekly-bar-row__label">{{ day.date }}</span>
@@ -109,55 +120,68 @@
       </el-card>
     </div>
 
-    <!-- Section 4: Quality & Cost + System Health -->
-    <div class="grid grid--3-2" style="margin-top: 24px">
-      <!-- Quality & Cost (3/5) -->
+    <!-- Section 4: Recent Activity + Quality & Cost -->
+    <div class="grid grid--3-2 section-gap">
+      <!-- Recent Activity (2/3) -->
       <el-card class="dash-section-card" shadow="never">
-        <template #header>{{ $t('common.qualityCost') }}</template>
-        <div class="quality-grid">
-          <div class="quality-card">
-            <span class="quality-card__label">{{ $t('common.approvalRate') }}</span>
-            <span class="quality-card__value">{{ qualityData.approvalRate }}</span>
-          </div>
-          <div class="quality-card">
-            <span class="quality-card__label">{{ $t('common.avgReviewTime') }}</span>
-            <span class="quality-card__value">{{ qualityData.avgReviewTime }}</span>
-          </div>
-          <div class="quality-card">
-            <span class="quality-card__label">{{ $t('common.apiCost') }}</span>
-            <span class="quality-card__value">{{ qualityData.apiCost }}</span>
-          </div>
-          <div class="quality-card">
-            <span class="quality-card__label">{{ $t('common.personaPerformance') }}</span>
-            <span class="quality-card__value">{{ qualityData.personaPerformance }}</span>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- System Health (2/5) -->
-      <el-card class="dash-section-card" shadow="never">
-        <template #header>{{ $t('dashboard.systemHealth') }}</template>
-        <template v-if="loadingHealth">
-          <div v-for="i in 4" :key="'skel-sh-' + i" style="display: flex; gap: 12px; margin-bottom: 14px">
+        <template #header>{{ $t('dashboard.recentActivity') }}</template>
+        <template v-if="loadingRecent">
+          <div v-for="i in 5" :key="'skel-ra-' + i" style="display: flex; gap: 12px; margin-bottom: 16px">
             <div class="skeleton" style="width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px" />
             <div style="flex: 1">
-              <div class="skeleton" style="width: 60%; height: 14px; margin-bottom: 4px" />
+              <div class="skeleton" style="width: 80%; height: 14px; margin-bottom: 6px" />
               <div class="skeleton" style="width: 40%; height: 12px" />
             </div>
           </div>
         </template>
-        <div v-else class="health-list">
-          <div v-for="svc in serviceList" :key="svc.name" class="health-row">
-            <span
-              class="status-dot"
-              :class="healthDotClass(svc.status)"
-            />
-            <div class="health-row__info">
-              <span class="health-row__name">{{ svc.name }}</span>
-              <span class="health-row__status">{{ healthStatusText(svc.status) }}</span>
-              <span v-if="svc.detail" class="health-row__detail">{{ svc.detail }}</span>
-              <span v-if="svc.checkedAt" class="health-row__time">{{ formatTimeAgo(svc.checkedAt) }}</span>
+        <div v-else-if="recentFeeds.length === 0" class="dash-empty">
+          <el-icon class="dash-empty__icon"><Document /></el-icon>
+          <span>{{ $t('common.noData') }}</span>
+        </div>
+        <el-timeline v-else>
+          <el-timeline-item
+            v-for="item in recentFeeds"
+            :key="item._id"
+            :timestamp="new Date(item.updatedAt).toLocaleString()"
+            placement="top"
+            :color="getTimelineColor(item.status)"
+          >
+            {{ item.feedId }} - {{ item.status }} - {{ item.threadSubject?.substring(0, 40) }}
+          </el-timeline-item>
+        </el-timeline>
+      </el-card>
+
+      <!-- Quality & Cost (1/3) -->
+      <el-card class="dash-section-card dash-section-card--auto" shadow="never">
+        <template #header>{{ $t('common.qualityCost') }}</template>
+        <div class="quality-grid">
+          <div class="quality-card">
+            <div class="quality-card__body">
+              <span class="quality-card__label">{{ $t('common.approvalRate') }}</span>
+              <span class="quality-card__value">{{ qualityData.approvalRate }}</span>
             </div>
+            <el-icon class="quality-card__icon"><CircleCheck /></el-icon>
+          </div>
+          <div class="quality-card">
+            <div class="quality-card__body">
+              <span class="quality-card__label">{{ $t('common.avgReviewTime') }}</span>
+              <span class="quality-card__value">{{ qualityData.avgReviewTime }}</span>
+            </div>
+            <el-icon class="quality-card__icon"><Timer /></el-icon>
+          </div>
+          <div class="quality-card">
+            <div class="quality-card__body">
+              <span class="quality-card__label">{{ $t('common.apiCost') }}</span>
+              <span class="quality-card__value">{{ qualityData.apiCost }}</span>
+            </div>
+            <el-icon class="quality-card__icon"><Coin /></el-icon>
+          </div>
+          <div class="quality-card">
+            <div class="quality-card__body">
+              <span class="quality-card__label">{{ $t('common.personaPerformance') }}</span>
+              <span class="quality-card__value">{{ qualityData.personaPerformance }}</span>
+            </div>
+            <el-icon class="quality-card__icon"><User /></el-icon>
           </div>
         </div>
       </el-card>
@@ -181,6 +205,7 @@ interface TodayStat {
   label: string;
   value: string | number;
   sub?: string;
+  icon?: string;
 }
 
 interface RecentFeed {
@@ -227,6 +252,13 @@ const serviceList = computed(() => {
     checkedAt: val?.checkedAt || null,
   }));
 });
+
+function healthCardType(status: string): string {
+  if (['connected', 'valid', 'operational'].includes(status)) return 'ok';
+  if (['disconnected', 'expired'].includes(status)) return 'error';
+  if (['expiring_soon', 'no_recent_activity'].includes(status)) return 'warn';
+  return 'neutral';
+}
 
 function healthDotClass(status: string): string {
   if (['connected', 'valid', 'operational'].includes(status)) return 'status-dot--success';
@@ -290,11 +322,11 @@ onMounted(async () => {
     const d = res.data || {};
     const approvalRate = Math.round((d.quality?.approvalRate || 0) * 100);
     todayStats.value = [
-      { label: t('common.scanned'), value: d.scanner?.scanned || 0 },
-      { label: t('common.hitRate'), value: `${Math.round((d.scanner?.hitRate || 0) * 100)}%` },
-      { label: t('common.drafts'), value: d.feeds?.generated || 0 },
-      { label: t('common.posted'), value: `${d.feeds?.posted || 0}/${d.feeds?.approved || 0}` },
-      { label: t('common.newTrends'), value: d.trends?.pulled || 0 },
+      { label: t('common.scanned'), value: d.scanner?.scanned || 0, icon: 'Search' },
+      { label: t('common.hitRate'), value: `${Math.round((d.scanner?.hitRate || 0) * 100)}%`, icon: 'Aim' },
+      { label: t('common.drafts'), value: d.feeds?.generated || 0, icon: 'Document' },
+      { label: t('common.posted'), value: `${d.feeds?.posted || 0}/${d.feeds?.approved || 0}`, icon: 'Promotion' },
+      { label: t('common.newTrends'), value: d.trends?.pulled || 0, icon: 'TrendCharts' },
     ];
     qualityData.value = {
       approvalRate: `${approvalRate}%`,
@@ -324,6 +356,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ---- Spacing ---- */
+.section-gap-sm { margin-top: 16px; }
+.section-gap { margin-top: 24px; }
+
+/* ---- Skeleton ---- */
+.skel--label { width: 55%; height: 14px; margin-bottom: 12px; }
+.skel--value { width: 45%; height: 24px; }
+
 /* ---- Grid layouts ---- */
 .grid {
   display: grid;
@@ -336,6 +376,17 @@ onMounted(async () => {
 
 .grid--3-2 {
   grid-template-columns: 3fr 2fr;
+}
+.grid--stretch {
+  align-items: stretch;
+}
+.grid--stretch > .dash-section-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.grid--stretch > .dash-section-card :deep(.el-card__body) {
+  flex: 1;
 }
 
 @media (max-width: 1024px) {
@@ -384,21 +435,38 @@ onMounted(async () => {
   gap: 8px;
 }
 
+.dash-card--stat {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+.dash-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dash-card__icon {
+  font-size: 28px;
+  color: var(--el-color-primary-light-5);
+  flex-shrink: 0;
+}
 .dash-card__value {
   font-size: 24px;
   font-weight: 700;
   color: var(--bk-foreground);
+  font-variant-numeric: tabular-nums;
 }
 
 .dash-card__sub {
   font-size: 11px;
-  color: #94A3B8;
+  color: var(--bk-muted-fg);
 }
 
 .dash-card__pending-value {
   font-size: 32px;
   font-weight: 700;
   color: var(--bk-warning);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Section card ---- */
@@ -408,12 +476,25 @@ onMounted(async () => {
   border: 1px solid var(--bk-border);
   border-radius: var(--bk-radius);
 }
+.dash-section-card--auto {
+  min-height: auto;
+  height: fit-content;
+  align-self: start;
+}
 
 .dash-empty {
   color: var(--bk-muted-fg);
   font-size: 14px;
   text-align: center;
-  padding: 24px 0;
+  padding: 32px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.dash-empty__icon {
+  font-size: 32px;
+  color: var(--el-text-color-placeholder);
 }
 
 /* ---- Weekly bars ---- */
@@ -461,8 +542,19 @@ onMounted(async () => {
   border-radius: var(--bk-radius);
   padding: 14px;
   display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+.quality-card__body {
+  display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.quality-card__icon {
+  font-size: 22px;
+  color: var(--el-color-primary-light-5);
+  flex-shrink: 0;
 }
 
 .quality-card__label {
@@ -474,47 +566,61 @@ onMounted(async () => {
   font-size: 20px;
   font-weight: 700;
   color: var(--bk-foreground);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Health list ---- */
-.health-list {
+.health-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.health-card {
+  border-radius: var(--bk-radius-sm);
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
+  border: 1px solid var(--bk-border);
+  background: var(--bk-muted);
 }
-
-.health-row {
+.health-card--ok {
+  border-color: var(--el-color-success-light-5);
+  background: var(--el-color-success-light-9);
+}
+.health-card--error {
+  border-color: var(--el-color-danger-light-5);
+  background: var(--el-color-danger-light-9);
+}
+.health-card--warn {
+  border-color: var(--el-color-warning-light-5);
+  background: var(--el-color-warning-light-9);
+}
+.health-card__header {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
 }
-
-.health-row .status-dot {
-  margin-top: 5px;
+.health-card__icon {
+  font-size: 16px;
   flex-shrink: 0;
 }
-
-.health-row__info {
-  display: flex;
-  flex-direction: column;
+.health-card__icon--ok { color: var(--el-color-success); }
+.health-card__icon--error { color: var(--el-color-danger); }
+.health-card__icon--warn { color: var(--el-color-warning); }
+.health-card__icon--neutral { color: var(--el-text-color-secondary); }
+.health-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bk-foreground);
 }
-
-.health-row__name {
-  font-size: 14px;
+.health-card__status {
+  font-size: 13px;
   font-weight: 500;
   color: var(--bk-foreground);
 }
-
-.health-row__status {
-  font-size: 13px;
-  color: var(--bk-foreground);
-}
-.health-row__detail {
+.health-card__detail {
   font-size: 12px;
   color: var(--bk-muted-fg);
-}
-.health-row__time {
-  font-size: 11px;
-  color: var(--el-text-color-placeholder);
 }
 </style>

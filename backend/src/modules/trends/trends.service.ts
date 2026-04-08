@@ -23,7 +23,7 @@ interface RawTrend {
  * Pull trends from MediaLens API.
  * Returns pulled trends array.
  */
-export async function pullTrends() {
+export async function pullTrends(): Promise<{ trends: any[]; feedsGenerated: number }> {
   const baseUrl = await configService.getValue('MEDIALENS_BASE_URL');
   const jwtToken = await configService.getValue('MEDIALENS_JWT_TOKEN');
   const country = await configService.getValue('MEDIALENS_COUNTRY') || 'HK';
@@ -32,7 +32,7 @@ export async function pullTrends() {
 
   if (!baseUrl || !jwtToken) {
     logger.warn('MediaLens not configured, skipping trend pull');
-    return [];
+    return { trends: [], feedsGenerated: 0 };
   }
 
   const sources = await getEnabledSources();

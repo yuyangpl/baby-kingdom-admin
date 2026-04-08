@@ -155,7 +155,8 @@ export async function seedAdmin() {
   const { ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
   if (!ADMIN_USERNAME || !ADMIN_EMAIL || !ADMIN_PASSWORD) return;
 
-  const exists = await User.findOne({ email: ADMIN_EMAIL });
+  // Skip if any admin user already exists
+  const exists = await User.findOne({ $or: [{ email: ADMIN_EMAIL }, { username: ADMIN_USERNAME }, { role: 'admin' }] });
   if (exists) return;
 
   await User.create({
