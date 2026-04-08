@@ -41,22 +41,22 @@
         style="width: 100%"
         highlight-current-row
       >
-        <el-table-column prop="postId" :label="$t('poster.postId')" width="110" />
-        <el-table-column prop="feedId" :label="$t('feed.feedId')" width="110" />
-        <el-table-column prop="persona" :label="$t('feed.persona')" width="120" />
-        <el-table-column prop="board" :label="$t('poster.board')" width="120" />
-        <el-table-column prop="type" :label="$t('poster.type')" width="90" />
-        <el-table-column prop="scheduledAt" :label="$t('poster.scheduled')" width="170">
+        <el-table-column prop="postId" :label="$t('poster.postId')" min-width="110" />
+        <el-table-column prop="feedId" :label="$t('feed.feedId')" min-width="110" />
+        <el-table-column prop="persona" :label="$t('feed.persona')" min-width="120" />
+        <el-table-column prop="board" :label="$t('poster.board')" min-width="120" />
+        <el-table-column prop="type" :label="$t('poster.type')" min-width="90" />
+        <el-table-column prop="scheduledAt" :label="$t('poster.scheduled')" min-width="170">
           <template #default="{ row }">
             {{ row.scheduledAt ? new Date(row.scheduledAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" :label="$t('common.status')" width="100">
+        <el-table-column prop="status" :label="$t('common.status')" min-width="100">
           <template #default>
             <el-tag type="primary" size="small" effect="light">{{ $t('poster.queued') }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="" width="90" align="center">
+        <el-table-column label="" min-width="90" align="center">
           <template #default="{ row }">
             <el-button type="danger" size="small" link @click="cancelJob(row)">{{ $t('common.cancel') }}</el-button>
           </template>
@@ -75,17 +75,17 @@
         style="width: 100%"
         highlight-current-row
       >
-        <el-table-column prop="postId" :label="$t('poster.postId')" width="110" />
-        <el-table-column prop="feedId" :label="$t('feed.feedId')" width="110" />
-        <el-table-column prop="persona" :label="$t('feed.persona')" width="120" />
-        <el-table-column prop="board" :label="$t('poster.board')" width="120" />
-        <el-table-column prop="type" :label="$t('poster.type')" width="90" />
-        <el-table-column prop="postedAt" :label="$t('poster.posted')" width="170">
+        <el-table-column prop="postId" :label="$t('poster.postId')" min-width="110" />
+        <el-table-column prop="feedId" :label="$t('feed.feedId')" min-width="110" />
+        <el-table-column prop="persona" :label="$t('feed.persona')" min-width="120" />
+        <el-table-column prop="board" :label="$t('poster.board')" min-width="120" />
+        <el-table-column prop="type" :label="$t('poster.type')" min-width="90" />
+        <el-table-column prop="postedAt" :label="$t('poster.posted')" min-width="170">
           <template #default="{ row }">
             {{ row.postedAt ? new Date(row.postedAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" :label="$t('common.status')" width="100">
+        <el-table-column prop="status" :label="$t('common.status')" min-width="100">
           <template #default="{ row }">
             <el-tag
               :type="row.status === 'posted' || row.status === 'success' ? 'success' : row.status === 'failed' ? 'danger' : 'info'"

@@ -51,7 +51,7 @@
       <!-- Quick filter chips -->
       <div class="filter-chips">
         <el-tag
-          v-for="src in ['bk-forum', 'google-trends', 'medialens', 'custom']"
+          v-for="src in ['scanner', 'trends', 'custom']"
           :key="src"
           :type="feedStore.filters.source === src ? 'primary' : 'info'"
           :effect="feedStore.filters.source === src ? 'dark' : 'plain'"
@@ -93,13 +93,13 @@
             />
             <code class="feed-id-chip">{{ feed.feedId }}</code>
             <span class="feed-card__time">{{ formatTime(feed.createdAt) }}</span>
-            <span v-if="feed.trendSummary || feed.threadTid" class="feed-card__meta">
-              {{ feed.trendSummary || `${feed.source === 'scanner' ? 'BK 論壇掃描' : feed.source === 'trends' ? '趨勢話題' : '自訂生成'} · tid:${feed.threadTid || '-'} · fid:${feed.threadFid || '-'}` }}
+            <span v-if="feed.threadTid || feed.threadFid" class="feed-card__meta">
+              tid:{{ feed.threadTid || '-' }} · fid:{{ feed.threadFid || '-' }}
             </span>
           </div>
           <div class="feed-card__header-right">
             <el-tag :type="statusType(feed.status)" size="small">{{ feed.status }}</el-tag>
-            <el-tag size="small" effect="plain">{{ feed.source }}</el-tag>
+            <el-tag size="small" effect="plain">{{ $t(`feed.sources.${feed.source}`) }}</el-tag>
           </div>
         </div>
 
@@ -108,7 +108,10 @@
           <!-- Left: Content -->
           <div class="feed-card__content">
             <div class="feed-card__subject">
-              {{ feed.threadSubject }}
+              <el-tag v-if="feed.postType" size="small" :type="feed.postType === 'new-post' ? 'warning' : 'info'" effect="plain" style="margin-right: 6px;">
+                {{ feed.postType === 'new-post' ? $t('common.newPost') : $t('common.reply') }}
+              </el-tag>
+              {{ feed.subject || feed.threadSubject }}
               <a
                 v-if="feed.threadTid"
                 class="feed-card__view-thread"
@@ -118,8 +121,11 @@
                 @click.stop
               >{{ $t('feed.viewThread') }} ↗</a>
             </div>
+            <div v-if="feed.trendSummary" class="feed-card__trend-summary">
+              {{ feed.trendSummary }}
+            </div>
             <div v-if="feed.draftContent" class="feed-card__preview">
-              <span class="feed-card__preview-label">{{ $t('feed.replyContent') }}</span>
+              <span class="feed-card__preview-label">{{ feed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
               {{ truncate(feed.draftContent, 160) }}
             </div>
             <div v-if="feed.finalContent" class="feed-card__draft-box">
@@ -737,6 +743,12 @@ onMounted(() => {
 }
 .feed-card__view-thread:hover {
   text-decoration: underline;
+}
+.feed-card__trend-summary {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+  margin-bottom: 8px;
 }
 .feed-card__preview {
   font-size: 13px;

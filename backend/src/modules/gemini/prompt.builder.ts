@@ -89,12 +89,16 @@ ${sensitivityTier ? `敏感度：Tier ${sensitivityTier}` : ''}`);
   const maxChars = await configService.getValue('MEDIUM_POST_MAX_CHARS') || '300';
   const postTypeLabel = postType === 'new-post' ? '新帖' : '回覆';
   const lengthLabel = parseInt(maxChars) <= 150 ? '短' : parseInt(maxChars) <= 300 ? '中' : '長';
-  blocks.push(
-    taskTemplate
-      .replace('{max_chars}', maxChars)
-      .replace('{post_type}', postTypeLabel)
-      .replace('{length}', lengthLabel),
-  );
+  const taskText = taskTemplate
+    .replace('{max_chars}', maxChars)
+    .replace('{post_type}', postTypeLabel)
+    .replace('{length}', lengthLabel);
+  blocks.push(taskText);
+
+  // For new posts, ask Gemini to also generate a subject line
+  if (postType === 'new-post') {
+    blocks.push('請同時寫一個帖子標題（20字以內，自然口語化，唔好用括號或標籤）。\n格式：\n標題：xxx\n正文：xxx');
+  }
 
   return {
     systemPrompt,

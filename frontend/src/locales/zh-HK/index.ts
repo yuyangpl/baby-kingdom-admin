@@ -188,11 +188,11 @@ export default {
     failReason: '失敗原因',
     viewThread: '查看原帖',
     replyContent: '回覆內容',
+    newPostContent: '新帖內容',
     sources: {
-      'bk-forum': 'BK 論壇',
-      'google-trends': 'Google 趨勢',
-      medialens: 'MediaLens',
-      custom: '自訂',
+      scanner: 'BK 論壇掃描',
+      trends: '趨勢話題',
+      custom: '自訂生成',
     },
     placeholder: {
       topic: '輸入話題或主題',

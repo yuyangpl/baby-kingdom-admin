@@ -51,25 +51,25 @@
         style="width: 100%"
         highlight-current-row
       >
-        <el-table-column prop="startedAt" :label="$t('common.time')" width="170">
+        <el-table-column prop="startedAt" :label="$t('common.time')" min-width="170">
           <template #default="{ row }">
             {{ row.startedAt ? new Date(row.startedAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="duration" :label="$t('common.duration')" width="110">
+        <el-table-column prop="duration" :label="$t('common.duration')" min-width="100">
           <template #default="{ row }">
             {{ row.duration ? `${row.duration}s` : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="boardsScanned" :label="$t('scanner.boards')" width="90" align="center" />
-        <el-table-column prop="threadsScanned" :label="$t('scanner.threads')" width="100" align="center" />
-        <el-table-column prop="hits" :label="$t('scanner.hits')" width="90" align="center">
+        <el-table-column prop="boardsScanned" :label="$t('scanner.boards')" min-width="90" align="center" />
+        <el-table-column prop="threadsScanned" :label="$t('scanner.threads')" min-width="90" align="center" />
+        <el-table-column prop="hits" :label="$t('scanner.hits')" min-width="80" align="center">
           <template #default="{ row }">
             <span class="text-success">{{ row.hits ?? 0 }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="feedsCreated" :label="$t('scanner.feeds')" width="90" align="center" />
-        <el-table-column prop="status" :label="$t('common.status')">
+        <el-table-column prop="feedsCreated" :label="$t('scanner.feeds')" min-width="80" align="center" />
+        <el-table-column prop="status" :label="$t('common.status')" min-width="100">
           <template #default="{ row }">
             <el-tag
               :type="row.status === 'completed' ? 'success' : row.status === 'error' ? 'danger' : 'info'"

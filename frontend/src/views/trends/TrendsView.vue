@@ -120,12 +120,23 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination-wrapper" v-if="pagination.pages > 1">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          :page-size="pagination.limit"
+          :total="pagination.total"
+          layout="prev, pager, next"
+          @current-change="loadTrends"
+        />
+      </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
@@ -139,9 +150,11 @@ const pulling = ref(false)
 const tokenValid = ref(true)
 const tokenExpiry = ref('')
 
+const pagination = reactive({ page: 1, limit: 20, total: 0, pages: 0 })
+
 const sources = reactive({
   mediaLens: true,
-  lihkg: true,
+  lihkg: false,
   facebook: false,
 })
 
@@ -180,9 +193,14 @@ const sentimentRowClass = ({ row }: { row: any }): string => {
 const loadTrends = async () => {
   loading.value = true
   try {
-    const res = await api.get('/v1/trends')
+    const res: any = await api.get('/v1/trends', {
+      params: { page: pagination.page, limit: pagination.limit }
+    })
     const payload = res.data ?? res
     trends.value = Array.isArray(payload) ? payload : (payload.data ?? [])
+    if (res.pagination) {
+      Object.assign(pagination, res.pagination)
+    }
   } finally {
     loading.value = false
   }
@@ -290,6 +308,12 @@ onMounted(() => {
 
 .text-muted {
   color: var(--bk-muted-fg);
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>
 

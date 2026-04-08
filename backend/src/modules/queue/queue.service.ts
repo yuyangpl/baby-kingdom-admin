@@ -52,7 +52,8 @@ export async function getQueueStatus(name: string) {
 
   const counts = await q.getJobCounts('waiting', 'active', 'completed', 'failed', 'paused');
   const isPaused = await q.isPaused();
-  return { name, status: isPaused ? 'paused' : 'running', counts };
+  const status = isPaused ? 'paused' : counts.active > 0 ? 'running' : 'idle';
+  return { name, status, counts };
 }
 
 export async function pauseQueue(name: string, userId: string, ip: string) {

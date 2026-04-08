@@ -183,10 +183,10 @@ export default {
     failReason: 'Fail Reason',
     viewThread: 'View Thread',
     replyContent: 'Reply',
+    newPostContent: 'New Post',
     sources: {
-      'bk-forum': 'BK Forum',
-      'google-trends': 'Google Trends',
-      medialens: 'MediaLens',
+      scanner: 'BK Forum Scan',
+      trends: 'Trends',
       custom: 'Custom',
     },
     placeholder: {

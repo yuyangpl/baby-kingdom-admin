@@ -401,7 +401,25 @@ export async function generateFromTrend(trend: any): Promise<string | null> {
     // 4. Call Gemini
     const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
     const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
-    const draftContent = xss(rawContent);
+    if (!rawContent) return null;
+
+    // 4b. Parse subject + content for new posts
+    let subject = '';
+    let draftContent: string;
+    if (postType === 'new-post') {
+      const subjectMatch = rawContent.match(/標題[：:]\s*(.+)/);
+      const contentMatch = rawContent.match(/正文[：:]\s*([\s\S]+)/);
+      if (subjectMatch && contentMatch) {
+        subject = xss(subjectMatch[1].trim()).substring(0, 80);
+        draftContent = xss(contentMatch[1].trim());
+      } else {
+        // Fallback: use topic as subject, full output as content
+        subject = trend.topicLabel.substring(0, 40);
+        draftContent = xss(rawContent);
+      }
+    } else {
+      draftContent = xss(rawContent);
+    }
     if (!draftContent) return null;
 
     const quality = checkQuality(draftContent, persona);
@@ -425,7 +443,8 @@ export async function generateFromTrend(trend: any): Promise<string | null> {
       toneMode: promptResult.resolvedToneMode,
       sensitivityTier: `Tier ${tier}`,
       postType,
-      subject: postType === 'new-post' ? `[分享] ${trend.topicLabel.substring(0, 25)}` : '',
+      subject,
+      threadSubject: subject,
       draftContent,
       charCount: draftContent.length,
       qualityWarnings: quality.warnings,
