@@ -120,6 +120,23 @@
           </div>
         </div>
 
+        <!-- BK Forum: Test Connection -->
+        <template v-if="tab.key === 'bk-forum'">
+          <div class="config-section">
+            <el-button type="primary" @click="testBkConnection" :loading="bkTestLoading">
+              {{ $t('config.testConnection') }}
+            </el-button>
+            <el-tag
+              v-if="bkTestResult"
+              :type="bkTestResult === 'connected' ? 'success' : bkTestResult === 'not_configured' ? 'warning' : 'danger'"
+              style="margin-left: 12px"
+            >
+              {{ bkTestResult === 'connected' ? $t('config.connectionSuccess') : bkTestResult === 'not_configured' ? $t('config.connectionNotConfigured') : `${$t('config.connectionFailed')}${bkTestDetail ? ': ' + bkTestDetail : ''}` }}
+            </el-tag>
+            <p class="config-section__note">{{ $t('config.testConnectionNote') }}</p>
+          </div>
+        </template>
+
         <!-- Email extra: Send Test -->
         <template v-if="tab.key === 'email'">
           <div class="config-section">
@@ -175,6 +192,11 @@ const startCountdown = (seconds = 60) => {
     }
   }, 1000)
 }
+
+// BK Forum test
+const bkTestLoading = ref<boolean>(false)
+const bkTestResult = ref<string>('')
+const bkTestDetail = ref<string>('')
 
 // Email test
 const testEmailLoading = ref<boolean>(false)
@@ -363,6 +385,29 @@ const loadTokenStatus = async () => {
   } catch {
     tokenValid.value = false
     tokenExpiry.value = ''
+  }
+}
+
+const testBkConnection = async () => {
+  bkTestLoading.value = true
+  bkTestResult.value = ''
+  bkTestDetail.value = ''
+  try {
+    const res: any = await api.get('/health/services')
+    const data = res.data || res
+    const bk = data.bkForum || {}
+    bkTestResult.value = bk.status || 'disconnected'
+    bkTestDetail.value = bk.detail || ''
+    if (bk.status === 'connected') {
+      ElMessage.success(t('config.connectionSuccess'))
+    } else {
+      ElMessage.error(`${t('config.connectionFailed')}${bk.detail ? ': ' + bk.detail : ''}`)
+    }
+  } catch (err: any) {
+    bkTestResult.value = 'disconnected'
+    ElMessage.error(err.message || t('config.connectionFailed'))
+  } finally {
+    bkTestLoading.value = false
   }
 }
 

@@ -652,6 +652,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 12px;
   min-height: 200px;
+  padding-top: 2px;
 }
 
 /* Individual Feed Card */

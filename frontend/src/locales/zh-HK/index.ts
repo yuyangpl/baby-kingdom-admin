@@ -416,6 +416,11 @@ export default {
     unlocked: '已解鎖',
     passwordWrong: '密碼錯誤',
     testEmailNote: '發送測試郵件到配置的收件人以驗證 SMTP 設定。',
+    testConnection: '驗證連接',
+    connectionSuccess: '連接正常',
+    connectionFailed: '連接失敗',
+    connectionNotConfigured: '尚未配置',
+    testConnectionNote: '驗證 BK 論壇 API 是否可正常連接。',
   },
 
   configDesc: {

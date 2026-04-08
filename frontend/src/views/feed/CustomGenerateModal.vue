@@ -38,13 +38,9 @@
       </el-form-item>
 
       <el-form-item :label="$t('feed.targetFid')" prop="targetFid">
-        <el-input-number
-          v-model="form.targetFid"
-          :min="0"
-          controls-position="right"
-          :placeholder="$t('feed.placeholder.targetFid')"
-          style="width: 100%"
-        />
+        <el-select v-model="form.targetFid" filterable clearable :placeholder="$t('feed.placeholder.targetFid')" style="width: 100%" :loading="boardsLoading">
+          <el-option v-for="b in boards" :key="b.fid" :label="`${b.name} (fid:${b.fid})`" :value="b.fid" />
+        </el-select>
       </el-form-item>
     </el-form>
 
@@ -83,6 +79,8 @@ const tones = ref<{ toneId: string; displayName: string }[]>([])
 const tonesLoading = ref(false)
 const personas = ref<{ accountId: string; username: string; archetype: string }[]>([])
 const personasLoading = ref(false)
+const boards = ref<{ fid: number; name: string }[]>([])
+const boardsLoading = ref(false)
 
 const loadOptions = async () => {
   if (tones.value.length === 0) {
@@ -101,6 +99,21 @@ const loadOptions = async () => {
       personas.value = (Array.isArray(list) ? list : []).map((p: any) => ({ accountId: p.accountId, username: p.username, archetype: p.archetype || '' }))
     } catch { /* ignore */ }
     personasLoading.value = false
+  }
+  if (boards.value.length === 0) {
+    boardsLoading.value = true
+    try {
+      const res = await api.get('/v1/forums')
+      const tree = res.data || res
+      const list: { fid: number; name: string }[] = []
+      for (const cat of (Array.isArray(tree) ? tree : [])) {
+        for (const b of (cat.boards || [])) {
+          list.push({ fid: b.fid, name: b.name })
+        }
+      }
+      boards.value = list
+    } catch { /* ignore */ }
+    boardsLoading.value = false
   }
 }
 

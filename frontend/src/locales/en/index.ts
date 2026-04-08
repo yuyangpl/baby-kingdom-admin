@@ -403,6 +403,11 @@ export default {
     unlocked: 'Unlocked',
     passwordWrong: 'Wrong password',
     testEmailNote: 'Sends a test email to the configured recipient to verify SMTP settings.',
+    testConnection: 'Test Connection',
+    connectionSuccess: 'Connection OK',
+    connectionFailed: 'Connection Failed',
+    connectionNotConfigured: 'Not configured',
+    testConnectionNote: 'Verify BK Forum API connectivity.',
   },
 
   configDesc: {
