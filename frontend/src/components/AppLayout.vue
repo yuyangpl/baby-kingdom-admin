@@ -30,6 +30,10 @@
             <el-icon class="nav-item__icon"><TrendCharts /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.trends') }}</span>
           </router-link>
+          <router-link v-if="auth.isAdmin" to="/google-trends" class="nav-item" :class="{ 'nav-item--active': $route.name === 'google-trends' }">
+            <el-icon class="nav-item__icon"><DataLine /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.googleTrends') }}</span>
+          </router-link>
           <router-link to="/poster" class="nav-item" :class="{ 'nav-item--active': $route.name === 'poster' }">
             <el-icon class="nav-item__icon"><Promotion /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.poster') }}</span>
@@ -61,10 +65,6 @@
           <router-link v-if="auth.isAdmin" to="/config" class="nav-item" :class="{ 'nav-item--active': $route.name === 'config' }">
             <el-icon class="nav-item__icon"><Setting /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.config') }}</span>
-          </router-link>
-          <router-link v-if="auth.isAdmin" to="/google-trends" class="nav-item" :class="{ 'nav-item--active': $route.name === 'google-trends' }">
-            <el-icon class="nav-item__icon"><DataLine /></el-icon>
-            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.googleTrends') }}</span>
           </router-link>
           <router-link to="/queues" class="nav-item" :class="{ 'nav-item--active': $route.name === 'queues' }">
             <el-icon class="nav-item__icon"><Operation /></el-icon>

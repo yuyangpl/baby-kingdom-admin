@@ -7,6 +7,9 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<a
   (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 router.get('/', authenticate, authorize('admin'), wrap(ctrl.getAll));
+router.post('/reset', authenticate, authorize('admin'), wrap(ctrl.resetDefaults));
+router.post('/test-email', authenticate, authorize('admin'), wrap(ctrl.testEmail));
+router.get('/reveal/:key', authenticate, authorize('admin'), wrap(ctrl.revealSecret));
 router.get('/:category', authenticate, authorize('admin'), wrap(ctrl.getByCategory));
 router.put('/:key', authenticate, authorize('admin'), wrap(ctrl.updateValue));
 

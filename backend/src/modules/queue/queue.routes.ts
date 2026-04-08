@@ -12,7 +12,9 @@ router.get('/:name', authenticate, wrap(ctrl.getOne));
 router.post('/:name/pause', authenticate, authorize('admin'), wrap(ctrl.pause));
 router.post('/:name/resume', authenticate, authorize('admin'), wrap(ctrl.resume));
 router.post('/:name/trigger', authenticate, authorize('admin'), wrap(ctrl.trigger));
+router.get('/:name/waiting', authenticate, wrap(ctrl.waitingJobs));
 router.get('/:name/jobs', authenticate, wrap(ctrl.jobHistory));
 router.post('/:name/jobs/:id/retry', authenticate, authorize('admin'), wrap(ctrl.retryJob));
+router.delete('/:name/jobs/:id', authenticate, authorize('admin'), wrap(ctrl.removeJob));
 
 export default router;

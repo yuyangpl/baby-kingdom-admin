@@ -100,6 +100,12 @@ export async function getMe(userId: string) {
   return user.toJSON();
 }
 
+export async function verifyPassword(userId: string, password: string): Promise<boolean> {
+  const user = await User.findById(userId).select('+password') as UserDocument | null;
+  if (!user) throw new NotFoundError('User');
+  return user.comparePassword(password);
+}
+
 export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
   const user = await User.findById(userId).select('+password') as UserDocument | null;
   if (!user) throw new NotFoundError('User');

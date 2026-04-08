@@ -12,6 +12,16 @@ import xss from 'xss';
 
 const CLAIM_EXPIRY_MINUTES = 10;
 
+/** Find feed by MongoDB _id or custom feedId field */
+async function findFeed(id: string) {
+  // Try _id first (24-char hex), then fall back to feedId field
+  if (/^[0-9a-fA-F]{24}$/.test(id)) {
+    const feed = await Feed.findById(id);
+    if (feed) return feed;
+  }
+  return Feed.findOne({ feedId: id });
+}
+
 interface FeedListParams {
   status?: string;
   source?: string;
@@ -48,7 +58,7 @@ export async function getById(id: string) {
 
 // --- Claim ---
 export async function claim(feedId: string, userId: string) {
-  const feed = await Feed.findById(feedId);
+  const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only claim pending feeds');
 
@@ -68,7 +78,7 @@ export async function claim(feedId: string, userId: string) {
 }
 
 export async function unclaim(feedId: string, userId: string) {
-  const feed = await Feed.findById(feedId);
+  const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
   if (feed.claimedBy?.toString() !== userId) {
@@ -84,7 +94,7 @@ export async function unclaim(feedId: string, userId: string) {
 
 // --- Approve / Reject ---
 export async function approve(feedId: string, userId: string, ip: string) {
-  const feed = await Feed.findById(feedId);
+  const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only approve pending feeds');
 
@@ -128,7 +138,7 @@ export async function approve(feedId: string, userId: string, ip: string) {
 }
 
 export async function reject(feedId: string, userId: string, notes: string | undefined, ip: string) {
-  const feed = await Feed.findById(feedId);
+  const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
 
@@ -152,7 +162,7 @@ export async function reject(feedId: string, userId: string, notes: string | und
 
 // --- Edit content ---
 export async function updateContent(feedId: string, content: string, userId: string, ip: string) {
-  const feed = await Feed.findById(feedId);
+  const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
   const cleanContent = xss(content);
@@ -172,7 +182,7 @@ export async function updateContent(feedId: string, content: string, userId: str
 
 // --- Regenerate ---
 export async function regenerate(feedId: string, { toneMode, personaAccountId }: { toneMode?: string; personaAccountId?: string } = {}, userId: string, ip: string) {
-  const feed = await Feed.findById(feedId);
+  const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
   const persona = personaAccountId || feed.personaId;
@@ -253,6 +263,8 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
     status: 'pending',
     source: 'custom',
     trendSource: 'CUSTOM',
+    trendTopic: topic,
+    trendSummary: '由管理員自訂主題生成',
     threadSubject: topic,
     threadFid: targetFid,
     personaId: persona.accountId,
@@ -306,4 +318,143 @@ function generateFeedId(): string {
   const ts = now.toISOString().replace(/[-:T]/g, '').slice(0, 12);
   const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
   return `FQ-${ts}-${rand}`;
+}
+
+// --- Trend → Feed Generation (ported from GAS FeedGenerator.js) ---
+
+/**
+ * Select the best persona for a trend topic.
+ * Priority: rule.priorityAccountIds → random from available.
+ * Filters: isActive, postsToday < maxPostsPerDay, topicBlacklist.
+ */
+async function selectPersonaForTrend(topicLabel: string, rule: any) {
+  const allPersonas = await Persona.find({ isActive: true });
+
+  const available = allPersonas.filter((p) => {
+    // Filter personas at daily limit
+    if ((p.postsToday ?? 0) >= (p.maxPostsPerDay ?? 3)) return false;
+    // Filter personas with topic in blacklist
+    if (p.topicBlacklist?.some((bl: string) =>
+      bl && topicLabel.toLowerCase().includes(bl.toLowerCase())
+    )) return false;
+    return true;
+  });
+
+  if (available.length === 0) return null;
+
+  // 1. Try rule priority accounts first
+  if (rule?.priorityAccountIds?.length) {
+    for (const accountId of rule.priorityAccountIds) {
+      const match = available.find((p) => p.accountId === accountId.trim());
+      if (match) return match;
+    }
+  }
+
+  // 2. Random from available
+  const shuffled = available.sort(() => Math.random() - 0.5);
+  return shuffled[0];
+}
+
+/**
+ * Resolve post type from rule preference.
+ * "new-post" | "reply" | "any" (any = 40% new post, 60% reply)
+ */
+function resolvePostType(rule: any): string {
+  if (!rule) return 'reply';
+  const pref = rule.postTypePreference || 'any';
+  if (pref === 'new-post') return 'new-post';
+  if (pref === 'reply') return 'reply';
+  return Math.random() < 0.4 ? 'new-post' : 'reply';
+}
+
+/**
+ * Generate a Feed draft from a Trend record.
+ * Called by pullTrends after storing new trends.
+ * Mirrors GAS FeedGenerator._generateFeedForTrend().
+ */
+export async function generateFromTrend(trend: any): Promise<string | null> {
+  try {
+    const tier = trend.sensitivityTier ?? autoAssignTier(trend.topicLabel);
+    const { matchTopicRule } = await import('../gemini/prompt.builder.js');
+    const rule = await matchTopicRule(trend.topicLabel);
+
+    // 1. Select persona
+    const persona = await selectPersonaForTrend(trend.topicLabel, rule);
+    if (!persona) {
+      logger.info({ topic: trend.topicLabel }, 'generateFromTrend: no eligible persona');
+      return null;
+    }
+
+    // 2. Resolve post type
+    const postType = resolvePostType(rule);
+
+    // 3. Build prompt
+    const promptResult = await buildPrompt({
+      persona: persona.accountId,
+      topic: trend.topicLabel,
+      summary: trend.summary || '',
+      sentimentScore: trend.sentimentScore ?? 50,
+      sensitivityTier: tier,
+      postType,
+    });
+
+    // 4. Call Gemini
+    const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
+    const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
+    const draftContent = xss(rawContent);
+    if (!draftContent) return null;
+
+    const quality = checkQuality(draftContent, persona);
+
+    // 5. Create Feed
+    const feedId = generateFeedId();
+    const feed = await Feed.create({
+      feedId,
+      type: postType === 'new-post' ? 'thread' : 'reply',
+      status: 'pending',
+      source: 'trends',
+      trendSource: trend.source,
+      trendTopic: trend.topicLabel,
+      trendSummary: trend.summary || '',
+      trendSentiment: trend.sentimentScore,
+      trendEngagement: trend.engagements,
+      pullTime: trend.createdAt || new Date(),
+      personaId: persona.accountId,
+      bkUsername: persona.username,
+      archetype: persona.archetype,
+      toneMode: promptResult.resolvedToneMode,
+      sensitivityTier: `Tier ${tier}`,
+      postType,
+      subject: postType === 'new-post' ? `[分享] ${trend.topicLabel.substring(0, 25)}` : '',
+      draftContent,
+      charCount: draftContent.length,
+      qualityWarnings: quality.warnings,
+    });
+
+    // 6. Emit socket event
+    emitToRoom('room:feed', 'feed:new', { feedId, source: 'trends' });
+
+    // 7. Audit log
+    await auditService.log({
+      operator: 'system',
+      eventType: 'FEED_GENERATED',
+      module: 'feed',
+      feedId,
+      actionDetail: `Trend → Feed | Tone: ${promptResult.resolvedToneMode} | Tier: ${tier} | Topic: "${trend.topicLabel}"`,
+      session: 'worker',
+    } as any);
+
+    logger.info({ feedId, persona: persona.accountId, topic: trend.topicLabel }, 'generateFromTrend: feed created');
+    return feedId;
+  } catch (err) {
+    logger.error({ err, topic: trend.topicLabel }, 'generateFromTrend failed');
+    await auditService.log({
+      operator: 'system',
+      eventType: 'FEED_GEN_ERROR',
+      module: 'feed',
+      actionDetail: `Trend: "${trend.topicLabel}" — ${(err as Error).message}`,
+      session: 'worker',
+    } as any);
+    return null;
+  }
 }

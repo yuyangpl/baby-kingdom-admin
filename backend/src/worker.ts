@@ -57,13 +57,15 @@ async function start(): Promise<void> {
     logger.info({ jobId: job.id }, 'Trends job started');
     const startedAt = new Date();
     try {
-      const trends = await pullTrends();
+      const result = await pullTrends();
+      const pulled = Array.isArray(result.trends) ? result.trends.length : 0;
+      const feedsGenerated = result.feedsGenerated ?? 0;
       try {
-        await recordJob('trends', { jobId: job.id, status: 'completed', startedAt, completedAt: new Date(), result: { pulled: trends.length }, triggeredBy: job.data?.triggeredBy || 'cron' });
+        await recordJob('trends', { jobId: job.id, status: 'completed', startedAt, completedAt: new Date(), result: { pulled, feedsGenerated }, triggeredBy: job.data?.triggeredBy || 'cron' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record trends job completion');
       }
-      return { pulled: trends.length };
+      return { pulled, feedsGenerated };
     } catch (err) {
       try {
         await recordJob('trends', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: job.data?.triggeredBy || 'cron' });

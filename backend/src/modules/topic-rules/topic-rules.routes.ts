@@ -5,6 +5,7 @@ import TopicRule from './topic-rules.model.js';
 
 const router = Router();
 const ctrl = buildCrud(TopicRule, 'topic-rules', {
+  lookupField: 'ruleId',
   allowedFields: [
     'ruleId', 'topicKeywords', 'sensitivityTier', 'sentimentTrigger',
     'priorityAccountIds', 'assignToneMode', 'postTypePreference',

@@ -53,3 +53,14 @@ export async function retryJob(req: Request, res: Response): Promise<void> {
   if (!ok) throw new NotFoundError('Job');
   success(res, { retried: true });
 }
+
+export async function waitingJobs(req: Request, res: Response): Promise<void> {
+  const data = await queueService.getWaitingJobs(req.params.name as string);
+  success(res, data);
+}
+
+export async function removeJob(req: Request, res: Response): Promise<void> {
+  const ok = await queueService.removeJob(req.params.name as string, req.params.id as string, (req as any).user.id, req.ip ?? '');
+  if (!ok) throw new NotFoundError('Job');
+  success(res, { removed: true });
+}

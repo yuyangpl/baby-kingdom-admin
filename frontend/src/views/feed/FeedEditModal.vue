@@ -17,7 +17,7 @@
           {{ editData.threadSubject || '-' }}
         </el-descriptions-item>
         <el-descriptions-item :label="$t('feed.persona')">{{ editData.personaId }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('feed.toneMode')">{{ editData.toneMode }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('feed.toneMode')">{{ toneLabel(editData.toneMode) }}</el-descriptions-item>
         <el-descriptions-item :label="$t('feed.sensitivityTier')">
           <el-tag
             :type="tierType(editData.sensitivityTier)"
@@ -46,7 +46,9 @@
         </el-form-item>
 
         <el-form-item :label="$t('feed.toneMode')" prop="toneModeOverride">
-          <el-input v-model="form.toneModeOverride" :placeholder="$t('feed.placeholder.toneMode')" />
+          <el-select v-model="form.toneModeOverride" :placeholder="$t('persona.selectTone')" style="width: 100%" clearable :loading="tonesLoading">
+            <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+          </el-select>
         </el-form-item>
 
         <el-form-item :label="$t('feed.adminNotes')" prop="adminNotes">
@@ -95,6 +97,24 @@ const formRef = ref<FormInstance>()
 const savingDraft = ref<boolean>(false)
 const savingApprove = ref<boolean>(false)
 
+const tones = ref<{ toneId: string; displayName: string }[]>([])
+const tonesLoading = ref(false)
+
+const loadTones = async () => {
+  if (tones.value.length > 0) return
+  tonesLoading.value = true
+  try {
+    const res = await api.get('/v1/tones')
+    tones.value = (res.data || res).map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+  } catch { /* ignore */ }
+  tonesLoading.value = false
+}
+
+const toneLabel = (toneId: string): string => {
+  const t = tones.value.find(t => t.toneId === toneId)
+  return t ? `${t.displayName} (${toneId})` : toneId
+}
+
 const form = reactive({
   content: '',
   toneModeOverride: '',
@@ -110,6 +130,7 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open && props.editData) {
+      loadTones()
       form.content = props.editData.content || ''
       form.toneModeOverride = ''
       form.adminNotes = props.editData.adminNotes || ''

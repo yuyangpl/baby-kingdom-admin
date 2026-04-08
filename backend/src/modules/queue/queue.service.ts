@@ -99,6 +99,19 @@ export async function getAllJobs({ page = 1, limit = 20 }: { page?: number; limi
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
 
+export async function getWaitingJobs(name: string) {
+  const q = queues[name];
+  if (!q) return [];
+  const waiting = await q.getJobs(['waiting', 'active', 'delayed'], 0, 100);
+  return waiting.map(j => ({
+    jobId: j.id,
+    name: j.name,
+    data: j.data,
+    status: j.finishedOn ? 'completed' : j.processedOn ? 'active' : 'waiting',
+    addedAt: j.timestamp ? new Date(j.timestamp) : null,
+  }));
+}
+
 export async function getJobHistory(name: string, { page = 1, limit = 20 }: { page?: number; limit?: number }) {
   const skip = (page - 1) * limit;
   const filter = { queueName: name };
@@ -120,6 +133,25 @@ export async function retryJob(name: string, jobId: string, userId: string, ip: 
   await auditService.log({
     operator: userId, eventType: 'QUEUE_RESUMED', module: 'queue',
     targetId: `${name}:${jobId}`, actionDetail: `Retried job ${jobId} in queue ${name}`, ip,
+  });
+  return true;
+}
+
+export async function removeJob(name: string, jobId: string, userId: string, ip: string): Promise<boolean> {
+  const q = getQueue(name);
+  if (!q) return false;
+
+  const job = await q.getJob(jobId);
+  if (job) {
+    await job.remove();
+  }
+
+  // Also remove from MongoDB history
+  await QueueJob.deleteOne({ queueName: name, jobId });
+
+  await auditService.log({
+    operator: userId, eventType: 'QUEUE_JOB_REMOVED', module: 'queue',
+    targetId: `${name}:${jobId}`, actionDetail: `Removed job ${jobId} from queue ${name}`, ip,
   });
   return true;
 }

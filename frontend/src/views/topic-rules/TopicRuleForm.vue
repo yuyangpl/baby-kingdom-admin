@@ -49,16 +49,28 @@
       </el-form-item>
 
       <el-form-item :label="$t('topicRules.priorityAccounts')" prop="priorityAccountIds">
-        <el-input
+        <el-select
           v-model="form.priorityAccountIds"
-          type="textarea"
-          :rows="2"
+          multiple
+          filterable
           :placeholder="$t('topicRules.accountIdsPlaceholder')"
-        />
+          style="width: 100%"
+          :loading="personasLoading"
+        >
+          <el-option
+            v-for="p in personas"
+            :key="p.accountId"
+            :label="`${p.accountId} — ${p.username} (${$t('persona.archetypeOptions.' + p.archetype)})`"
+            :value="p.accountId"
+          />
+        </el-select>
       </el-form-item>
 
       <el-form-item :label="$t('topicRules.assignToneMode')" prop="assignToneMode">
-        <el-input v-model="form.assignToneMode" placeholder="auto" />
+        <el-select v-model="form.assignToneMode" :placeholder="$t('persona.selectTone')" style="width: 100%" :loading="tonesLoading">
+          <el-option label="Auto" value="auto" />
+          <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+        </el-select>
       </el-form-item>
 
       <el-form-item :label="$t('topicRules.postType')" prop="postTypePreference">
@@ -121,12 +133,37 @@ const isEdit = computed(() => !!props.editData)
 const formRef = ref<FormInstance>()
 const saving = ref<boolean>(false)
 
+const tones = ref<{ toneId: string; displayName: string }[]>([])
+const tonesLoading = ref(false)
+const personas = ref<{ accountId: string; username: string; archetype: string }[]>([])
+const personasLoading = ref(false)
+
+const loadOptions = async () => {
+  if (tones.value.length === 0) {
+    tonesLoading.value = true
+    try {
+      const res = await api.get('/v1/tones')
+      tones.value = (res.data || res).map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+    } catch { /* ignore */ }
+    tonesLoading.value = false
+  }
+  if (personas.value.length === 0) {
+    personasLoading.value = true
+    try {
+      const res = await api.get('/v1/personas', { params: { limit: 100 } })
+      const list = res.data || res
+      personas.value = (Array.isArray(list) ? list : []).map((p: any) => ({ accountId: p.accountId, username: p.username, archetype: p.archetype || '' }))
+    } catch { /* ignore */ }
+    personasLoading.value = false
+  }
+}
+
 const defaultForm = () => ({
   ruleId: '',
   topicKeywords: '',
   sensitivityTier: 1,
   sentimentTrigger: 'any',
-  priorityAccountIds: '',
+  priorityAccountIds: [] as string[],
   assignToneMode: 'auto',
   postTypePreference: 'any',
   geminiPromptHint: '',
@@ -144,6 +181,7 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open) {
+      loadOptions()
       if (props.editData) {
         const d = props.editData
         Object.assign(form, {
@@ -151,7 +189,7 @@ watch(
           topicKeywords: Array.isArray(d.topicKeywords) ? d.topicKeywords.join(', ') : (d.topicKeywords || ''),
           sensitivityTier: d.sensitivityTier ?? 1,
           sentimentTrigger: d.sentimentTrigger || 'any',
-          priorityAccountIds: Array.isArray(d.priorityAccountIds) ? d.priorityAccountIds.join(', ') : (d.priorityAccountIds || ''),
+          priorityAccountIds: Array.isArray(d.priorityAccountIds) ? [...d.priorityAccountIds] : [],
           assignToneMode: d.assignToneMode || 'auto',
           postTypePreference: d.postTypePreference || 'any',
           geminiPromptHint: d.geminiPromptHint || '',
@@ -169,7 +207,7 @@ watch(
 const buildPayload = (): Record<string, any> => {
   const payload: Record<string, any> = { ...form }
   payload.topicKeywords = form.topicKeywords ? form.topicKeywords.split(',').map(s => s.trim()).filter(Boolean) : []
-  payload.priorityAccountIds = form.priorityAccountIds ? form.priorityAccountIds.split(',').map(s => s.trim()).filter(Boolean) : []
+  payload.priorityAccountIds = form.priorityAccountIds || []
   return payload
 }
 

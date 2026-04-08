@@ -32,15 +32,21 @@
       </el-form-item>
 
       <el-form-item :label="$t('persona.primaryTone')" prop="primaryToneMode">
-        <el-input v-model="form.primaryToneMode" placeholder="e.g. warm" />
+        <el-select v-model="form.primaryToneMode" :placeholder="$t('persona.selectTone')" style="width: 100%" :loading="tonesLoading">
+          <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+        </el-select>
       </el-form-item>
 
       <el-form-item :label="$t('persona.secondaryTone')" prop="secondaryToneMode">
-        <el-input v-model="form.secondaryToneMode" placeholder="e.g. humorous" />
+        <el-select v-model="form.secondaryToneMode" :placeholder="$t('persona.selectTone')" style="width: 100%" clearable :loading="tonesLoading">
+          <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+        </el-select>
       </el-form-item>
 
       <el-form-item :label="$t('persona.avoidedTone')" prop="avoidedToneMode">
-        <el-input v-model="form.avoidedToneMode" placeholder="e.g. aggressive" />
+        <el-select v-model="form.avoidedToneMode" :placeholder="$t('persona.selectTone')" style="width: 100%" clearable :loading="tonesLoading">
+          <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+        </el-select>
       </el-form-item>
 
       <el-form-item :label="$t('persona.voiceCues')" prop="voiceCues">
@@ -129,6 +135,18 @@ const { t } = useI18n()
 const isEdit = computed(() => !!props.editData)
 const formRef = ref<FormInstance>()
 const saving = ref<boolean>(false)
+const tones = ref<{ toneId: string; displayName: string }[]>([])
+const tonesLoading = ref(false)
+
+const loadTones = async () => {
+  if (tones.value.length > 0) return
+  tonesLoading.value = true
+  try {
+    const res = await api.get('/v1/tones')
+    tones.value = (res.data || res).map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+  } catch { /* ignore */ }
+  tonesLoading.value = false
+}
 
 const defaultForm = () => ({
   accountId: '',
@@ -158,6 +176,7 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open) {
+      loadTones()
       if (props.editData) {
         const d = props.editData
         Object.assign(form, {

@@ -14,8 +14,10 @@ export async function list(req: Request, res: Response): Promise<void> {
 }
 
 export async function trigger(req: Request, res: Response): Promise<void> {
-  const trends = await trendsService.pullTrends();
-  success(res, { pulled: trends.length });
+  const result = await trendsService.pullTrends();
+  const trends = result.trends ?? result;
+  const feedsGenerated = result.feedsGenerated ?? 0;
+  success(res, { pulled: Array.isArray(trends) ? trends.length : 0, feedsGenerated });
 }
 
 export async function requestOtp(req: Request, res: Response): Promise<void> {

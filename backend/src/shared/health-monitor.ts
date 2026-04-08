@@ -88,11 +88,17 @@ export async function checkGemini(): Promise<ServiceCheckResult> {
  */
 export async function checkGoogleTrends(): Promise<ServiceCheckResult> {
   const baseUrl = await configService.getValue('GOOGLE_TRENDS_BASE_URL');
+  const apiKey = await configService.getValue('GOOGLE_TRENDS_API_KEY');
   const enabled = await configService.getValue('GOOGLE_TRENDS_ENABLED');
   if (!baseUrl || enabled === 'false') return { status: 'not_configured', detail: null };
+  if (!apiKey) return { status: 'not_configured', detail: 'API key missing' };
 
   try {
-    const res = await fetch(baseUrl, { signal: AbortSignal.timeout(5000) });
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await fetch(
+      `${baseUrl}/trends?geo=HK&start_date=${today}&end_date=${today}&limit=1`,
+      { headers: { 'X-API-Key': apiKey }, signal: AbortSignal.timeout(5000) },
+    );
     return res.ok
       ? { status: 'connected', detail: null }
       : { status: 'disconnected', detail: `HTTP ${res.status}` };

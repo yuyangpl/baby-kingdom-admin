@@ -18,9 +18,21 @@ function filterBody(body: Record<string, unknown>, allowedFields?: string[]): Re
   return filtered;
 }
 
-export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { defaultSort?: string; allowedFields?: string[] } = {}) {
-  const { defaultSort = '-createdAt', allowedFields } = options;
+export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { defaultSort?: string; allowedFields?: string[]; lookupField?: string } = {}) {
+  const { defaultSort = '-createdAt', allowedFields, lookupField } = options;
   const resourceName = ModelRef.modelName;
+
+  /** Find by _id or custom lookupField */
+  async function findDoc(id: string) {
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      const doc = await ModelRef.findById(id);
+      if (doc) return doc;
+    }
+    if (lookupField) {
+      return ModelRef.findOne({ [lookupField]: id });
+    }
+    return null;
+  }
 
   return {
     async list(req: Request, res: Response) {
@@ -46,7 +58,7 @@ export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { d
     },
 
     async getById(req: Request, res: Response) {
-      const doc = await ModelRef.findById(req.params.id);
+      const doc = await findDoc(req.params.id);
       if (!doc) throw new NotFoundError(resourceName);
       return success(res, doc);
     },
@@ -68,7 +80,7 @@ export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { d
     },
 
     async update(req: Request, res: Response) {
-      const doc = await ModelRef.findById(req.params.id);
+      const doc = await findDoc(req.params.id);
       if (!doc) throw new NotFoundError(resourceName);
 
       const before = doc.toObject();
@@ -90,10 +102,10 @@ export function buildCrud(ModelRef: Model<any>, moduleName: string, options: { d
     },
 
     async remove(req: Request, res: Response) {
-      const doc = await ModelRef.findById(req.params.id);
+      const doc = await findDoc(req.params.id);
       if (!doc) throw new NotFoundError(resourceName);
 
-      await ModelRef.findByIdAndDelete(req.params.id);
+      await ModelRef.findByIdAndDelete(doc._id);
 
       await auditLog.log({
         operator: req.user?.id || 'system',

@@ -16,7 +16,7 @@
             :placeholder="$t('audit.placeholder.module')"
             clearable
             style="width: 100%"
-            @change="loadAudits"
+            @change="pagination.page = 1; loadAudits()"
           >
             <el-option v-for="m in moduleOptions" :key="m" :label="m" :value="m" />
           </el-select>
@@ -27,7 +27,7 @@
             :placeholder="$t('audit.placeholder.eventType')"
             clearable
             style="width: 100%"
-            @change="loadAudits"
+            @change="pagination.page = 1; loadAudits()"
           >
             <el-option v-for="e in eventTypeOptions" :key="e" :label="e" :value="e" />
           </el-select>
@@ -38,7 +38,7 @@
             :placeholder="$t('audit.placeholder.operator')"
             clearable
             style="width: 100%"
-            @change="loadAudits"
+            @change="pagination.page = 1; loadAudits()"
           >
             <el-option v-for="o in operatorOptions" :key="o" :label="o" :value="o" />
           </el-select>
@@ -147,6 +147,18 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <el-pagination
+      v-if="pagination.total > 0"
+      :current-page="pagination.page"
+      :page-size="pagination.limit"
+      :total="pagination.total"
+      :page-sizes="[20, 50, 100]"
+      layout="total, sizes, prev, pager, next"
+      style="margin-top: 16px; justify-content: flex-end"
+      @current-change="(p: number) => { pagination.page = p; loadAudits() }"
+      @size-change="(s: number) => { pagination.limit = s; pagination.page = 1; loadAudits() }"
+    />
   </div>
 </template>
 
@@ -161,6 +173,7 @@ const { t } = useI18n()
 const audits = ref<any[]>([])
 const loading = ref<boolean>(false)
 const expandedRows = ref<string[]>([])
+const pagination = reactive({ page: 1, limit: 20, total: 0 })
 
 const filters = reactive({
   module: '',
@@ -197,14 +210,20 @@ const handleExpand = (row: any, expanded: any[]) => {
 const loadAudits = async () => {
   loading.value = true
   try {
-    const params: Record<string, string> = {}
+    const params: Record<string, any> = {
+      page: pagination.page,
+      limit: pagination.limit,
+    }
     if (filters.module) params.module = filters.module
     if (filters.eventType) params.eventType = filters.eventType
     if (filters.operator) params.operator = filters.operator
     if (filters.targetId) params.targetId = filters.targetId
 
-    const { data } = await api.get('/v1/audits', { params })
-    audits.value = data.data ?? data
+    const res: any = await api.get('/v1/audits', { params })
+    audits.value = res.data ?? res
+    if (res.pagination) {
+      pagination.total = res.pagination.total ?? 0
+    }
   } finally {
     loading.value = false
   }

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from './auth.service.js';
 import { success, created } from '../../shared/response.js';
-import { ValidationError } from '../../shared/errors.js';
+import { ValidationError, UnauthorizedError } from '../../shared/errors.js';
 
 const REFRESH_COOKIE = 'refreshToken';
 const COOKIE_OPTIONS = {
@@ -55,6 +55,14 @@ export async function logout(req: Request, res: Response): Promise<void> {
 export async function getMe(req: Request, res: Response): Promise<void> {
   const user = await authService.getMe((req as any).user.id);
   success(res, user);
+}
+
+export async function verifyPassword(req: Request, res: Response): Promise<void> {
+  const { password } = req.body;
+  if (!password) throw new ValidationError('Password is required');
+  const ok = await authService.verifyPassword((req as any).user.id, password);
+  if (!ok) throw new UnauthorizedError('Password incorrect');
+  success(res, { verified: true });
 }
 
 export async function changePassword(req: Request, res: Response): Promise<void> {

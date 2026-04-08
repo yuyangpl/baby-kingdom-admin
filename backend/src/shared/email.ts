@@ -1,17 +1,16 @@
 import nodemailer from 'nodemailer';
 import logger from './logger.js';
-
 /**
  * Send an alert email to specified recipients.
- * Reads SMTP config from environment variables.
+ * Reads SMTP config from env vars. For DB config, use the overload with explicit params.
  * Returns false (never throws) if SMTP is not configured or send fails.
  */
-export async function sendAlert(to: string, subject: string, html: string): Promise<boolean> {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || 'BK Admin <noreply@baby-kingdom.com>';
+export async function sendAlert(to: string, subject: string, html: string, smtpOverrides?: { host?: string; port?: number; user?: string; pass?: string; from?: string }): Promise<boolean> {
+  const host = smtpOverrides?.host || process.env.SMTP_HOST;
+  const port = smtpOverrides?.port || parseInt(process.env.SMTP_PORT || '587', 10);
+  const user = smtpOverrides?.user || process.env.SMTP_USER;
+  const pass = smtpOverrides?.pass || process.env.SMTP_PASS;
+  const from = smtpOverrides?.from || process.env.SMTP_FROM || 'BK Admin <noreply@baby-kingdom.com>';
 
   if (!host || !user || !pass) {
     logger.warn('SMTP not configured, skipping alert email');

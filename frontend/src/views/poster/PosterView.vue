@@ -141,7 +141,7 @@ const loadHistory = async () => {
 const loadQueue = async () => {
   loadingQueue.value = true
   try {
-    const res: any = await api.get('/v1/queues/poster/jobs')
+    const res: any = await api.get('/v1/queues/poster/waiting')
     const payload = res.data ?? res
     pendingQueue.value = Array.isArray(payload) ? payload : (payload.data ?? [])
   } catch {
@@ -183,8 +183,9 @@ const pauseQueue = async () => {
 
 const cancelJob = async (row: any) => {
   try {
-    await api.delete(`/v1/queues/poster/jobs/${row.postId || row._id}`)
+    await api.delete(`/v1/queues/poster/jobs/${row.jobId || row.postId || row._id}`)
     ElMessage.success(t('common.jobCancelled'))
+    loadHistory()
     loadQueue()
     loadMetrics()
   } catch (err: any) {

@@ -7,9 +7,25 @@
       </el-button>
     </div>
 
+    <!-- Filters -->
+    <div class="persona-view__filters">
+      <el-select v-model="filters.archetype" :placeholder="$t('persona.archetype')" clearable style="width: 160px" @change="applyFilters">
+        <el-option v-for="(label, key) in archetypeOptions" :key="key" :label="label" :value="key" />
+      </el-select>
+      <el-select v-model="filters.primaryToneMode" :placeholder="$t('persona.primaryTone')" clearable style="width: 180px" @change="applyFilters">
+        <el-option v-for="t in toneOptions" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+      </el-select>
+      <el-select v-model="filters.topicRule" :placeholder="$t('nav.topicRules')" clearable style="width: 200px" @change="applyFilters">
+        <el-option v-for="r in ruleOptions" :key="r.ruleId" :label="`${r.ruleId} — ${r.keywords}`" :value="r.ruleId" />
+      </el-select>
+      <el-select v-model="filters.boardFid" :placeholder="$t('nav.forumBoards')" clearable style="width: 180px" @change="applyFilters">
+        <el-option v-for="b in boardOptions" :key="b.fid" :label="b.name" :value="b.fid" />
+      </el-select>
+    </div>
+
     <el-row :gutter="16" v-loading="loading">
       <el-col
-        v-for="p in personas"
+        v-for="p in filteredPersonas"
         :key="p._id"
         :xs="24"
         :sm="12"
@@ -47,7 +63,7 @@
             :type="archetypeColor[p.archetype] || 'primary'"
             size="small"
           >
-            {{ p.archetype }}
+            {{ $t('persona.archetypeOptions.' + p.archetype) }}
           </el-tag>
 
           <!-- Tone mode -->
@@ -57,7 +73,7 @@
             effect="plain"
             class="persona-card__tone"
           >
-            {{ p.primaryToneMode }}
+            {{ toneLabel(p.primaryToneMode) }}
           </el-tag>
 
           <!-- Posts progress -->
@@ -93,14 +109,14 @@
       </el-col>
     </el-row>
 
-    <el-empty v-if="!loading && !personas.length" />
+    <el-empty v-if="!loading && !filteredPersonas.length" />
 
     <PersonaForm v-model="showForm" :edit-data="editData" @saved="loadData" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import api from '../../api'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
@@ -113,11 +129,88 @@ const loading = ref<boolean>(false)
 const showForm = ref<boolean>(false)
 const editData = ref<Record<string, any> | null>(null)
 
+// Filter options data
+const toneOptions = ref<{ toneId: string; displayName: string }[]>([])
+const ruleOptions = ref<{ ruleId: string; keywords: string; priorityAccountIds: string[] }[]>([])
+const boardOptions = ref<{ fid: number; name: string; personaBindings: any[] }[]>([])
+
+const filters = reactive({
+  archetype: '',
+  primaryToneMode: '',
+  topicRule: '',
+  boardFid: null as number | null,
+})
+
+const archetypeOptions: Record<string, string> = {
+  pregnant: t('persona.archetypeOptions.pregnant'),
+  'first-time-mom': t('persona.archetypeOptions.first-time-mom'),
+  'multi-kid': t('persona.archetypeOptions.multi-kid'),
+  'school-age': t('persona.archetypeOptions.school-age'),
+}
+
 const archetypeColor: Record<string, string> = {
   pregnant: 'danger',
   'first-time-mom': '',
   'multi-kid': 'success',
   'school-age': 'warning',
+}
+
+const toneLabel = (toneId: string): string => {
+  const t = toneOptions.value.find(t => t.toneId === toneId)
+  return t ? t.displayName : toneId || '-'
+}
+
+// Filtered personas
+const filteredPersonas = computed(() => {
+  let list = personas.value
+  if (filters.archetype) {
+    list = list.filter(p => p.archetype === filters.archetype)
+  }
+  if (filters.primaryToneMode) {
+    list = list.filter(p => p.primaryToneMode === filters.primaryToneMode)
+  }
+  if (filters.topicRule) {
+    const rule = ruleOptions.value.find(r => r.ruleId === filters.topicRule)
+    if (rule?.priorityAccountIds?.length) {
+      const ids = new Set(rule.priorityAccountIds)
+      list = list.filter(p => ids.has(p.accountId))
+    }
+  }
+  if (filters.boardFid != null) {
+    const board = boardOptions.value.find(b => b.fid === filters.boardFid)
+    if (board?.personaBindings?.length) {
+      const ids = new Set(board.personaBindings.map((b: any) => b.personaId?.toString()))
+      list = list.filter(p => ids.has(p._id?.toString()))
+    }
+  }
+  return list
+})
+
+const applyFilters = () => { /* reactive - computed handles it */ }
+
+const loadFilterOptions = async () => {
+  try {
+    const [tonesRes, rulesRes, forumsRes] = await Promise.all([
+      api.get('/v1/tones'),
+      api.get('/v1/topic-rules'),
+      api.get('/v1/forums'),
+    ])
+    toneOptions.value = (tonesRes.data || tonesRes).map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+    ruleOptions.value = (rulesRes.data || rulesRes).map((r: any) => ({
+      ruleId: r.ruleId,
+      keywords: Array.isArray(r.topicKeywords) ? r.topicKeywords.slice(0, 3).join(', ') : '',
+      priorityAccountIds: r.priorityAccountIds || [],
+    }))
+    // Flatten boards from category tree
+    const tree = forumsRes.data?.data ?? forumsRes.data ?? forumsRes ?? []
+    const boards: any[] = []
+    for (const cat of (Array.isArray(tree) ? tree : [])) {
+      for (const b of (cat.boards || [])) {
+        boards.push({ fid: b.fid, name: b.name, personaBindings: b.personaBindings || [] })
+      }
+    }
+    boardOptions.value = boards
+  } catch { /* ignore */ }
 }
 
 const avatarInitial = (name: string): string => {
@@ -157,7 +250,10 @@ async function handleDelete(id: string) {
   loadData()
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  loadFilterOptions()
+})
 </script>
 
 <style scoped>
@@ -167,7 +263,13 @@ onMounted(loadData)
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+.persona-view__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 /* Persona Card */

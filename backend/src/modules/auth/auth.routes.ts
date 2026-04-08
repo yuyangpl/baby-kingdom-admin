@@ -16,6 +16,7 @@ router.post('/logout', wrap(ctrl.logout));
 
 // Authenticated
 router.get('/me', authenticate, wrap(ctrl.getMe));
+router.post('/verify-password', authenticate, wrap(ctrl.verifyPassword));
 router.put('/password', authenticate, wrap(ctrl.changePassword));
 
 // Admin only

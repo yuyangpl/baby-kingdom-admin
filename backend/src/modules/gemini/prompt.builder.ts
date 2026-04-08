@@ -13,12 +13,15 @@ interface BuildPromptParams {
   sentimentScore?: number;
   sensitivityTier?: number;
   googleTrends?: IGoogleTrends | null;
+  postType?: string;
+  defaultRuleIds?: string[];
+  excludeRuleIds?: string[];
 }
 
 /**
  * Build the full Gemini prompt from Persona + Tone + Trend + Rules + Google Trends.
  */
-export async function buildPrompt({ persona, toneMode, topic, summary, sentimentScore, sensitivityTier, googleTrends }: BuildPromptParams) {
+export async function buildPrompt({ persona, toneMode, topic, summary, sentimentScore, sensitivityTier, googleTrends, postType, defaultRuleIds, excludeRuleIds }: BuildPromptParams) {
   const systemPrompt = await configService.getValue('GEMINI_SYSTEM_PROMPT') ||
     '你係一個香港親子論壇嘅真實用戶，用繁體中文書寫。你嘅文字要自然、真實，有個人感受，唔係廣告。';
 
@@ -34,8 +37,8 @@ export async function buildPrompt({ persona, toneMode, topic, summary, sentiment
   const resolvedToneMode = await resolveToneMode(personaDoc, toneMode, sentimentScore, sensitivityTier);
   const toneDoc = await ToneMode.findOne({ toneId: resolvedToneMode });
 
-  // Match topic rules
-  const rule = await matchTopicRule(topic);
+  // Match topic rules (with board context)
+  const rule = await matchTopicRule(topic, { defaultRuleIds, excludeRuleIds });
 
   // Build user prompt blocks
   const blocks: string[] = [];
@@ -54,9 +57,11 @@ ${personaDoc.catchphrases?.length ? `口頭禪：${personaDoc.catchphrases.join(
     blocks.push(`【語氣指引（敏感話題）】\n${personaDoc.tier3Script}`);
   } else if (toneDoc) {
     blocks.push(`【今日發文語氣：${toneDoc.displayName}】
+${toneDoc.emotionalRegister ? `情感基調：${toneDoc.emotionalRegister}` : ''}
 ${toneDoc.openingStyle ? `開頭方式：${toneDoc.openingStyle}` : ''}
 ${toneDoc.sentenceStructure ? `句式風格：${toneDoc.sentenceStructure}` : ''}
-${toneDoc.whatToAvoid ? `必須避免：${toneDoc.whatToAvoid}` : ''}`);
+${toneDoc.whatToAvoid ? `必須避免：${toneDoc.whatToAvoid}` : ''}
+${toneDoc.exampleOpening ? `開頭示例：${toneDoc.exampleOpening}` : ''}`);
   }
 
   // Topic/Trend block
@@ -80,9 +85,16 @@ ${sensitivityTier ? `敏感度：Tier ${sensitivityTier}` : ''}`);
 熱度：${googleTrends.trendTraffic}`);
   }
 
-  // Task template
+  // Task template — substitute placeholders
   const maxChars = await configService.getValue('MEDIUM_POST_MAX_CHARS') || '300';
-  blocks.push(taskTemplate.replace('{max_chars}', maxChars));
+  const postTypeLabel = postType === 'new-post' ? '新帖' : '回覆';
+  const lengthLabel = parseInt(maxChars) <= 150 ? '短' : parseInt(maxChars) <= 300 ? '中' : '長';
+  blocks.push(
+    taskTemplate
+      .replace('{max_chars}', maxChars)
+      .replace('{post_type}', postTypeLabel)
+      .replace('{length}', lengthLabel),
+  );
 
   return {
     systemPrompt,
@@ -117,20 +129,41 @@ async function resolveToneMode(persona: PersonaDocument | null, requestedToneMod
 }
 
 /**
- * Match topic against TopicRules by keyword.
+ * Match topic against TopicRules by keyword, with optional board context.
  */
-async function matchTopicRule(topic: string | undefined) {
-  if (!topic) return null;
-  const rules = await TopicRule.find({ isActive: true });
-  const topicLower = topic.toLowerCase();
+interface MatchRuleOptions {
+  defaultRuleIds?: string[];
+  excludeRuleIds?: string[];
+}
 
-  // Find matching rules, pick the one with highest sensitivity tier
-  const matches = rules.filter((r) =>
-    r.topicKeywords.some((kw: string) => topicLower.includes(kw.toLowerCase()))
-  );
+async function matchTopicRule(topic: string | undefined, options?: MatchRuleOptions) {
+  const allRules = await TopicRule.find({ isActive: true });
+  const excludeSet = new Set(options?.excludeRuleIds || []);
 
-  if (matches.length === 0) return null;
-  return matches.sort((a, b) => b.sensitivityTier - a.sensitivityTier)[0];
+  // Filter out excluded rules
+  const candidates = allRules.filter((r) => !excludeSet.has(r.ruleId));
+
+  // Keyword match
+  if (topic) {
+    const topicLower = topic.toLowerCase();
+    const matches = candidates.filter((r) =>
+      r.topicKeywords.some((kw: string) => topicLower.includes(kw.toLowerCase()))
+    );
+    if (matches.length > 0) {
+      return matches.sort((a, b) => b.sensitivityTier - a.sensitivityTier)[0];
+    }
+  }
+
+  // Fallback: board default rules (when no keyword match)
+  if (options?.defaultRuleIds?.length) {
+    const defaultSet = new Set(options.defaultRuleIds);
+    const defaults = candidates.filter((r) => defaultSet.has(r.ruleId));
+    if (defaults.length > 0) {
+      return defaults.sort((a, b) => b.sensitivityTier - a.sensitivityTier)[0];
+    }
+  }
+
+  return null;
 }
 
 /**

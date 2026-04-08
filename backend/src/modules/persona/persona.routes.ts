@@ -5,6 +5,7 @@ import Persona from './persona.model.js';
 
 const router = Router();
 const ctrl = buildCrud(Persona, 'persona', {
+  lookupField: 'accountId',
   allowedFields: [
     'accountId', 'username', 'archetype', 'primaryToneMode', 'secondaryToneMode',
     'avoidedToneMode', 'voiceCues', 'catchphrases', 'topicBlacklist', 'tier3Script',

@@ -1,6 +1,11 @@
 <template>
   <div class="forum-view">
-    <h2 class="page-title" style="margin-bottom: 20px">{{ $t('forum.title') }}</h2>
+    <div class="forum-view__header">
+      <h2 class="page-title">{{ $t('forum.title') }}</h2>
+      <el-button v-if="selectedBoard" type="primary" :loading="saving" @click="saveBoard">
+        {{ $t('common.save') }}
+      </el-button>
+    </div>
 
     <div class="forum-layout">
       <!-- Left panel: Board tree -->
@@ -102,35 +107,38 @@
             <el-row :gutter="20">
               <el-col :span="12">
                 <el-form-item :label="$t('forum.scanInterval')">
-                  <el-input v-model="formData.scanInterval" placeholder="e.g. 30m, 1h" />
+                  <el-input-number v-model="formData.scanInterval" :min="5" :max="1440" style="width: 100%">
+                  </el-input-number>
+                  <div class="field-hint">{{ $t('forum.scanIntervalHint') }}</div>
                 </el-form-item>
               </el-col>
               <el-col :span="12">
                 <el-form-item :label="$t('forum.defaultTone')">
-                  <el-select v-model="formData.defaultTone" :placeholder="$t('forum.selectTone')" style="width: 100%">
-                    <el-option v-for="t in toneOptions" :key="t" :label="t" :value="t" />
+                  <el-select v-model="formData.defaultTone" :placeholder="$t('forum.selectTone')" style="width: 100%" clearable>
+                    <el-option v-for="t in toneOptions" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
                   </el-select>
                 </el-form-item>
               </el-col>
             </el-row>
 
-            <el-form-item :label="$t('forum.sensitivity')">
-              <el-select v-model="formData.sensitivityTier" style="width: 100%">
-                <el-option :value="1" :label="$t('forum.tierLow')" />
-                <el-option :value="2" :label="$t('forum.tierMedium')" />
-                <el-option :value="3" :label="$t('forum.tierHigh')" />
+            <el-form-item :label="$t('forum.defaultRules')">
+              <el-select v-model="formData.defaultRuleIds" multiple filterable :placeholder="$t('forum.selectRules')" style="width: 100%">
+                <el-option v-for="r in ruleOptions" :key="r.ruleId" :label="`${r.ruleId} — ${r.keywords}`" :value="r.ruleId" />
               </el-select>
+              <div class="field-hint">{{ $t('forum.defaultRulesHint') }}</div>
+            </el-form-item>
+
+            <el-form-item :label="$t('forum.excludeRules')">
+              <el-select v-model="formData.excludeRuleIds" multiple filterable :placeholder="$t('forum.selectRules')" style="width: 100%">
+                <el-option v-for="r in ruleOptions" :key="r.ruleId" :label="`${r.ruleId} — ${r.keywords}`" :value="r.ruleId" />
+              </el-select>
+              <div class="field-hint">{{ $t('forum.excludeRulesHint') }}</div>
             </el-form-item>
 
             <el-form-item :label="$t('forum.notes')">
               <el-input v-model="formData.notes" type="textarea" :rows="3" :placeholder="$t('forum.notesPlaceholder')" />
             </el-form-item>
 
-            <el-form-item>
-              <el-button type="primary" :loading="saving" @click="saveBoard">
-                {{ $t('common.save') }}
-              </el-button>
-            </el-form-item>
           </el-form>
         </template>
 
@@ -156,16 +164,18 @@ const loading = ref<boolean>(false)
 const syncing = ref<boolean>(false)
 const saving = ref<boolean>(false)
 const selectedBoard = ref<any>(null)
-const toneOptions = ref<string[]>([])
+const toneOptions = ref<{ toneId: string; displayName: string }[]>([])
+const ruleOptions = ref<{ ruleId: string; keywords: string }[]>([])
 
 const formData = reactive({
   enableScraping: false,
   enableAutoReply: false,
   replyThresholdMin: 0,
   replyThresholdMax: 5,
-  scanInterval: '',
+  scanInterval: 30,
   defaultTone: '',
-  sensitivityTier: 1,
+  defaultRuleIds: [] as string[],
+  excludeRuleIds: [] as string[],
   notes: '',
 })
 
@@ -184,10 +194,19 @@ const loadTones = async () => {
   try {
     const { data } = await api.get('/v1/tones')
     const list = data.data ?? data ?? []
-    toneOptions.value = list.map((t: any) => t.toneId || t.displayName)
-  } catch {
-    // ignore
-  }
+    toneOptions.value = list.map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+  } catch { /* ignore */ }
+}
+
+const loadRules = async () => {
+  try {
+    const { data } = await api.get('/v1/topic-rules')
+    const list = data.data ?? data ?? []
+    ruleOptions.value = list.map((r: any) => ({
+      ruleId: r.ruleId,
+      keywords: Array.isArray(r.topicKeywords) ? r.topicKeywords.slice(0, 3).join(', ') : '',
+    }))
+  } catch { /* ignore */ }
 }
 
 const toggleCategory = (cat: any) => {
@@ -204,9 +223,10 @@ watch(selectedBoard, (board) => {
     formData.enableAutoReply = board.enableAutoReply ?? false
     formData.replyThresholdMin = board.replyThresholdMin ?? 0
     formData.replyThresholdMax = board.replyThresholdMax ?? 5
-    formData.scanInterval = board.scanInterval ?? ''
+    formData.scanInterval = board.scanInterval ?? 30
     formData.defaultTone = board.defaultTone ?? ''
-    formData.sensitivityTier = board.sensitivityTier ?? 1
+    formData.defaultRuleIds = board.defaultRuleIds ?? []
+    formData.excludeRuleIds = board.excludeRuleIds ?? []
     formData.notes = board.notes ?? ''
   }
 })
@@ -215,7 +235,7 @@ const saveBoard = async () => {
   if (!selectedBoard.value) return
   saving.value = true
   try {
-    await api.patch(`/v1/forums/${selectedBoard.value.fid}`, { ...formData })
+    await api.put(`/v1/forums/boards/${selectedBoard.value._id}`, { ...formData })
     Object.assign(selectedBoard.value, formData)
     ElMessage.success(t('common.success'))
   } catch (err: any) {
@@ -239,7 +259,7 @@ const syncFromBK = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([loadForums(), loadTones()])
+  await Promise.all([loadForums(), loadTones(), loadRules()])
   // Default select first board
   if (treeData.value.length > 0) {
     const firstCat = treeData.value[0]
@@ -254,7 +274,13 @@ onMounted(async () => {
 .forum-view {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--bk-header-height) - 48px); /* header + main-content padding */
+  height: calc(100vh - var(--bk-header-height) - 48px);
+}
+.forum-view__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 .forum-layout {
   display: flex;
@@ -362,6 +388,11 @@ onMounted(async () => {
 /* Detail form */
 .board-form {
   max-width: 700px;
+}
+.field-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-top: 2px;
 }
 .forum-detail-empty {
   display: flex;

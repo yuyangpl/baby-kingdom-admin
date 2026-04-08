@@ -146,6 +146,8 @@ export async function scanForumThreads(): Promise<ScanStats> {
         sentimentScore: evaluation.sentimentScore,
         sensitivityTier: tier,
         googleTrends,
+        defaultRuleIds: board.defaultRuleIds,
+        excludeRuleIds: board.excludeRuleIds,
       });
 
       const genResult = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
@@ -173,6 +175,8 @@ export async function scanForumThreads(): Promise<ScanStats> {
         threadSubject: thread.subject,
         threadContent: content.substring(0, 500),
         trendSource: 'SCAN',
+        trendTopic: thread.subject,
+        trendSummary: `BK 論壇掃描 · tid:${thread.tid} · fid:${board.fid}`,
         personaId: persona.accountId,
         bkUsername: persona.username,
         archetype: persona.archetype,

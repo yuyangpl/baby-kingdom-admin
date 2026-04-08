@@ -79,6 +79,8 @@ const feedSchema = new Schema<IFeed>(
     subject: String,
     // Trend source info
     trendSource: String,
+    trendTopic: String,
+    trendSummary: String,
     trendSentiment: Number,
     trendEngagement: Number,
     pullTime: Date,

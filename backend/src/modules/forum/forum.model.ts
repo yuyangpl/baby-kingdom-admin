@@ -51,7 +51,8 @@ export interface IForumBoard {
   };
   scanInterval: number;
   defaultToneMode?: string;
-  sensitivityTier: 1 | 2 | 3;
+  defaultRuleIds: string[];
+  excludeRuleIds: string[];
   note?: string;
   isActive: boolean;
   personaBindings: IPersonaBinding[];
@@ -74,7 +75,8 @@ const forumBoardSchema = new Schema<IForumBoard>(
     },
     scanInterval: { type: Number, default: 30 }, // minutes
     defaultToneMode: String,
-    sensitivityTier: { type: Number, enum: [1, 2, 3], default: 1 },
+    defaultRuleIds: { type: [String], default: [] },
+    excludeRuleIds: { type: [String], default: [] },
     note: String,
     isActive: { type: Boolean, default: true },
     personaBindings: [personaBindingSchema],

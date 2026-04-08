@@ -57,7 +57,34 @@ export async function pullTrends() {
     session: 'worker',
   });
 
-  return allTrends;
+  // --- Generate Feeds from new trends (GAS FeedGenerator logic) ---
+  let feedsGenerated = 0;
+  if (allTrends.length > 0) {
+    const { generateFromTrend } = await import('../feed/feed.service.js');
+    const { default: Feed } = await import('../feed/feed.model.js');
+
+    const maxFeeds = parseInt(await configService.getValue('FEEDS_PER_TREND_PULL') || '5', 10);
+    const maxPending = parseInt(await configService.getValue('MAX_PENDING_QUEUE') || '100', 10);
+    const pendingCount = await Feed.countDocuments({ status: 'pending' });
+
+    for (const trend of allTrends) {
+      if (feedsGenerated >= maxFeeds) break;
+      if (pendingCount + feedsGenerated >= maxPending) {
+        logger.info('pullTrends: pending queue full, stopping feed generation');
+        break;
+      }
+
+      const feedId = await generateFromTrend(trend);
+      if (feedId) {
+        await markUsed(trend._id.toString(), feedId);
+        feedsGenerated++;
+      }
+    }
+
+    logger.info({ feedsGenerated, totalTrends: allTrends.length }, 'pullTrends: feed generation complete');
+  }
+
+  return { trends: allTrends, feedsGenerated };
 }
 
 async function getEnabledSources(): Promise<string[]> {
@@ -92,7 +119,8 @@ async function fetchFromSource(baseUrl: string, token: string, source: string, c
   }
 
   const data = await response.json() as any;
-  return Array.isArray(data) ? data : data.topics || data.posts || [];
+  const inner = data.data || data;
+  return Array.isArray(inner) ? inner : inner.viral_topics || inner.topics || inner.posts || data.topics || data.posts || [];
 }
 
 async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string) {
@@ -180,16 +208,36 @@ export async function verifyOtp(otp: string): Promise<boolean> {
   const response = await fetch(`${baseUrl}/auth/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, otp }),
+    body: JSON.stringify({ email, token: otp }),
     signal: AbortSignal.timeout(10000),
   });
 
-  if (!response.ok) return false;
-
   const data = await response.json() as any;
-  const token = data.token || data.jwt;
+  logger.info({ status: response.status, responseKeys: Object.keys(data) }, 'MediaLens OTP verify response');
+
+  if (!response.ok || data.message === 'TOKEN_INVALID') {
+    logger.warn({ status: response.status, message: data.message }, 'MediaLens OTP verify failed');
+    return false;
+  }
+
+  // Try multiple possible token field paths
+  const inner = data.data || data;
+  const token = inner.token || inner.jwt || inner.access_token || inner.accessToken
+    || data.token || data.jwt || data.access_token || data.accessToken;
+
   if (token) {
     await configService.updateValue('MEDIALENS_JWT_TOKEN', token, 'system', '');
+    logger.info('MediaLens JWT token saved to config');
+  } else {
+    logger.warn({ data }, 'MediaLens OTP verify: no token field in response — saving full response as token');
+    // Some APIs return just the token string directly
+    const raw = typeof data === 'string' ? data : JSON.stringify(data);
+    if (raw && raw.length > 20 && raw.includes('.')) {
+      // Looks like a JWT (has dots)
+      await configService.updateValue('MEDIALENS_JWT_TOKEN', raw, 'system', '');
+      logger.info('MediaLens JWT token saved (raw response)');
+      return true;
+    }
   }
   return !!token;
 }

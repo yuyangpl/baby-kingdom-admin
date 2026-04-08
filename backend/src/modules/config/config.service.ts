@@ -42,6 +42,26 @@ export async function getValue(key: string): Promise<string | null> {
   return config.value;
 }
 
+export async function revealSecret(key: string, userId: string, ip: string): Promise<string> {
+  const config = await Config.findOne({ key });
+  if (!config) throw new NotFoundError('Config');
+  if (!config.isSecret) return config.value || '';
+
+  let plainValue = '';
+  try {
+    plainValue = config.value ? decrypt(config.value) : '';
+  } catch {
+    plainValue = '';
+  }
+
+  await auditService.log({
+    operator: userId, eventType: 'CONFIG_SECRET_VIEWED', module: 'config',
+    targetId: key, actionDetail: `Viewed secret config ${key}`, ip,
+  });
+
+  return plainValue;
+}
+
 export async function updateValue(key: string, value: string, userId: string, ip: string) {
   const config = await Config.findOne({ key });
   if (!config) throw new NotFoundError('Config');
@@ -65,6 +85,23 @@ export async function updateValue(key: string, value: string, userId: string, ip
   });
 
   return config;
+}
+
+export async function resetDefaults(userId: string, ip: string) {
+  const { CONFIG_PRESETS } = await import('../../seeds/config.seeds.js');
+  for (const c of CONFIG_PRESETS) {
+    const config = await Config.findOne({ key: c.key });
+    if (config) {
+      const newValue = c.isSecret && c.value ? encrypt(c.value) : (c.value || '');
+      config.value = newValue;
+      config.updatedBy = userId;
+      await config.save();
+    }
+  }
+  await auditService.log({
+    operator: userId, eventType: 'CONFIG_RESET', module: 'config',
+    actionDetail: 'Reset all configs to defaults', ip,
+  });
 }
 
 interface ConfigSeedItem {

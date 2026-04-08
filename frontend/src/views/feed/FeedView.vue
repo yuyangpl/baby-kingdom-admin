@@ -93,6 +93,9 @@
             />
             <code class="feed-id-chip">{{ feed.feedId }}</code>
             <span class="feed-card__time">{{ formatTime(feed.createdAt) }}</span>
+            <span v-if="feed.trendSummary || feed.threadTid" class="feed-card__meta">
+              {{ feed.trendSummary || `${feed.source === 'scanner' ? 'BK 論壇掃描' : feed.source === 'trends' ? '趨勢話題' : '自訂生成'} · tid:${feed.threadTid || '-'} · fid:${feed.threadFid || '-'}` }}
+            </span>
           </div>
           <div class="feed-card__header-right">
             <el-tag :type="statusType(feed.status)" size="small">{{ feed.status }}</el-tag>
@@ -104,8 +107,21 @@
         <div class="feed-card__body">
           <!-- Left: Content -->
           <div class="feed-card__content">
-            <div class="feed-card__subject">{{ feed.threadSubject }}</div>
-            <div v-if="feed.draftContent" class="feed-card__preview">{{ truncate(feed.draftContent, 160) }}</div>
+            <div class="feed-card__subject">
+              {{ feed.threadSubject }}
+              <a
+                v-if="feed.threadTid"
+                class="feed-card__view-thread"
+                :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.threadTid}`"
+                target="_blank"
+                rel="noopener"
+                @click.stop
+              >{{ $t('feed.viewThread') }} ↗</a>
+            </div>
+            <div v-if="feed.draftContent" class="feed-card__preview">
+              <span class="feed-card__preview-label">{{ $t('feed.replyContent') }}</span>
+              {{ truncate(feed.draftContent, 160) }}
+            </div>
             <div v-if="feed.finalContent" class="feed-card__draft-box">
               {{ truncate(feed.finalContent, 200) }}
             </div>
@@ -117,11 +133,83 @@
             </div>
             <div class="feed-card__persona-name">{{ feed.bkUsername }}</div>
             <el-tag v-if="feed.archetype" size="small" :type="archetypeColor[feed.archetype] || 'primary'">
-              {{ feed.archetype }}
+              {{ $t('persona.archetypeOptions.' + feed.archetype) }}
             </el-tag>
             <el-tag v-if="feed.toneMode" size="small" effect="plain" class="feed-card__tone-tag">
-              {{ feed.toneMode }}
+              {{ toneLabel(feed.toneMode) }}
             </el-tag>
+            <el-popover
+              trigger="click"
+              placement="left-start"
+              :width="400"
+              @show="feed.personaId && loadPersonaDetail(feed.personaId)"
+            >
+              <template #reference>
+                <el-button size="small" link type="primary" class="feed-card__expand-btn">
+                  {{ $t('common.expand') }}
+                  <el-icon><ArrowDown /></el-icon>
+                </el-button>
+              </template>
+
+              <!-- Popover content -->
+              <div class="persona-detail">
+                <div class="persona-detail__title">{{ $t('feed.persona') }} · {{ feed.personaId }}</div>
+
+                <template v-if="personaCache[feed.personaId]">
+                  <div class="persona-detail__grid">
+                    <div class="persona-detail__item">
+                      <span class="persona-detail__label">{{ $t('persona.archetype') }}</span>
+                      <el-tag size="small" :type="archetypeColor[personaCache[feed.personaId].archetype] || 'primary'">
+                        {{ $t('persona.archetypeOptions.' + personaCache[feed.personaId].archetype) }}
+                      </el-tag>
+                    </div>
+                    <div class="persona-detail__item">
+                      <span class="persona-detail__label">{{ $t('persona.primaryTone') }}</span>
+                      <span>{{ toneLabel(personaCache[feed.personaId].primaryToneMode) }}</span>
+                    </div>
+                    <div class="persona-detail__item">
+                      <span class="persona-detail__label">{{ $t('persona.maxPostsPerDay') }}</span>
+                      <span>{{ personaCache[feed.personaId].maxPostsPerDay }}</span>
+                    </div>
+                  </div>
+                  <div v-if="personaCache[feed.personaId].voiceCues?.length" class="persona-detail__block">
+                    <span class="persona-detail__label">{{ $t('persona.voiceCues') }}</span>
+                    <div class="persona-detail__tags">
+                      <el-tag v-for="v in personaCache[feed.personaId].voiceCues" :key="v" size="small" effect="plain">{{ v }}</el-tag>
+                    </div>
+                  </div>
+                  <div v-if="personaCache[feed.personaId].catchphrases?.length" class="persona-detail__block">
+                    <span class="persona-detail__label">{{ $t('persona.catchphrases') }}</span>
+                    <div class="persona-detail__tags">
+                      <el-tag v-for="c in personaCache[feed.personaId].catchphrases" :key="c" size="small" type="success" effect="plain">{{ c }}</el-tag>
+                    </div>
+                  </div>
+                  <div v-if="personaCache[feed.personaId].tier3Script" class="persona-detail__block">
+                    <span class="persona-detail__label">{{ $t('persona.tier3Script') }}</span>
+                    <div class="persona-detail__script">{{ personaCache[feed.personaId].tier3Script }}</div>
+                  </div>
+                  <div v-if="personaCache[feed.personaId].topicBlacklist?.length" class="persona-detail__block">
+                    <span class="persona-detail__label">{{ $t('persona.topicBlacklist') }}</span>
+                    <div class="persona-detail__tags">
+                      <el-tag v-for="b in personaCache[feed.personaId].topicBlacklist" :key="b" size="small" type="danger" effect="plain">{{ b }}</el-tag>
+                    </div>
+                  </div>
+                </template>
+                <div v-else style="text-align: center; padding: 12px">
+                  <el-icon class="is-loading"><RefreshRight /></el-icon>
+                </div>
+
+                <!-- Feed meta -->
+                <div class="feed-detail__meta">
+                  <span v-if="feed.sensitivityTier"><el-tag :type="tierTagType(feed.sensitivityTier)" size="small">{{ feed.sensitivityTier }}</el-tag></span>
+                  <span v-if="feed.postType" class="feed-detail__chip">{{ feed.postType }}</span>
+                  <span v-if="feed.relevanceScore != null" class="feed-detail__chip">{{ $t('feed.relevanceScore') }}: {{ feed.relevanceScore }}</span>
+                  <span v-if="feed.trendSentiment != null" class="feed-detail__chip">{{ $t('feed.trendSentiment') }}: {{ feed.trendSentiment }}</span>
+                </div>
+                <div v-if="feed.failReason" class="feed-detail__fail">{{ feed.failReason }}</div>
+                <div v-if="feed.adminNotes" class="feed-detail__notes">{{ $t('feed.adminNotes') }}: {{ feed.adminNotes }}</div>
+              </div>
+            </el-popover>
           </div>
         </div>
 
@@ -213,7 +301,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Lock, Unlock, RefreshRight } from '@element-plus/icons-vue'
+import { Lock, Unlock, RefreshRight, ArrowDown } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import api from '../../api'
 import { useFeedStore } from '../../stores/feed'
@@ -231,6 +319,38 @@ const showEditModal = ref<boolean>(false)
 const editRow = ref<Record<string, any> | null>(null)
 const showCustomGenerate = ref<boolean>(false)
 const pendingCount = ref<number>(0)
+const tones = ref<{ toneId: string; displayName: string }[]>([])
+const personaCache = ref<Record<string, any>>({})
+
+const loadPersonaDetail = async (accountId: string) => {
+  if (!accountId || personaCache.value[accountId]) return
+  try {
+    const res = await api.get(`/v1/personas/${accountId}`)
+    const data = res.data || res
+    personaCache.value = { ...personaCache.value, [accountId]: data }
+  } catch { /* ignore */ }
+}
+
+const loadTones = async () => {
+  if (tones.value.length > 0) return
+  try {
+    const res = await api.get('/v1/tones')
+    tones.value = (res.data || res).map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+  } catch { /* ignore */ }
+}
+
+const toneLabel = (toneId: string): string => {
+  const t = tones.value.find(t => t.toneId === toneId)
+  return t ? `${t.displayName}` : toneId || '-'
+}
+
+const tierTagType = (tier: string | number | undefined): string => {
+  if (!tier) return 'info'
+  const s = String(tier)
+  if (s.includes('3')) return 'danger'
+  if (s.includes('2')) return 'warning'
+  return 'success'
+}
 
 const archetypeColor: Record<string, string> = {
   pregnant: 'danger',
@@ -276,7 +396,9 @@ const isClaimedByMe = (feed: any): boolean => {
 }
 
 const isClaimedByOther = (feed: any): boolean => {
-  return !!feed.claimedBy && feed.claimedBy !== authStore.user?.username
+  if (!feed.claimedBy) return false
+  const myId = authStore.user?._id || authStore.user?.id
+  return feed.claimedBy !== myId
 }
 
 const toggleSelect = (feedId: string, checked: boolean) => {
@@ -409,7 +531,7 @@ const batchApprove = async () => {
   const ids = Array.from(selectedIds.value)
   if (!ids.length) return
   try {
-    await api.post('/v1/feeds/batch-approve', { feedIds: ids })
+    await api.post('/v1/feeds/batch/approve', { feedIds: ids })
     ElMessage.success(`${ids.length} ${t('feed.approve')}`)
     selectedIds.value = new Set()
     loadFeeds()
@@ -433,7 +555,7 @@ const batchReject = async () => {
         inputPlaceholder: t('feed.placeholder.notes'),
       }
     )
-    await api.post('/v1/feeds/batch-reject', { feedIds: ids, notes: notes || '' })
+    await api.post('/v1/feeds/batch/reject', { feedIds: ids, notes: notes || '' })
     ElMessage.success(`${ids.length} ${t('feed.reject')}`)
     selectedIds.value = new Set()
     loadFeeds()
@@ -448,6 +570,7 @@ onMounted(() => {
   feedStore.setFilter('status', 'pending')
   loadFeeds()
   loadPendingCount()
+  loadTones()
 })
 </script>
 
@@ -589,20 +712,50 @@ onMounted(() => {
   flex: 2;
   min-width: 0;
 }
+.feed-card__meta {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  letter-spacing: 0.3px;
+}
 .feed-card__subject {
   font-weight: 700;
   font-size: 15px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: var(--bk-foreground);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.feed-card__view-thread {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--el-color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.feed-card__view-thread:hover {
+  text-decoration: underline;
 }
 .feed-card__preview {
   font-size: 13px;
   color: var(--el-text-color-regular);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 8px;
+  background: #F9FAFB;
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius-sm);
+  padding: 8px 10px;
+  line-height: 1.6;
+}
+.feed-card__preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--el-color-primary);
+  margin-right: 6px;
 }
 .feed-card__draft-box {
   background: #F9FAFB;
@@ -641,6 +794,87 @@ onMounted(() => {
 }
 .feed-card__tone-tag {
   margin-top: 2px;
+}
+.feed-card__expand-btn {
+  margin-top: 4px;
+  font-size: 12px;
+}
+/* Persona detail (popover) */
+.persona-detail {
+  background: #F0F9FF;
+  border-radius: var(--bk-radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.persona-detail__title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--el-color-primary);
+}
+.persona-detail__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.persona-detail__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.persona-detail__block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.persona-detail__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+}
+.persona-detail__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.persona-detail__script {
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  line-height: 1.6;
+  background: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--bk-border);
+}
+/* Feed meta chips */
+.feed-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.feed-detail__chip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  background: var(--el-fill-color-light);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.feed-detail__warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.feed-detail__fail {
+  font-size: 12px;
+  color: var(--el-color-danger);
+}
+.feed-detail__notes {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-style: italic;
 }
 
 /* Card Footer */

@@ -69,7 +69,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="feedsCreated" :label="$t('scanner.feeds')" width="90" align="center" />
-        <el-table-column prop="status" :label="$t('common.status')" width="120">
+        <el-table-column prop="status" :label="$t('common.status')">
           <template #default="{ row }">
             <el-tag
               :type="row.status === 'completed' ? 'success' : row.status === 'error' ? 'danger' : 'info'"

@@ -190,14 +190,13 @@ const loadTrends = async () => {
 
 const loadTokenStatus = async () => {
   try {
-    const res = await api.get('/v1/trends/medialens/token-status')
+    const res: any = await api.get('/v1/trends/medialens/token-status')
     const data = res.data ?? res
-    tokenValid.value = data.valid ?? true
-    if (data.expiry) {
-      tokenExpiry.value = new Date(data.expiry).toLocaleString()
-    }
+    tokenValid.value = !!data.hasToken
+    tokenExpiry.value = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : ''
   } catch {
-    // endpoint may not exist yet
+    tokenValid.value = false
+    tokenExpiry.value = ''
   }
 }
 

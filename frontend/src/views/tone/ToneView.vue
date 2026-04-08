@@ -133,7 +133,7 @@ const handleDelete = async (row: any) => {
 
 const toggleActive = async (row: any) => {
   try {
-    await api.patch(`/v1/tones/${row.toneId}`, { isActive: row.isActive })
+    await api.put(`/v1/tones/${row.toneId}`, { isActive: row.isActive })
     ElMessage.success(t('tone.toneUpdated'))
   } catch {
     row.isActive = !row.isActive

@@ -18,11 +18,16 @@
       </el-form-item>
 
       <el-form-item :label="$t('feed.persona')" prop="personaAccountId">
-        <el-input v-model="form.personaAccountId" :placeholder="$t('feed.placeholder.toneMode')" />
+        <el-select v-model="form.personaAccountId" filterable clearable :placeholder="$t('feed.placeholder.toneMode')" style="width: 100%" :loading="personasLoading">
+          <el-option v-for="p in personas" :key="p.accountId" :label="`${p.accountId} — ${p.username} (${$t('persona.archetypeOptions.' + p.archetype)})`" :value="p.accountId" />
+        </el-select>
       </el-form-item>
 
       <el-form-item :label="$t('feed.toneMode')" prop="toneMode">
-        <el-input v-model="form.toneMode" placeholder="auto" />
+        <el-select v-model="form.toneMode" :placeholder="$t('persona.selectTone')" style="width: 100%" :loading="tonesLoading">
+          <el-option label="Auto" value="auto" />
+          <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+        </el-select>
       </el-form-item>
 
       <el-form-item :label="$t('topicRules.postType')" prop="postType">
@@ -74,6 +79,31 @@ const emit = defineEmits<{
 const formRef = ref<FormInstance>()
 const generating = ref<boolean>(false)
 
+const tones = ref<{ toneId: string; displayName: string }[]>([])
+const tonesLoading = ref(false)
+const personas = ref<{ accountId: string; username: string; archetype: string }[]>([])
+const personasLoading = ref(false)
+
+const loadOptions = async () => {
+  if (tones.value.length === 0) {
+    tonesLoading.value = true
+    try {
+      const res = await api.get('/v1/tones')
+      tones.value = (res.data || res).map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+    } catch { /* ignore */ }
+    tonesLoading.value = false
+  }
+  if (personas.value.length === 0) {
+    personasLoading.value = true
+    try {
+      const res = await api.get('/v1/personas', { params: { limit: 100 } })
+      const list = res.data || res
+      personas.value = (Array.isArray(list) ? list : []).map((p: any) => ({ accountId: p.accountId, username: p.username, archetype: p.archetype || '' }))
+    } catch { /* ignore */ }
+    personasLoading.value = false
+  }
+}
+
 interface GenerateForm {
   topic: string
   personaAccountId: string
@@ -100,6 +130,7 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open) {
+      loadOptions()
       Object.assign(form, defaultForm())
       formRef.value?.clearValidate()
     }

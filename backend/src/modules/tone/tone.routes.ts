@@ -5,6 +5,7 @@ import ToneMode from './tone.model.js';
 
 const router = Router();
 const ctrl = buildCrud(ToneMode, 'tone', {
+  lookupField: 'toneId',
   allowedFields: [
     'toneId', 'displayName', 'whenToUse', 'emotionalRegister', 'openingStyle',
     'sentenceStructure', 'whatToAvoid', 'exampleOpening', 'suitableForTier3',
