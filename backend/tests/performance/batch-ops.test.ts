@@ -46,7 +46,7 @@ beforeAll(async () => {
       feedId: `${PERF_PREFIX}${idx}`,
       type: 'reply',
       status: 'pending',
-      source: 'scanner',
+      source: ['scanner'],
       threadTid: 800000 + i,
       threadFid: 162,
       personaId: 'BK-PERF-TEST',

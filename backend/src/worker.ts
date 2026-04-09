@@ -5,7 +5,7 @@ import cron from 'node-cron';
 import { connectDB, disconnectDB } from './shared/database.js';
 import { getRedis, connectRedis, disconnectRedis } from './shared/redis.js';
 import { initQueues, getQueue, recordJob } from './modules/queue/queue.service.js';
-import { scanForumThreads } from './modules/scanner/scanner.service.js';
+import { scanBoard, getActiveBoards, getBoardsDueForScan } from './modules/scanner/scanner.service.js';
 import { pullTrends } from './modules/trends/trends.service.js';
 import { postFeed } from './modules/poster/poster.service.js';
 import { aggregateDailyStats } from './modules/dashboard/dashboard.service.js';
@@ -14,6 +14,7 @@ import Feed from './modules/feed/feed.model.js';
 import logger from './shared/logger.js';
 import { runHealthCheck } from './shared/health-monitor.js';
 import { pullAndStore } from './modules/google-trends/google-trends.service.js';
+import * as configService from './modules/config/config.service.js';
 
 // Fix 6: Use UUID instead of PID so it is unique across containers
 const WORKER_ID: string = crypto.randomUUID();
@@ -32,20 +33,21 @@ async function start(): Promise<void> {
   // --- Queue Processors ---
 
   const scannerWorker = new Worker('scanner', async (job: Job) => {
-    logger.info({ jobId: job.id }, 'Scanner job started');
+    const { fid, boardName, triggeredBy } = job.data || {};
+    logger.info({ jobId: job.id, fid, boardName }, 'Scanner job started');
     const startedAt = new Date();
     try {
-      const stats = await scanForumThreads();
-      // Fix 4: Wrap recordJob in try/catch so a record failure doesn't mask the result
+      const stats = await scanBoard(fid);
+      const jobStatus = stats.status === 'interrupted' ? 'completed' : 'completed';
       try {
-        await recordJob('scanner', { jobId: job.id, status: 'completed', startedAt, completedAt: new Date(), result: stats, triggeredBy: job.data?.triggeredBy || 'cron' });
+        await recordJob('scanner', { jobId: job.id, status: jobStatus, startedAt, completedAt: new Date(), result: stats, triggeredBy: triggeredBy || 'cron' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record scanner job completion');
       }
       return stats;
     } catch (err) {
       try {
-        await recordJob('scanner', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: job.data?.triggeredBy || 'cron' });
+        await recordJob('scanner', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: triggeredBy || 'cron' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record scanner job failure');
       }
@@ -77,26 +79,38 @@ async function start(): Promise<void> {
   }, { connection, concurrency: 1 });
 
   const posterWorker = new Worker('poster', async (job: Job) => {
-    logger.info({ jobId: job.id, feedId: job.data?.feedId }, 'Poster job started');
+    const { feedId, triggeredBy } = job.data || {};
+    logger.info({ jobId: job.id, feedId, triggeredBy }, 'Poster job started');
     const startedAt = new Date();
-    try {
-      // Fix 3: Idempotency check — skip if already posted
-      const feed = await Feed.findById(job.data.feedId);
-      if (feed?.postId) {
-        logger.info({ feedId: job.data.feedId, postId: feed.postId }, 'Feed already posted, skipping');
-        return { posted: false, skipped: true };
-      }
 
-      const result = await postFeed(job.data.feedId, undefined, '');
+    // Idempotency check — skip if already posted
+    const feed = await Feed.findById(feedId);
+    if (!feed || feed.postId) {
+      logger.info({ feedId, postId: feed?.postId }, 'Feed already posted or not found, skipping');
+      return { posted: false, skipped: true };
+    }
+
+    // Auto trigger checks board.enableAutoReply; manual trigger always posts
+    if (triggeredBy === 'approve') {
+      const { ForumBoard } = await import('./modules/forum/forum.model.js');
+      const board = feed.threadFid ? await ForumBoard.findOne({ fid: feed.threadFid }) : null;
+      if (!board?.enableAutoReply) {
+        logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Board auto-reply not enabled, skipping auto-post');
+        return { posted: false, skipped: true, reason: 'auto-reply disabled' };
+      }
+    }
+
+    try {
+      const result = await postFeed(feedId, undefined, '');
       try {
-        await recordJob('poster', { jobId: job.id, status: 'completed', startedAt, completedAt: new Date(), result: { feedId: result.feedId, postId: result.postId }, triggeredBy: 'manual' });
+        await recordJob('poster', { jobId: job.id, status: 'completed', startedAt, completedAt: new Date(), result: { feedId: result.feedId, postId: result.postId }, triggeredBy: triggeredBy || 'manual' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record poster job completion');
       }
       return { posted: true };
     } catch (err) {
       try {
-        await recordJob('poster', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: 'manual' });
+        await recordJob('poster', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: triggeredBy || 'manual' });
       } catch (recordErr) {
         logger.error({ recordErr }, 'Failed to record poster job failure');
       }
@@ -149,6 +163,27 @@ async function start(): Promise<void> {
     }
   }, { connection, concurrency: 1 });
 
+  const googleTrendsWorker = new Worker('google-trends', async (job: Job) => {
+    logger.info('Google Trends pull started');
+    const startedAt = new Date();
+    try {
+      const result = await pullAndStore();
+      try {
+        await recordJob('google-trends', { jobId: job.id, status: 'completed', startedAt, completedAt: new Date(), result, triggeredBy: job.data?.triggeredBy || 'cron' });
+      } catch (recordErr) {
+        logger.error({ recordErr }, 'Failed to record google-trends job completion');
+      }
+      logger.info({ pullId: result.pullId, count: result.count }, 'Google Trends pull completed');
+    } catch (err) {
+      try {
+        await recordJob('google-trends', { jobId: job.id, status: 'failed', startedAt, completedAt: new Date(), error: (err as Error).message, triggeredBy: job.data?.triggeredBy || 'cron' });
+      } catch (recordErr) {
+        logger.error({ recordErr }, 'Failed to record google-trends job failure');
+      }
+      throw err;
+    }
+  }, { connection, concurrency: 1 });
+
   // --- Cron Scheduler ---
   // Only one worker instance should run cron (leader election via Redis lock)
 
@@ -167,29 +202,35 @@ async function start(): Promise<void> {
     await redis.expire(LOCK_KEY, LOCK_TTL);
   }
 
-  function registerCronJobs(): void {
+  async function registerCronJobs(): Promise<void> {
     logger.info('This worker is the cron leader, registering cron jobs');
 
     // Renew lock every 30s (half of LOCK_TTL)
     intervals.push(setInterval(() => renewLock(), (LOCK_TTL / 2) * 1000));
 
-    // Scanner: every 30 minutes
-    cronTasks.push(cron.schedule('*/30 * * * *', async () => {
+    // Scanner: check every 5 min which boards are due for scan (based on board.scanInterval)
+    intervals.push(setInterval(async () => {
       const q = getQueue('scanner');
-      if (q && !(await q.isPaused())) {
-        await q.add('cron-scan', { triggeredBy: 'cron' });
-        logger.info('Cron: scanner job queued');
+      if (!q || await q.isPaused()) return;
+      const boards = await getBoardsDueForScan();
+      for (const board of boards) {
+        await q.add(`cron-scan-${board.fid}`, { fid: board.fid, boardName: board.name, triggeredBy: 'cron' });
       }
-    }));
+      if (boards.length > 0) {
+        logger.info({ count: boards.length }, 'Cron: scanner jobs queued for due boards');
+      }
+    }, 5 * 60 * 1000));
 
-    // Trends: every hour
-    cronTasks.push(cron.schedule('0 * * * *', async () => {
+    // Trends: configurable interval (default 1 hour)
+    const trendsIntervalHrs = parseFloat(await configService.getValue('TREND_PULL_INTERVAL_HRS') || '1');
+    const trendsIntervalMs = trendsIntervalHrs * 60 * 60 * 1000;
+    intervals.push(setInterval(async () => {
       const q = getQueue('trends');
       if (q && !(await q.isPaused())) {
         await q.add('cron-trends', { triggeredBy: 'cron' });
         logger.info('Cron: trends job queued');
       }
-    }));
+    }, trendsIntervalMs));
 
     // Daily reset: midnight HKT (UTC+8 = 16:00 UTC)
     cronTasks.push(cron.schedule('0 16 * * *', async () => {
@@ -209,13 +250,14 @@ async function start(): Promise<void> {
       }
     }));
 
-    // Google Trends: every 30 minutes
-    cronTasks.push(cron.schedule('*/30 * * * *', async () => {
-      try {
-        const result = await pullAndStore();
-        logger.info({ pullId: result.pullId, count: result.count }, 'Cron: google-trends pull completed');
-      } catch (err) {
-        logger.error({ err }, 'Cron: google-trends pull failed');
+    // Google Trends: configurable interval (default 30 minutes)
+    const gtrendsInterval = parseInt(await configService.getValue('GOOGLE_TRENDS_PULL_INTERVAL') || '30', 10);
+    const gtrendsCron = `*/${gtrendsInterval} * * * *`;
+    cronTasks.push(cron.schedule(gtrendsCron, async () => {
+      const q = getQueue('google-trends');
+      if (q && !(await q.isPaused())) {
+        await q.add('cron-gtrends', { triggeredBy: 'cron' });
+        logger.info('Cron: google-trends job queued');
       }
     }));
 
@@ -229,13 +271,13 @@ async function start(): Promise<void> {
       }
     }));
 
-    logger.info('Cron jobs registered: scanner(30m), trends(1h), daily-reset(midnight), stats(1h), google-trends(30m), health(5m)');
+    logger.info(`Cron jobs registered: scanner(per-board interval, check 5m), trends(${trendsIntervalHrs}h), daily-reset(midnight), stats(1h), google-trends(${gtrendsInterval}m), health(5m)`);
   }
 
   const isLeader = await tryAcquireLock();
 
   if (isLeader) {
-    registerCronJobs();
+    await registerCronJobs();
   } else {
     logger.info('This worker is NOT the cron leader, only processing jobs');
 
@@ -244,7 +286,7 @@ async function start(): Promise<void> {
       const acquired = await tryAcquireLock();
       if (acquired) {
         logger.info('Non-leader worker acquired cron lock — becoming the new leader');
-        registerCronJobs();
+        await registerCronJobs();
         // Remove this re-election interval now that we are the leader
         // (renewLock interval was added inside registerCronJobs; this one stays until shutdown)
       }

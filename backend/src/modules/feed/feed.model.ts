@@ -11,7 +11,7 @@ export interface IFeed {
   feedId: string;
   type: 'thread' | 'reply';
   status: 'pending' | 'approved' | 'rejected' | 'posted' | 'failed';
-  source: 'scanner' | 'trends' | 'custom';
+  source: ('scanner' | 'trends' | 'custom')[];
   // Thread info
   threadTid?: number;
   threadFid?: number;
@@ -72,7 +72,7 @@ const feedSchema = new Schema<IFeed>(
       enum: ['pending', 'approved', 'rejected', 'posted', 'failed'],
       default: 'pending',
     },
-    source: { type: String, enum: ['scanner', 'trends', 'custom'], required: true },
+    source: { type: [String], enum: ['scanner', 'trends', 'custom'], required: true },
     // Thread info
     threadTid: Number,
     threadFid: Number,

@@ -55,17 +55,17 @@ beforeAll(async () => {
   // Create feeds for tests
   const [testFeed, claimFeed, crossClaimFeed] = await Feed.create([
     {
-      feedId: 'FQ-AUTHZ-001', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-AUTHZ-001', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66661, threadFid: 162, personaId: 'BK-AUTHZ-TEST',
       draftContent: 'Test content', charCount: 12,
     },
     {
-      feedId: 'FQ-AUTHZ-002', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-AUTHZ-002', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66662, threadFid: 162, personaId: 'BK-AUTHZ-TEST',
       draftContent: 'Claim test content', charCount: 18,
     },
     {
-      feedId: 'FQ-AUTHZ-003', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-AUTHZ-003', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66663, threadFid: 162, personaId: 'BK-AUTHZ-TEST',
       draftContent: 'Cross claim content', charCount: 19,
     },

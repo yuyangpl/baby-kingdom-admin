@@ -1,44 +1,40 @@
 <template>
   <div class="trends-view">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-      <h1 class="page-title" style="margin: 0;">{{ $t('trends.title') }}</h1>
-      <el-button type="primary" :loading="pulling" @click="triggerPull">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
+      <div>
+        <h1 class="page-title" style="margin: 0;">{{ $t('trends.title') }}</h1>
+        <p style="margin: 4px 0 0; font-size: 13px; color: #909399;">{{ $t('trends.desc') }}</p>
+      </div>
+      <el-button type="primary" :loading="pulling" :disabled="queuePaused" @click="triggerPull">
         {{ $t('trends.triggerPull') }}
       </el-button>
     </div>
+    <el-alert v-if="queuePaused" :title="$t('trends.queuePaused')" type="warning" show-icon :closable="false" style="margin-bottom: 16px;" />
 
-    <!-- Token Status Card -->
-    <el-card
-      class="token-card"
-      :class="tokenValid ? 'card--success' : 'card--danger'"
-      shadow="never"
-    >
-      <div class="token-status">
-        <el-icon :size="20" :color="tokenValid ? 'var(--bk-success)' : 'var(--bk-danger)'">
-          <CircleCheckFilled v-if="tokenValid" />
-          <WarningFilled v-else />
-        </el-icon>
-        <span>{{ tokenValid ? $t('trends.tokenValidUntil', { date: tokenExpiry }) : $t('trends.tokenExpiredOrMissing') }}</span>
-      </div>
-    </el-card>
-
-    <!-- Data Source Toggles -->
+    <!-- Data Source Toggles + Token Status -->
     <el-card class="source-card" shadow="never">
-      <template #header>
-        <span class="card-header-title">Data Sources</span>
-      </template>
-      <div class="source-toggles">
-        <div class="source-toggle-item">
-          <span>MediaLens</span>
-          <el-switch v-model="sources.mediaLens" />
+      <div class="source-row">
+        <div class="source-toggles">
+          <span class="card-header-title" style="margin-right: 16px;">{{ $t('trends.dataSources') }}</span>
+          <div class="source-toggle-item">
+            <span>MediaLens</span>
+            <el-switch v-model="sources.mediaLens" />
+          </div>
+          <div class="source-toggle-item">
+            <span>LIHKG</span>
+            <el-switch v-model="sources.lihkg" @change="(val: boolean) => updateSourceConfig('ENABLE_LIHKG', val)" />
+          </div>
+          <div class="source-toggle-item">
+            <span>Facebook</span>
+            <el-switch v-model="sources.facebook" @change="(val: boolean) => updateSourceConfig('ENABLE_FB_VIRAL', val)" />
+          </div>
         </div>
-        <div class="source-toggle-item">
-          <span>LIHKG</span>
-          <el-switch v-model="sources.lihkg" />
-        </div>
-        <div class="source-toggle-item">
-          <span>Facebook</span>
-          <el-switch v-model="sources.facebook" />
+        <div class="token-status-inline" :class="tokenValid ? 'token--valid' : 'token--expired'">
+          <el-icon :size="14" :color="tokenValid ? 'var(--bk-success)' : 'var(--bk-danger)'">
+            <CircleCheckFilled v-if="tokenValid" />
+            <WarningFilled v-else />
+          </el-icon>
+          <span>{{ tokenValid ? $t('trends.tokenValidUntil', { date: tokenExpiry }) : $t('trends.tokenExpiredOrMissing') }}</span>
         </div>
       </div>
     </el-card>
@@ -52,6 +48,26 @@
         :row-class-name="sentimentRowClass"
         highlight-current-row
       >
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div style="padding: 12px 20px;">
+              <div v-if="row.summary" style="margin-bottom: 8px;">
+                <strong>{{ $t('trends.summary') }}:</strong> {{ row.summary }}
+              </div>
+              <div v-if="row.engagements" style="margin-bottom: 8px;">
+                <strong>{{ $t('trends.engagements') }}:</strong> {{ row.engagements?.toLocaleString() }}
+                <span v-if="row.postCount" style="margin-left: 12px;">
+                  <strong>{{ $t('trends.postCount') }}:</strong> {{ row.postCount?.toLocaleString() }}
+                </span>
+              </div>
+              <div v-if="row.rawData" style="margin-top: 8px;">
+                <strong>{{ $t('trends.rawData') }}:</strong>
+                <pre style="background: #f5f7fa; padding: 8px 12px; border-radius: 4px; max-height: 300px; overflow: auto; font-size: 12px; margin-top: 4px;">{{ JSON.stringify(row.rawData, null, 2) }}</pre>
+              </div>
+              <div v-if="!row.rawData && !row.summary" style="color: #909399;">{{ $t('common.noData') }}</div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="pullId" :label="$t('trends.pullId')" width="110">
           <template #default="{ row }">
             <code class="mono">{{ row.pullId }}</code>
@@ -94,14 +110,6 @@
             >
               T{{ row.sensitivityTier }}
             </span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="toneMode" :label="$t('trends.toneMode')" width="110" />
-        <el-table-column prop="isUsed" :label="$t('trends.used')" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.isUsed ? 'success' : 'info'" size="small">
-              {{ row.isUsed ? '是' : '否' }}
-            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="feedIds" :label="$t('trends.feedIds')" min-width="140">
@@ -147,6 +155,7 @@ const { t } = useI18n()
 const trends = ref<any[]>([])
 const loading = ref(false)
 const pulling = ref(false)
+const queuePaused = ref(false)
 const tokenValid = ref(true)
 const tokenExpiry = ref('')
 
@@ -157,6 +166,25 @@ const sources = reactive({
   lihkg: false,
   facebook: false,
 })
+
+const loadSourceConfig = async () => {
+  try {
+    const res = await api.get('/v1/configs/medialens')
+    const configs = res.data || res
+    for (const c of configs) {
+      if (c.key === 'ENABLE_LIHKG') sources.lihkg = c.value === 'true'
+      if (c.key === 'ENABLE_FB_VIRAL') sources.facebook = c.value === 'true'
+    }
+  } catch { /* keep defaults */ }
+}
+
+const updateSourceConfig = async (key: string, val: boolean) => {
+  try {
+    await api.put(`/v1/configs/${key}`, { value: String(val) })
+  } catch {
+    ElMessage.error('Failed to update config')
+  }
+}
 
 const sourceTagType = (source: string): string => {
   const map: Record<string, string> = {
@@ -211,18 +239,30 @@ const loadTokenStatus = async () => {
     const res: any = await api.get('/v1/trends/medialens/token-status')
     const data = res.data ?? res
     tokenValid.value = !!data.hasToken
-    tokenExpiry.value = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : ''
+    tokenExpiry.value = data.expiresAt ? new Date(data.expiresAt).toLocaleString() : (data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '')
   } catch {
     tokenValid.value = false
     tokenExpiry.value = ''
   }
 }
 
+const loadQueueStatus = async () => {
+  try {
+    const res: any = await api.get('/v1/queues/trends')
+    const data = res.data ?? res
+    queuePaused.value = data.status === 'paused'
+  } catch { /* ignore */ }
+}
+
 const triggerPull = async () => {
+  if (queuePaused.value) {
+    ElMessage.warning(t('trends.queuePaused'))
+    return
+  }
   pulling.value = true
   try {
     await api.post('/v1/trends/trigger')
-    ElMessage.success(t('trends.triggerPull'))
+    ElMessage.success(t('trends.pullTriggered'))
     loadTrends()
   } finally {
     pulling.value = false
@@ -230,8 +270,10 @@ const triggerPull = async () => {
 }
 
 onMounted(() => {
+  loadSourceConfig()
   loadTrends()
   loadTokenStatus()
+  loadQueueStatus()
 })
 </script>
 
@@ -239,21 +281,15 @@ onMounted(() => {
 .trends-view {
 }
 
-.token-card {
-  margin-bottom: 16px;
-  border-radius: var(--bk-radius);
-}
-
-.token-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 500;
-}
-
 .source-card {
   margin-bottom: 20px;
   border-radius: var(--bk-radius);
+}
+
+.source-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .card-header-title {
@@ -263,7 +299,8 @@ onMounted(() => {
 
 .source-toggles {
   display: flex;
-  gap: 32px;
+  align-items: center;
+  gap: 24px;
 }
 
 .source-toggle-item {
@@ -271,6 +308,22 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   font-size: 14px;
+}
+
+.token-status-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.token--valid {
+  color: var(--bk-success);
+}
+
+.token--expired {
+  color: var(--bk-danger);
 }
 
 .table-card {

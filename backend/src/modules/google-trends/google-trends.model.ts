@@ -64,7 +64,7 @@ const googleTrendSchema = new Schema<IGoogleTrend>(
 
 googleTrendSchema.index({ pullId: 1 });
 googleTrendSchema.index({ pulledAt: -1 });
-googleTrendSchema.index({ query: 1, pullId: 1 }, { unique: true });
+googleTrendSchema.index({ query: 1 }, { unique: true });
 
 const GoogleTrend = mongoose.model<IGoogleTrend>('GoogleTrend', googleTrendSchema);
 export default GoogleTrend;

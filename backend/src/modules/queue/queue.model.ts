@@ -1,7 +1,7 @@
 import mongoose, { Schema, HydratedDocument } from 'mongoose';
 
 export interface IQueueJob {
-  queueName: 'scanner' | 'trends' | 'poster' | 'daily-reset' | 'stats-aggregator' | 'ml-token-refresh';
+  queueName: 'scanner' | 'trends' | 'poster' | 'daily-reset' | 'stats-aggregator' | 'google-trends';
   jobId?: string;
   status: 'waiting' | 'active' | 'completed' | 'failed';
   startedAt?: Date;
@@ -21,7 +21,7 @@ const queueJobSchema = new Schema<IQueueJob>(
     queueName: {
       type: String,
       required: true,
-      enum: ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'ml-token-refresh'],
+      enum: ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'google-trends'],
     },
     jobId: String,
     status: {

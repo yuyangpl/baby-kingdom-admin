@@ -54,6 +54,7 @@ export interface IForumBoard {
   defaultRuleIds: string[];
   excludeRuleIds: string[];
   note?: string;
+  lastScannedAt?: Date;
   isActive: boolean;
   personaBindings: IPersonaBinding[];
   createdAt: Date;
@@ -78,6 +79,7 @@ const forumBoardSchema = new Schema<IForumBoard>(
     defaultRuleIds: { type: [String], default: [] },
     excludeRuleIds: { type: [String], default: [] },
     note: String,
+    lastScannedAt: Date,
     isActive: { type: Boolean, default: true },
     personaBindings: [personaBindingSchema],
   },

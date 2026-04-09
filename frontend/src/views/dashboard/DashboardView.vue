@@ -322,7 +322,7 @@ onMounted(async () => {
     const d = res.data || {};
     const approvalRate = Math.round((d.quality?.approvalRate || 0) * 100);
     todayStats.value = [
-      { label: t('common.scanned'), value: d.scanner?.scanned || 0, icon: 'Search' },
+      { label: t('common.scanned'), value: d.scanner?.totalScanned || 0, icon: 'Search' },
       { label: t('common.hitRate'), value: `${Math.round((d.scanner?.hitRate || 0) * 100)}%`, icon: 'Aim' },
       { label: t('common.drafts'), value: d.feeds?.generated || 0, icon: 'Document' },
       { label: t('common.posted'), value: `${d.feeds?.posted || 0}/${d.feeds?.approved || 0}`, icon: 'Promotion' },

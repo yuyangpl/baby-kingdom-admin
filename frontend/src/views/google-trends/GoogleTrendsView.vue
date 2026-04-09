@@ -98,7 +98,24 @@ function handleFilterChange() {
   loadTrends();
 }
 
-onMounted(() => loadTrends());
+const pullInterval = ref(30);
+
+async function loadPullInterval() {
+  try {
+    const res: any = await api.get('/v1/configs/google-trends');
+    const configs = res.data || res;
+    for (const c of configs) {
+      if (c.key === 'GOOGLE_TRENDS_PULL_INTERVAL') {
+        pullInterval.value = parseInt(c.value, 10) || 30;
+      }
+    }
+  } catch { /* keep default */ }
+}
+
+onMounted(() => {
+  loadTrends();
+  loadPullInterval();
+});
 </script>
 
 <template>
@@ -110,7 +127,7 @@ onMounted(() => loadTrends());
           {{ $t('googleTrends.lastPull', { time: formatTime(trends[0]?.pulledAt) }) }}
         </span>
         <span v-else style="color: #909399; font-size: 13px;">{{ $t('googleTrends.noData') }}</span>
-        <el-tag size="small" style="margin-left: 8px;">{{ $t('googleTrends.autoPull') }}</el-tag>
+        <el-tag size="small" style="margin-left: 8px;">{{ $t('googleTrends.autoPullDynamic', { minutes: pullInterval }) }}</el-tag>
       </div>
       <el-button type="primary" :loading="triggering" @click="triggerPull">
         {{ $t('googleTrends.triggerPull') }}

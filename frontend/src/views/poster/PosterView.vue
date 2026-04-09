@@ -40,24 +40,82 @@
         v-loading="loadingQueue"
         style="width: 100%"
         highlight-current-row
+        @expand-change="(row: any, expanded: any[]) => { if (expanded.length) loadExpandData(row.data?.feedId) }"
       >
-        <el-table-column prop="postId" :label="$t('poster.postId')" min-width="110" />
-        <el-table-column prop="feedId" :label="$t('feed.feedId')" min-width="110" />
-        <el-table-column prop="persona" :label="$t('feed.persona')" min-width="120" />
-        <el-table-column prop="board" :label="$t('poster.board')" min-width="120" />
-        <el-table-column prop="type" :label="$t('poster.type')" min-width="90" />
-        <el-table-column prop="scheduledAt" :label="$t('poster.scheduled')" min-width="170">
+        <el-table-column type="expand">
           <template #default="{ row }">
-            {{ row.scheduledAt ? new Date(row.scheduledAt).toLocaleString() : '--' }}
+            <div v-if="expandData[row.data?.feedId]" class="expand-detail">
+              <div class="expand-detail__row">
+                <div class="expand-detail__persona">
+                  <span class="expand-detail__label">{{ $t('feed.persona') }}</span>
+                  <strong>{{ expandData[row.data.feedId].personaId }}</strong>
+                  <span v-if="expandData[row.data.feedId].bkUsername" class="expand-detail__sub">{{ expandData[row.data.feedId].bkUsername }}</span>
+                  <el-tag v-if="expandData[row.data.feedId].archetype" size="small" effect="plain" style="margin-left: 6px;">
+                    {{ expandData[row.data.feedId].archetype }}
+                  </el-tag>
+                </div>
+                <div>
+                  <span class="expand-detail__label">{{ $t('feed.toneMode') }}</span>
+                  <span>{{ toneLabel(expandData[row.data.feedId].toneMode) }}</span>
+                </div>
+              </div>
+              <el-descriptions :column="2" border size="small" style="margin-top: 10px;">
+                <el-descriptions-item :label="$t('feed.threadSubject')">
+                  {{ expandData[row.data.feedId].subject || expandData[row.data.feedId].threadSubject || '--' }}
+                  <a v-if="expandData[row.data.feedId].threadTid" :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${expandData[row.data.feedId].threadTid}`" target="_blank" rel="noopener" style="margin-left: 6px; font-size: 12px;">{{ $t('feed.viewThread') }} ↗</a>
+                </el-descriptions-item>
+                <el-descriptions-item :label="$t('feed.board')">
+                  {{ boardMap[expandData[row.data.feedId].threadFid] || `fid:${expandData[row.data.feedId].threadFid}` }}
+                </el-descriptions-item>
+              </el-descriptions>
+              <div v-if="expandData[row.data.feedId].draftContent" style="margin-top: 12px;">
+                <strong style="font-size: 13px; color: #909399;">{{ $t('feed.content') }}</strong>
+                <div class="expand-text">{{ expandData[row.data.feedId].finalContent || expandData[row.data.feedId].draftContent }}</div>
+              </div>
+            </div>
+            <div v-else style="padding: 12px 20px; color: #909399;">{{ $t('common.loading') }}...</div>
           </template>
         </el-table-column>
-        <el-table-column prop="status" :label="$t('common.status')" min-width="100">
-          <template #default>
-            <el-tag type="primary" size="small" effect="light">{{ $t('poster.queued') }}</el-tag>
+        <el-table-column :label="$t('feed.feedId')" min-width="130">
+          <template #default="{ row }">
+            <code class="mono">{{ row.data?.feedIdShort || '--' }}</code>
           </template>
         </el-table-column>
-        <el-table-column label="" min-width="90" align="center">
+        <el-table-column :label="$t('feed.persona')" min-width="120">
           <template #default="{ row }">
+            {{ row.data?.personaId || '--' }}
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('feed.board')" min-width="130">
+          <template #default="{ row }">
+            <el-tag v-if="row.data?.boardFid" size="small" type="info" effect="plain">
+              {{ boardMap[row.data.boardFid] || `fid:${row.data.boardFid}` }}
+            </el-tag>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('poster.type')" min-width="90">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.data?.postType === 'new-post' ? 'warning' : 'info'" effect="plain">
+              {{ row.data?.postType || '--' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('poster.addedAt')" min-width="170">
+          <template #default="{ row }">
+            {{ row.addedAt ? new Date(row.addedAt).toLocaleString() : '--' }}
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('common.status')" min-width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'primary'" size="small" effect="light">
+              {{ row.status === 'active' ? $t('poster.posting') : $t('poster.queued') }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('common.actions')" min-width="140" align="center">
+          <template #default="{ row }">
+            <el-button type="success" size="small" link @click="manualPost(row)">{{ $t('feed.postNow') }}</el-button>
             <el-button type="danger" size="small" link @click="cancelJob(row)">{{ $t('common.cancel') }}</el-button>
           </template>
         </el-table-column>
@@ -74,31 +132,82 @@
         v-loading="loading"
         style="width: 100%"
         highlight-current-row
+        @expand-change="(row: any, expanded: any[]) => { if (expanded.length) loadExpandData(row._id) }"
       >
-        <el-table-column prop="postId" :label="$t('poster.postId')" min-width="110" />
-        <el-table-column prop="feedId" :label="$t('feed.feedId')" min-width="110" />
-        <el-table-column prop="persona" :label="$t('feed.persona')" min-width="120" />
-        <el-table-column prop="board" :label="$t('poster.board')" min-width="120" />
-        <el-table-column prop="type" :label="$t('poster.type')" min-width="90" />
-        <el-table-column prop="postedAt" :label="$t('poster.posted')" min-width="170">
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div v-if="expandData[row._id]" class="expand-detail">
+              <div class="expand-detail__row">
+                <div class="expand-detail__persona">
+                  <span class="expand-detail__label">{{ $t('feed.persona') }}</span>
+                  <strong>{{ expandData[row._id].personaId }}</strong>
+                  <span v-if="expandData[row._id].bkUsername" class="expand-detail__sub">{{ expandData[row._id].bkUsername }}</span>
+                  <el-tag v-if="expandData[row._id].archetype" size="small" effect="plain" style="margin-left: 6px;">
+                    {{ expandData[row._id].archetype }}
+                  </el-tag>
+                </div>
+                <div>
+                  <span class="expand-detail__label">{{ $t('feed.toneMode') }}</span>
+                  <span>{{ toneLabel(expandData[row._id].toneMode) }}</span>
+                </div>
+              </div>
+              <el-descriptions :column="2" border size="small" style="margin-top: 10px;">
+                <el-descriptions-item :label="$t('feed.threadSubject')">
+                  {{ expandData[row._id].subject || expandData[row._id].threadSubject || '--' }}
+                  <a v-if="expandData[row._id].threadTid" :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${expandData[row._id].threadTid}`" target="_blank" rel="noopener" style="margin-left: 6px; font-size: 12px;">{{ $t('feed.viewThread') }} ↗</a>
+                </el-descriptions-item>
+                <el-descriptions-item :label="$t('feed.board')">
+                  {{ boardMap[expandData[row._id].threadFid] || `fid:${expandData[row._id].threadFid}` }}
+                </el-descriptions-item>
+              </el-descriptions>
+              <div v-if="expandData[row._id].finalContent || expandData[row._id].draftContent" style="margin-top: 12px;">
+                <strong style="font-size: 13px; color: #909399;">{{ $t('feed.content') }}</strong>
+                <div class="expand-text">{{ expandData[row._id].finalContent || expandData[row._id].draftContent }}</div>
+              </div>
+            </div>
+            <div v-else style="padding: 12px 20px; color: #909399;">{{ $t('common.loading') }}...</div>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('feed.feedId')" min-width="130">
+          <template #default="{ row }">
+            <code class="mono">{{ row.feedId || '--' }}</code>
+          </template>
+        </el-table-column>
+        <el-table-column prop="personaId" :label="$t('feed.persona')" min-width="120" />
+        <el-table-column :label="$t('feed.board')" min-width="130">
+          <template #default="{ row }">
+            <el-tag v-if="row.threadFid" size="small" type="info" effect="plain">
+              {{ boardMap[row.threadFid] || `fid:${row.threadFid}` }}
+            </el-tag>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('poster.type')" min-width="90">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.postType === 'new-post' ? 'warning' : 'info'" effect="plain">
+              {{ row.postType || row.type || '--' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('poster.posted')" min-width="170">
           <template #default="{ row }">
             {{ row.postedAt ? new Date(row.postedAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" :label="$t('common.status')" min-width="100">
+        <el-table-column :label="$t('common.status')" min-width="100">
           <template #default="{ row }">
             <el-tag
-              :type="row.status === 'posted' || row.status === 'success' ? 'success' : row.status === 'failed' ? 'danger' : 'info'"
+              :type="row.status === 'posted' ? 'success' : row.status === 'failed' ? 'danger' : 'info'"
               size="small"
             >
               {{ row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="notes" :label="$t('poster.notes')" min-width="160" show-overflow-tooltip>
+        <el-table-column :label="$t('poster.notes')" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <a v-if="row.postUrl" :href="row.postUrl" target="_blank" class="post-link">{{ row.postUrl }}</a>
-            <span v-else-if="row.errorMessage" class="text-danger">{{ row.errorMessage }}</span>
+            <span v-else-if="row.failReason" class="text-danger">{{ row.failReason }}</span>
             <span v-else class="text-muted">--</span>
           </template>
         </el-table-column>
@@ -109,7 +218,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import type { Ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoPlay, VideoPause } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import api from '../../api'
@@ -126,6 +236,36 @@ const metrics = reactive({
   success: 0,
   failed: 0,
 })
+const boardMap = ref<Record<number, string>>({})
+const expandData = ref<Record<string, any>>({})
+const tones = ref<{ toneId: string; displayName: string }[]>([])
+
+const loadTones = async () => {
+  try {
+    const res = await api.get('/v1/tones')
+    tones.value = (res.data || res).map((t: any) => ({ toneId: t.toneId, displayName: t.displayName }))
+  } catch { /* ignore */ }
+}
+
+const toneLabel = (toneId: string): string => {
+  if (!toneId) return '--'
+  const t = tones.value.find(t => t.toneId === toneId)
+  return t ? t.displayName : toneId
+}
+
+const loadBoards = async () => {
+  try {
+    const res: any = await api.get('/v1/forums')
+    const tree = res.data || res
+    const map: Record<number, string> = {}
+    for (const cat of (Array.isArray(tree) ? tree : [])) {
+      for (const b of (cat.boards || [])) {
+        map[b.fid] = b.name
+      }
+    }
+    boardMap.value = map
+  } catch { /* ignore */ }
+}
 
 const loadHistory = async () => {
   loading.value = true
@@ -155,9 +295,10 @@ const loadMetrics = async () => {
   try {
     const res: any = await api.get('/v1/queues/poster')
     const data = res.data ?? res
-    metrics.waiting = data.waiting ?? 0
-    metrics.success = data.completed ?? 0
-    metrics.failed = data.failed ?? 0
+    const counts = data.counts || data
+    metrics.waiting = (counts.waiting ?? 0) + (counts.paused ?? 0)
+    metrics.success = counts.completed ?? 0
+    metrics.failed = counts.failed ?? 0
   } catch {
     // metrics endpoint may not exist yet
   }
@@ -181,6 +322,37 @@ const pauseQueue = async () => {
   }
 }
 
+const loadExpandData = async (feedId: string) => {
+  if (!feedId || expandData.value[feedId]) return
+  try {
+    const res: any = await api.get(`/v1/feeds/${feedId}`)
+    expandData.value = { ...expandData.value, [feedId]: res.data || res }
+  } catch { /* ignore */ }
+}
+
+const manualPost = async (row: any) => {
+  const feedId = row.feedId || row.data?.feedId
+  if (!feedId) { ElMessage.error('No feedId'); return }
+
+  const detail = expandData.value[feedId]
+  const subject = detail?.subject || detail?.threadSubject || row.data?.feedIdShort || feedId
+  try {
+    await ElMessageBox.confirm(
+      t('poster.postConfirmMsg', { subject }),
+      t('feed.postNow'),
+      { confirmButtonText: t('feed.postNow'), cancelButtonText: t('common.cancel'), type: 'warning' }
+    )
+    await api.post(`/v1/poster/${feedId}/post`)
+    ElMessage.success(t('feed.postQueued'))
+    loadQueue()
+    loadHistory()
+    loadMetrics()
+  } catch (err: any) {
+    if (err === 'cancel') return
+    ElMessage.error(err.message || t('common.error'))
+  }
+}
+
 const cancelJob = async (row: any) => {
   try {
     await api.delete(`/v1/queues/poster/jobs/${row.jobId || row.postId || row._id}`)
@@ -197,6 +369,8 @@ onMounted(() => {
   loadHistory()
   loadQueue()
   loadMetrics()
+  loadBoards()
+  loadTones()
 })
 </script>
 
@@ -273,5 +447,50 @@ onMounted(() => {
 
 .text-muted {
   color: var(--bk-muted-fg);
+}
+
+.mono {
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+  font-size: 12px;
+}
+
+.expand-detail {
+  padding: 12px 20px;
+}
+
+.expand-detail__row {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.expand-detail__persona {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.expand-detail__label {
+  font-size: 12px;
+  color: #909399;
+  margin-right: 4px;
+}
+
+.expand-detail__sub {
+  color: #909399;
+  font-size: 12px;
+}
+
+.expand-text {
+  background: var(--el-fill-color-lighter);
+  padding: 10px 12px;
+  border-radius: 4px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-size: 13px;
+  margin-top: 6px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 </style>

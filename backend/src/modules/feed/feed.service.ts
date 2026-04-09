@@ -4,6 +4,7 @@ import { ForumBoard } from '../forum/forum.model.js';
 import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { checkQuality } from '../gemini/quality-guard.js';
+import * as configService from '../config/config.service.js';
 import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
 import { emitToRoom } from '../../shared/socket.js';
 import * as auditService from '../audit/audit.service.js';
@@ -35,7 +36,7 @@ interface FeedListParams {
 export async function list({ status, source, threadFid, personaId, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
   const filter: Record<string, any> = {};
   if (status) filter.status = status;
-  if (source) filter.source = source;
+  if (source) filter.source = { $in: [source] };
   if (threadFid) filter.threadFid = parseInt(String(threadFid), 10);
   if (personaId) filter.personaId = personaId;
 
@@ -113,25 +114,23 @@ export async function approve(feedId: string, userId: string, ip: string) {
 
   emitToRoom('room:feed', 'feed:statusChanged', { feedId: feed._id, status: 'approved' });
 
-  // Auto-post: if the board has enableAutoReply, enqueue to poster queue
-  if (feed.threadFid) {
-    try {
-      const board = await ForumBoard.findOne({ fid: feed.threadFid });
-      if (board?.enableAutoReply) {
-        const { getQueue } = await import('../queue/queue.service.js');
-        const posterQueue = getQueue('poster');
-        if (posterQueue) {
-          await posterQueue.add('auto-post', {
-            feedId: feed._id.toString(),
-            triggeredBy: 'auto-approve',
-          });
-          logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Auto-post queued after approval');
-        }
-      }
-    } catch (err) {
-      // Auto-post failure should not block approval
-      logger.error({ err, feedId: feed.feedId }, 'Failed to queue auto-post');
+  // Enqueue to poster queue for posting (auto or manual)
+  try {
+    const { getQueue } = await import('../queue/queue.service.js');
+    const posterQueue = getQueue('poster');
+    if (posterQueue) {
+      await posterQueue.add(`post-${feed.feedId}`, {
+        feedId: feed._id.toString(),
+        feedIdShort: feed.feedId,
+        personaId: feed.personaId,
+        boardFid: feed.threadFid,
+        postType: feed.postType,
+        triggeredBy: 'approve',
+      });
+      logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Feed enqueued to poster after approval');
     }
+  } catch (err) {
+    logger.error({ err, feedId: feed.feedId }, 'Failed to enqueue to poster');
   }
 
   return feed;
@@ -161,20 +160,30 @@ export async function reject(feedId: string, userId: string, notes: string | und
 }
 
 // --- Edit content ---
-export async function updateContent(feedId: string, content: string, userId: string, ip: string) {
+export async function updateContent(feedId: string, updates: { content: string; toneMode?: string; personaId?: string; adminNotes?: string }, userId: string, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
-  const cleanContent = xss(content);
+  const cleanContent = xss(updates.content);
   feed.finalContent = cleanContent;
   feed.adminEdit = true;
   feed.charCount = cleanContent.length;
+  if (updates.toneMode) feed.toneMode = updates.toneMode;
+  if (updates.personaId) {
+    const persona = await Persona.findOne({ accountId: updates.personaId });
+    if (persona) {
+      feed.personaId = persona.accountId;
+      feed.bkUsername = persona.username;
+      feed.archetype = persona.archetype;
+    }
+  }
+  if (updates.adminNotes !== undefined) feed.adminNotes = updates.adminNotes;
   await feed.save();
 
   await auditService.log({
-    operator: userId, eventType: 'FEED_GENERATED', module: 'feed',
+    operator: userId, eventType: 'FEED_EDITED', module: 'feed',
     feedId: feed.feedId, targetId: feed._id.toString(), ip,
-    actionDetail: 'Content edited by admin',
+    actionDetail: `Content edited by admin${updates.toneMode ? `, tone: ${updates.toneMode}` : ''}${updates.personaId ? `, persona: ${updates.personaId}` : ''}`,
   });
 
   return feed;
@@ -248,11 +257,28 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
     toneMode,
     topic,
     sensitivityTier: tier,
+    postType: postType || 'new-post',
   });
 
   const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
   const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
-  const draftContent = xss(rawContent);
+
+  // Parse subject + content for new posts
+  let subject = '';
+  let draftContent: string;
+  if (postType === 'new-post') {
+    const subjectMatch = rawContent.match(/標題[：:]\s*(.+)/);
+    const contentMatch = rawContent.match(/正文[：:]\s*([\s\S]+)/);
+    if (subjectMatch && contentMatch) {
+      subject = xss(subjectMatch[1].trim()).substring(0, 80);
+      draftContent = xss(contentMatch[1].trim());
+    } else {
+      subject = topic.substring(0, 40);
+      draftContent = xss(rawContent);
+    }
+  } else {
+    draftContent = xss(rawContent);
+  }
 
   const quality = checkQuality(draftContent, persona);
 
@@ -261,11 +287,9 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
     feedId,
     type: postType === 'new-post' ? 'thread' : 'reply',
     status: 'pending',
-    source: 'custom',
-    trendSource: 'CUSTOM',
-    trendTopic: topic,
-    trendSummary: '由管理員自訂主題生成',
-    threadSubject: topic,
+    source: ['custom'],
+    subject,
+    threadSubject: subject || topic,
     threadFid: targetFid,
     personaId: persona.accountId,
     bkUsername: persona.username,
@@ -372,7 +396,7 @@ function resolvePostType(rule: any): string {
  * Called by pullTrends after storing new trends.
  * Mirrors GAS FeedGenerator._generateFeedForTrend().
  */
-export async function generateFromTrend(trend: any): Promise<string | null> {
+export async function generateFromTrend(trend: any): Promise<{ feedId: string; toneMode: string } | null> {
   try {
     const tier = trend.sensitivityTier ?? autoAssignTier(trend.topicLabel);
     const { matchTopicRule } = await import('../gemini/prompt.builder.js');
@@ -385,8 +409,9 @@ export async function generateFromTrend(trend: any): Promise<string | null> {
       return null;
     }
 
-    // 2. Resolve post type
-    const postType = resolvePostType(rule);
+    // 2. Trends always create new threads
+    const postType = 'new-post' as const;
+    const defaultFid = parseInt(await configService.getValue('DEFAULT_TREND_FID') || '162', 10);
 
     // 3. Build prompt
     const promptResult = await buildPrompt({
@@ -403,21 +428,16 @@ export async function generateFromTrend(trend: any): Promise<string | null> {
     const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
     if (!rawContent) return null;
 
-    // 4b. Parse subject + content for new posts
+    // 4b. Parse subject + content for new thread
     let subject = '';
     let draftContent: string;
-    if (postType === 'new-post') {
-      const subjectMatch = rawContent.match(/標題[：:]\s*(.+)/);
-      const contentMatch = rawContent.match(/正文[：:]\s*([\s\S]+)/);
-      if (subjectMatch && contentMatch) {
-        subject = xss(subjectMatch[1].trim()).substring(0, 80);
-        draftContent = xss(contentMatch[1].trim());
-      } else {
-        // Fallback: use topic as subject, full output as content
-        subject = trend.topicLabel.substring(0, 40);
-        draftContent = xss(rawContent);
-      }
+    const subjectMatch = rawContent.match(/標題[：:]\s*(.+)/);
+    const contentMatch = rawContent.match(/正文[：:]\s*([\s\S]+)/);
+    if (subjectMatch && contentMatch) {
+      subject = xss(subjectMatch[1].trim()).substring(0, 80);
+      draftContent = xss(contentMatch[1].trim());
     } else {
+      subject = trend.topicLabel.substring(0, 40);
       draftContent = xss(rawContent);
     }
     if (!draftContent) return null;
@@ -428,9 +448,10 @@ export async function generateFromTrend(trend: any): Promise<string | null> {
     const feedId = generateFeedId();
     const feed = await Feed.create({
       feedId,
-      type: postType === 'new-post' ? 'thread' : 'reply',
+      type: 'thread',
       status: 'pending',
-      source: 'trends',
+      source: ['trends'],
+      threadFid: defaultFid,
       trendSource: trend.source,
       trendTopic: trend.topicLabel,
       trendSummary: trend.summary || '',
@@ -451,7 +472,7 @@ export async function generateFromTrend(trend: any): Promise<string | null> {
     });
 
     // 6. Emit socket event
-    emitToRoom('room:feed', 'feed:new', { feedId, source: 'trends' });
+    emitToRoom('room:feed', 'feed:new', { feedId, source: ['trends'] });
 
     // 7. Audit log
     await auditService.log({
@@ -464,7 +485,7 @@ export async function generateFromTrend(trend: any): Promise<string | null> {
     } as any);
 
     logger.info({ feedId, persona: persona.accountId, topic: trend.topicLabel }, 'generateFromTrend: feed created');
-    return feedId;
+    return { feedId, toneMode: promptResult.resolvedToneMode };
   } catch (err) {
     logger.error({ err, topic: trend.topicLabel }, 'generateFromTrend failed');
     await auditService.log({

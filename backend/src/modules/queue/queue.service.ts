@@ -6,7 +6,7 @@ import logger from '../../shared/logger.js';
 
 const queues: Record<string, Queue> = {};
 
-const QUEUE_NAMES = ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'ml-token-refresh'] as const;
+const QUEUE_NAMES = ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'google-trends'] as const;
 
 export function initQueues(): void {
   const connection = getRedis();
@@ -103,7 +103,7 @@ export async function getAllJobs({ page = 1, limit = 20 }: { page?: number; limi
 export async function getWaitingJobs(name: string) {
   const q = queues[name];
   if (!q) return [];
-  const waiting = await q.getJobs(['waiting', 'active', 'delayed'], 0, 100);
+  const waiting = await q.getJobs(['waiting', 'active', 'delayed', 'paused'], 0, 100);
   return waiting.map(j => ({
     jobId: j.id,
     name: j.name,

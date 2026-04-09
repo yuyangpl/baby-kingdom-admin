@@ -27,7 +27,7 @@ export async function pullTrends(): Promise<{ trends: any[]; feedsGenerated: num
   const baseUrl = await configService.getValue('MEDIALENS_BASE_URL');
   const jwtToken = await configService.getValue('MEDIALENS_JWT_TOKEN');
   const country = await configService.getValue('MEDIALENS_COUNTRY') || 'HK';
-  const limit = parseInt(await configService.getValue('TREND_LIMIT') || '20', 10);
+  const limit = parseInt(await configService.getValue('FEEDS_PER_TREND_PULL') || '5', 10);
   const lookbackDays = parseInt(await configService.getValue('TREND_LOOKBACK_DAYS') || '1', 10);
 
   if (!baseUrl || !jwtToken) {
@@ -74,9 +74,9 @@ export async function pullTrends(): Promise<{ trends: any[]; feedsGenerated: num
         break;
       }
 
-      const feedId = await generateFromTrend(trend);
-      if (feedId) {
-        await markUsed(trend._id.toString(), feedId);
+      const result = await generateFromTrend(trend);
+      if (result) {
+        await markUsed(trend._id.toString(), result.feedId);
         feedsGenerated++;
       }
     }
@@ -149,7 +149,7 @@ async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string)
       sensitivityTier: tier,
       sentimentScore,
       sentimentLabel: sentimentScore != null && sentimentScore > 55 ? 'positive' : sentimentScore != null && sentimentScore < 45 ? 'negative' : 'neutral',
-      toneMode: null, // assigned during feed generation
+      rawData: raw,
     });
 
     saved.push(trend);
@@ -173,8 +173,6 @@ export async function list({ source, page = 1, limit = 20, sort = '-createdAt' }
 
 export async function markUsed(trendId: string, feedId: string): Promise<void> {
   await Trend.findByIdAndUpdate(trendId, {
-    isUsed: true,
-    usedAt: new Date(),
     $push: { feedIds: feedId },
   });
 }
@@ -227,7 +225,10 @@ export async function verifyOtp(otp: string): Promise<boolean> {
 
   if (token) {
     await configService.updateValue('MEDIALENS_JWT_TOKEN', token, 'system', '');
-    logger.info('MediaLens JWT token saved to config');
+    // Token valid for 23 hours (matching GAS TOKEN_TTL_MS)
+    const expiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString();
+    await configService.updateValue('MEDIALENS_JWT_TOKEN_EXPIRY', expiresAt, 'system', '');
+    logger.info({ expiresAt }, 'MediaLens JWT token saved to config');
   } else {
     logger.warn({ data }, 'MediaLens OTP verify: no token field in response — saving full response as token');
     // Some APIs return just the token string directly

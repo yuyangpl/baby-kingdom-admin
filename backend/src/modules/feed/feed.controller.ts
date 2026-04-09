@@ -44,9 +44,9 @@ export async function reject(req: Request, res: Response): Promise<void> {
 }
 
 export async function updateContent(req: Request, res: Response): Promise<void> {
-  const { content } = req.body;
+  const { content, toneMode, personaId, adminNotes } = req.body;
   if (!content) throw new ValidationError('Content is required');
-  const feed = await feedService.updateContent(req.params.id as string, content, (req as any).user.id, req.ip ?? '');
+  const feed = await feedService.updateContent(req.params.id as string, { content, toneMode, personaId, adminNotes }, (req as any).user.id, req.ip ?? '');
   success(res, feed);
 }
 

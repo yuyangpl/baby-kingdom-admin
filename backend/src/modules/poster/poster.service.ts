@@ -301,7 +301,7 @@ async function enforceRateLimit(persona: any, rateLimitSec: number): Promise<voi
   await new Promise((resolve) => setTimeout(resolve, waitMs));
 }
 
-// --- Forum index sync (matches GAS fetchAndStoreForumIndex) ---
+// --- Forum index sync (fetch from BK API and update DB) ---
 
 export async function syncForumIndex() {
   const baseUrl = await configService.getValue('BK_BASE_URL');
@@ -320,22 +320,60 @@ export async function syncForumIndex() {
 
     if (body.status !== 1) return { success: false as const, error: body.message };
 
+    const { ForumCategory, ForumBoard } = await import('../forum/forum.model.js');
     const groups = body.data?.lists || [];
-    const forums: { categoryName: string; name: string; fid: number; threads: number }[] = [];
+    let updated = 0;
+    let created = 0;
 
     for (const group of groups) {
+      const categoryName = group.name || '';
+      // Upsert category
+      let category = await ForumCategory.findOne({ name: categoryName });
+      if (!category) {
+        category = await ForumCategory.create({ name: categoryName });
+      }
+
       const subforums = group.subforums || [];
       for (const sf of subforums) {
-        forums.push({
-          categoryName: group.name || '',
-          name: sf.name || '',
-          fid: parseInt(sf.fid, 10),
-          threads: parseInt(sf.threads || '0', 10),
-        });
+        const fid = parseInt(sf.fid, 10);
+        const name = sf.name || '';
+        if (!fid || !name) continue;
+
+        // Try match by name first (fix wrong FID), then by fid
+        const existingByName = await ForumBoard.findOne({ name });
+        if (existingByName) {
+          if (existingByName.fid !== fid) {
+            // Remove conflicting board with same fid (if any) before updating
+            await ForumBoard.deleteOne({ fid, _id: { $ne: existingByName._id } });
+            logger.info({ name, oldFid: existingByName.fid, newFid: fid }, 'syncForumIndex: updating FID');
+            existingByName.fid = fid;
+            existingByName.categoryId = category._id;
+            await existingByName.save();
+            updated++;
+          }
+        } else {
+          const existingByFid = await ForumBoard.findOne({ fid });
+          if (existingByFid) {
+            existingByFid.name = name;
+            existingByFid.categoryId = category._id;
+            await existingByFid.save();
+            updated++;
+          } else {
+            await ForumBoard.create({
+              categoryId: category._id,
+              name,
+              fid,
+              isActive: true,
+              enableScraping: false,
+            });
+            created++;
+          }
+        }
       }
     }
 
-    return { success: true as const, forums, count: forums.length };
+    logger.info({ updated, created }, 'syncForumIndex complete');
+    return { success: true as const, updated, created, message: `Updated ${updated}, created ${created} boards` };
   } catch (e: any) {
     return { success: false as const, error: e.message };
   }

@@ -60,12 +60,23 @@
         >
           {{ $t(`feed.sources.${src}`) }}
         </el-tag>
+        <el-select
+          v-model="boardFilterValue"
+          :placeholder="$t('feed.filterBoard')"
+          clearable
+          filterable
+          size="small"
+          style="width: 180px; margin-left: 8px;"
+          @change="filterByBoard"
+        >
+          <el-option v-for="b in boards" :key="b.fid" :label="b.name" :value="String(b.fid)" />
+        </el-select>
         <el-tag
-          v-if="feedStore.filters.source"
+          v-if="feedStore.filters.source || boardFilterValue"
           type="info"
           effect="plain"
           class="filter-chip"
-          @click="clearSourceFilter"
+          @click="clearSourceFilter(); boardFilterValue = ''; feedStore.setFilter('threadFid', ''); loadFeeds()"
         >
           {{ $t('common.clearFilter') }}
         </el-tag>
@@ -77,7 +88,7 @@
       <div
         v-for="feed in feedStore.feeds"
         :key="feed._id"
-        class="feed-card hover-lift"
+        class="feed-card"
         :class="[
           tierBorderClass(feed.sensitivityTier),
           { 'feed-card--claimed-mine': isClaimedByMe(feed) },
@@ -93,13 +104,16 @@
             />
             <code class="feed-id-chip">{{ feed.feedId }}</code>
             <span class="feed-card__time">{{ formatTime(feed.createdAt) }}</span>
-            <span v-if="feed.threadTid || feed.threadFid" class="feed-card__meta">
-              tid:{{ feed.threadTid || '-' }} · fid:{{ feed.threadFid || '-' }}
+            <el-tag v-if="feed.threadFid" size="small" type="info" effect="plain" style="margin-left: 4px;">
+              {{ boardName(feed.threadFid) }}
+            </el-tag>
+            <span v-if="feed.threadTid" class="feed-card__meta">
+              tid:{{ feed.threadTid }}
             </span>
           </div>
           <div class="feed-card__header-right">
             <el-tag :type="statusType(feed.status)" size="small">{{ feed.status }}</el-tag>
-            <el-tag size="small" effect="plain">{{ $t(`feed.sources.${feed.source}`) }}</el-tag>
+            <el-tag v-for="s in (Array.isArray(feed.source) ? feed.source : [feed.source])" :key="s" size="small" effect="plain" style="margin-left: 2px;">{{ $t(`feed.sources.${s}`) }}</el-tag>
           </div>
         </div>
 
@@ -124,7 +138,7 @@
             <div v-if="feed.trendSummary" class="feed-card__trend-summary">
               {{ feed.trendSummary }}
             </div>
-            <div v-if="feed.draftContent" class="feed-card__preview">
+            <div v-if="feed.draftContent && feed.postType === 'reply'" class="feed-card__preview">
               <span class="feed-card__preview-label">{{ feed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
               {{ truncate(feed.draftContent, 160) }}
             </div>
@@ -137,7 +151,10 @@
             <div class="avatar-gradient feed-card__avatar">
               {{ avatarInitial(feed.bkUsername) }}
             </div>
-            <div class="feed-card__persona-name">{{ feed.bkUsername }}</div>
+            <div class="feed-card__persona-name">
+              {{ feed.bkUsername }}
+              <span v-if="feed.personaId" class="feed-card__persona-id">{{ feed.personaId }}</span>
+            </div>
             <el-tag v-if="feed.archetype" size="small" :type="archetypeColor[feed.archetype] || 'primary'">
               {{ $t('persona.archetypeOptions.' + feed.archetype) }}
             </el-tag>
@@ -263,13 +280,22 @@
               {{ $t('feed.reject') }}
             </el-button>
             <el-button
-              v-if="feed.status !== 'approved'"
+              v-if="feed.status !== 'approved' && feed.status !== 'posted'"
               size="small"
               class="btn-approve"
               @click="approve(feed)"
               :disabled="isClaimedByOther(feed)"
             >
               {{ $t('feed.approve') }}
+            </el-button>
+            <el-button
+              v-if="feed.status === 'approved'"
+              size="small"
+              type="success"
+              @click="postNow(feed)"
+              :disabled="isClaimedByOther(feed)"
+            >
+              {{ $t('feed.postNow') }}
             </el-button>
           </div>
         </div>
@@ -294,6 +320,7 @@
     <FeedEditModal
       v-model="showEditModal"
       :edit-data="editRow"
+      :board-map="boardMap"
       @saved="onFeedSaved"
     />
 
@@ -327,6 +354,9 @@ const showCustomGenerate = ref<boolean>(false)
 const pendingCount = ref<number>(0)
 const tones = ref<{ toneId: string; displayName: string }[]>([])
 const personaCache = ref<Record<string, any>>({})
+const boards = ref<{ fid: number; name: string }[]>([])
+const boardMap = ref<Record<number, string>>({})
+const boardFilterValue = ref<string>('')
 
 const loadPersonaDetail = async (accountId: string) => {
   if (!accountId || personaCache.value[accountId]) return
@@ -335,6 +365,32 @@ const loadPersonaDetail = async (accountId: string) => {
     const data = res.data || res
     personaCache.value = { ...personaCache.value, [accountId]: data }
   } catch { /* ignore */ }
+}
+
+const loadBoards = async () => {
+  try {
+    const res: any = await api.get('/v1/forums')
+    const tree = res.data || res
+    const list: { fid: number; name: string }[] = []
+    for (const cat of tree) {
+      for (const b of (cat.boards || [])) {
+        list.push({ fid: b.fid, name: b.name })
+      }
+    }
+    boards.value = list
+    boardMap.value = Object.fromEntries(list.map(b => [b.fid, b.name]))
+  } catch { /* ignore */ }
+}
+
+const boardName = (fid: number | undefined): string => {
+  if (!fid) return '-'
+  return boardMap.value[fid] || `fid:${fid}`
+}
+
+const filterByBoard = (fid: string) => {
+  boardFilterValue.value = fid
+  feedStore.setFilter('threadFid', fid)
+  loadFeeds()
 }
 
 const loadTones = async () => {
@@ -523,6 +579,22 @@ const rejectWithNotes = async (row: any) => {
   }
 }
 
+const postNow = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(
+      t('feed.postNowConfirm'),
+      t('feed.postNow'),
+      { confirmButtonText: t('feed.postNow'), cancelButtonText: t('common.cancel'), type: 'warning' }
+    )
+    await api.post(`/v1/poster/${row._id}/post`)
+    ElMessage.success(t('feed.postQueued'))
+    loadFeeds()
+  } catch (err: any) {
+    if (err === 'cancel') return
+    ElMessage.error(err.message || t('common.error'))
+  }
+}
+
 const regenerate = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/regenerate`)
@@ -577,6 +649,7 @@ onMounted(() => {
   loadFeeds()
   loadPendingCount()
   loadTones()
+  loadBoards()
 })
 </script>
 
@@ -753,16 +826,15 @@ onMounted(() => {
 .feed-card__preview {
   font-size: 13px;
   color: var(--el-text-color-regular);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
   margin-bottom: 8px;
   background: #F9FAFB;
   border: 1px solid var(--bk-border);
   border-radius: var(--bk-radius-sm);
   padding: 8px 10px;
   line-height: 1.6;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .feed-card__preview-label {
   font-size: 11px;
@@ -804,6 +876,12 @@ onMounted(() => {
   font-weight: 600;
   font-size: 13px;
   text-align: center;
+}
+.feed-card__persona-id {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #909399;
 }
 .feed-card__tone-tag {
   margin-top: 2px;

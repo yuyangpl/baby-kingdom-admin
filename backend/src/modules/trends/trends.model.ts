@@ -11,9 +11,7 @@ export interface ITrend {
   sensitivityTier: 1 | 2 | 3;
   sentimentScore?: number;
   sentimentLabel?: 'positive' | 'negative' | 'neutral';
-  toneMode?: string;
-  isUsed: boolean;
-  usedAt?: Date;
+  rawData?: Record<string, unknown>;
   feedIds: string[];
   createdAt: Date;
 }
@@ -32,9 +30,7 @@ const trendSchema = new Schema<ITrend>(
     sensitivityTier: { type: Number, enum: [1, 2, 3], default: 1 },
     sentimentScore: Number,
     sentimentLabel: { type: String, enum: ['positive', 'negative', 'neutral'] },
-    toneMode: String,
-    isUsed: { type: Boolean, default: false },
-    usedAt: Date,
+    rawData: { type: Schema.Types.Mixed },
     feedIds: [String],
   },
   { timestamps: { createdAt: true, updatedAt: false } }

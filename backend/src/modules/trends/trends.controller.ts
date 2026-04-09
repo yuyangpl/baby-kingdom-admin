@@ -32,11 +32,14 @@ export async function verifyOtp(req: Request, res: Response): Promise<void> {
 }
 
 export async function tokenStatus(req: Request, res: Response): Promise<void> {
-  // Just check if the token exists and report status
   const { default: Config } = await import('../config/config.model.js');
   const tokenConfig = await Config.findOne({ key: 'MEDIALENS_JWT_TOKEN' });
+  const expiryConfig = await Config.findOne({ key: 'MEDIALENS_JWT_TOKEN_EXPIRY' });
+  const expiresAt = expiryConfig?.value || null;
+  const isExpired = expiresAt ? new Date(expiresAt).getTime() < Date.now() : true;
   success(res, {
-    hasToken: !!(tokenConfig?.value),
+    hasToken: !!(tokenConfig?.value) && !isExpired,
     updatedAt: tokenConfig?.updatedAt,
+    expiresAt,
   });
 }

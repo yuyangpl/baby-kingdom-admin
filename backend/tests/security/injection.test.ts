@@ -24,7 +24,7 @@ beforeAll(async () => {
   });
 
   const feed = await Feed.create({
-    feedId: 'FQ-INJ-001', type: 'reply', status: 'pending', source: 'scanner',
+    feedId: 'FQ-INJ-001', type: 'reply', status: 'pending', source: ['scanner'],
     threadTid: 55551, threadFid: 162, personaId: 'BK-INJ-TEST',
     draftContent: '正常内容', charCount: 4,
   });
@@ -87,7 +87,7 @@ describe('XSS Sanitization', () => {
 
   beforeAll(async () => {
     const feed = await Feed.create({
-      feedId: 'FQ-XSS-001', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-XSS-001', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 55552, threadFid: 162, personaId: 'BK-INJ-TEST',
       draftContent: '原始内容', charCount: 4,
     });

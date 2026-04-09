@@ -14,8 +14,41 @@ export async function getRealtime() {
 
 export async function getToday() {
   const today = new Date().toISOString().slice(0, 10);
-  const stats = await DailyStats.findOne({ date: today });
-  return stats || { date: today, scanner: {}, feeds: {}, trends: {}, posts: {}, gemini: {}, quality: {} };
+  const startOfDay = new Date(today + 'T00:00:00.000Z');
+  const endOfDay = new Date(today + 'T23:59:59.999Z');
+  const dayFilter = { createdAt: { $gte: startOfDay, $lte: endOfDay } };
+
+  const QueueJob = (await import('../queue/queue.model.js')).default;
+
+  // Scanner stats from today's jobs
+  const scannerJobs = await QueueJob.find({ queueName: 'scanner', ...dayFilter, status: 'completed' }).select('result');
+  let totalScanned = 0, totalHit = 0;
+  for (const job of scannerJobs) {
+    const r = job.result as any;
+    if (r) { totalScanned += r.scanned || 0; totalHit += r.hits || 0; }
+  }
+
+  const [generated, approved, rejected, posted, failed, trendsPulled, trendsWithFeeds, threads, replies] = await Promise.all([
+    Feed.countDocuments(dayFilter),
+    Feed.countDocuments({ status: 'approved', reviewedAt: { $gte: startOfDay, $lte: endOfDay } }),
+    Feed.countDocuments({ status: 'rejected', reviewedAt: { $gte: startOfDay, $lte: endOfDay } }),
+    Feed.countDocuments({ status: 'posted', postedAt: { $gte: startOfDay, $lte: endOfDay } }),
+    Feed.countDocuments({ status: 'failed', updatedAt: { $gte: startOfDay, $lte: endOfDay } }),
+    Trend.countDocuments(dayFilter),
+    Trend.countDocuments({ ...dayFilter, 'feedIds.0': { $exists: true } }),
+    Feed.countDocuments({ ...dayFilter, type: 'thread' }),
+    Feed.countDocuments({ ...dayFilter, type: 'reply' }),
+  ]);
+
+  const totalReviewed = approved + rejected;
+  return {
+    date: today,
+    scanner: { totalScanned, totalHit, hitRate: totalScanned > 0 ? Math.round(totalHit / totalScanned * 100) / 100 : 0 },
+    feeds: { generated, approved, rejected, posted, failed },
+    trends: { pulled: trendsPulled, used: trendsWithFeeds },
+    posts: { threads, replies },
+    quality: { approvalRate: totalReviewed > 0 ? Math.round(approved / totalReviewed * 100) / 100 : 0 },
+  };
 }
 
 export async function getRecent() {
@@ -53,6 +86,26 @@ export async function aggregateDailyStats(): Promise<void> {
   const endOfDay = new Date(today + 'T23:59:59.999Z');
   const dayFilter = { createdAt: { $gte: startOfDay, $lte: endOfDay } };
 
+  const QueueJob = (await import('../queue/queue.model.js')).default;
+
+  // Scanner stats from QueueJob records
+  const scannerJobs = await QueueJob.find({
+    queueName: 'scanner',
+    ...dayFilter,
+    status: 'completed',
+  }).select('result');
+
+  let totalScanned = 0;
+  let totalHit = 0;
+  for (const job of scannerJobs) {
+    const r = job.result as any;
+    if (r) {
+      totalScanned += r.scanned || 0;
+      totalHit += r.hits || 0;
+    }
+  }
+  const hitRate = totalScanned > 0 ? totalHit / totalScanned : 0;
+
   const [
     generatedCount,
     approvedCount,
@@ -60,17 +113,21 @@ export async function aggregateDailyStats(): Promise<void> {
     postedCount,
     failedCount,
     trendsPulled,
-    trendsUsed,
+    trendsWithFeeds,
     duplicateCount,
+    threadCount,
+    replyCount,
   ] = await Promise.all([
-    Feed.countDocuments({ ...dayFilter }),
+    Feed.countDocuments(dayFilter),
     Feed.countDocuments({ status: 'approved', reviewedAt: { $gte: startOfDay, $lte: endOfDay } }),
     Feed.countDocuments({ status: 'rejected', reviewedAt: { $gte: startOfDay, $lte: endOfDay } }),
     Feed.countDocuments({ status: 'posted', postedAt: { $gte: startOfDay, $lte: endOfDay } }),
     Feed.countDocuments({ status: 'failed', updatedAt: { $gte: startOfDay, $lte: endOfDay } }),
     Trend.countDocuments(dayFilter),
-    Trend.countDocuments({ ...dayFilter, isUsed: true }),
+    Trend.countDocuments({ ...dayFilter, 'feedIds.0': { $exists: true } }),
     Feed.countDocuments({ ...dayFilter, isDuplicate: true }),
+    Feed.countDocuments({ ...dayFilter, type: 'thread' }),
+    Feed.countDocuments({ ...dayFilter, type: 'reply' }),
   ]);
 
   const totalReviewed = approvedCount + rejectedCount;
@@ -80,8 +137,10 @@ export async function aggregateDailyStats(): Promise<void> {
     { date: today },
     {
       $set: {
+        scanner: { totalScanned, totalHit: totalHit, hitRate: Math.round(hitRate * 100) / 100 },
         feeds: { generated: generatedCount, approved: approvedCount, rejected: rejectedCount, posted: postedCount, failed: failedCount },
-        trends: { pulled: trendsPulled, used: trendsUsed },
+        trends: { pulled: trendsPulled, used: trendsWithFeeds },
+        posts: { threads: threadCount, replies: replyCount },
         quality: { approvalRate: Math.round(approvalRate * 100) / 100, duplicateCount },
       },
     },

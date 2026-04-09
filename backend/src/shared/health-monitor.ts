@@ -1,4 +1,3 @@
-import jwt from 'jsonwebtoken';
 import * as configService from '../modules/config/config.service.js';
 import { getRedis } from './redis.js';
 import { sendAlert } from './email.js';
@@ -31,34 +30,30 @@ export async function checkBkForum(): Promise<ServiceCheckResult> {
 }
 
 /**
- * Check MediaLens JWT token validity by decoding exp claim.
+ * Check MediaLens JWT token validity using stored expiry time.
  */
 export async function checkMediaLens(): Promise<ServiceCheckResult> {
   const token = await configService.getValue('MEDIALENS_JWT_TOKEN');
   if (!token) return { status: 'not_configured', detail: null };
 
-  try {
-    const decoded = jwt.decode(token) as jwt.JwtPayload | null;
-    if (!decoded || !decoded.exp) return { status: 'expired', detail: 'No exp claim in JWT' };
+  const expiryStr = await configService.getValue('MEDIALENS_JWT_TOKEN_EXPIRY');
+  if (!expiryStr) return { status: 'expired', detail: 'No expiry set' };
 
-    const now = Math.floor(Date.now() / 1000);
-    const remaining = decoded.exp - now;
+  const expiryMs = new Date(expiryStr).getTime();
+  const remaining = expiryMs - Date.now();
 
-    if (remaining <= 0) {
-      return { status: 'expired', detail: 'Token has expired' };
-    }
-
-    const hours = Math.floor(remaining / 3600);
-    const days = Math.floor(hours / 24);
-
-    if (remaining <= 24 * 3600) {
-      return { status: 'expiring_soon', detail: `expires in ${hours}h` };
-    }
-
-    return { status: 'valid', detail: `expires in ${days}d` };
-  } catch {
-    return { status: 'expired', detail: 'Failed to decode JWT' };
+  if (remaining <= 0) {
+    return { status: 'expired', detail: 'Token has expired' };
   }
+
+  const hours = Math.floor(remaining / 3600000);
+  const days = Math.floor(hours / 24);
+
+  if (remaining <= 24 * 3600 * 1000) {
+    return { status: 'expiring_soon', detail: `expires in ${hours}h` };
+  }
+
+  return { status: 'valid', detail: `expires in ${days}d ${hours % 24}h` };
 }
 
 /**

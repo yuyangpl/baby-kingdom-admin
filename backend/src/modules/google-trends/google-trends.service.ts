@@ -27,14 +27,15 @@ export async function pullAndStore(): Promise<{ pullId: string; count: number }>
     }
   }
 
-  // 3. Store in DB
+  // 3. Clear old data and store new
+  await GoogleTrend.deleteMany({});
   const now = new Date();
   let saved = 0;
   for (const t of trends) {
     const geminiAnalysis = analyzedMap.get(t.query) || null;
     try {
       await GoogleTrend.findOneAndUpdate(
-        { query: t.query, pullId },
+        { query: t.query },
         {
           query: t.query,
           score: t.score,

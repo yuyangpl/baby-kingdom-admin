@@ -13,14 +13,8 @@
         <template #header>
           <div class="tree-panel__header">
             <span class="tree-panel__title">{{ $t('forum.title') }}</span>
-            <el-button
-              size="small"
-              :icon="Refresh"
-              :loading="syncing"
-              @click="syncFromBK"
-            >
-              {{ $t('forum.syncFromBk') }}
-            </el-button>
+            <!-- BK API 板块数据与站点不一致，暂时隐藏同步按钮 -->
+            <!-- <el-button size="small" :icon="Refresh" :loading="syncing" @click="syncFromBK">{{ $t('forum.syncFromBk') }}</el-button> -->
           </div>
         </template>
 

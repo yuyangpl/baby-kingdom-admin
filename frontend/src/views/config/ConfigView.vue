@@ -381,7 +381,7 @@ const loadTokenStatus = async () => {
     const res = await api.get('/v1/trends/medialens/token-status')
     const data = (res as any).data || res
     tokenValid.value = !!data.hasToken
-    tokenExpiry.value = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : ''
+    tokenExpiry.value = data.expiresAt ? new Date(data.expiresAt).toLocaleString() : (data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '')
   } catch {
     tokenValid.value = false
     tokenExpiry.value = ''

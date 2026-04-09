@@ -39,7 +39,7 @@ export async function callGemini(systemPrompt: string, userPrompt: string, optio
       systemInstruction: systemPrompt,
       generationConfig: {
         temperature,
-        maxOutputTokens: maxTokens,
+        maxOutputTokens: options.maxOutputTokens || maxTokens,
         responseMimeType: options.json ? 'application/json' : 'text/plain',
       },
     });
@@ -47,9 +47,33 @@ export async function callGemini(systemPrompt: string, userPrompt: string, optio
     const result = await genModel.generateContent(userPrompt);
     const text = result.response.text();
     const usage = result.response.usageMetadata || {};
+    logger.debug({ text: text.substring(0, 500), json: !!options.json }, 'Gemini raw response');
+
+    let parsed: any = text;
+    if (options.json) {
+      // Clean markdown code blocks first (matches GAS: raw.replace(/```json|```/g, ''))
+      let cleaned = text.replace(/```json\s?|```/g, '').trim();
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (parseErr) {
+        logger.warn({ text: cleaned.substring(0, 300) }, 'Gemini returned invalid JSON, attempting repair');
+        // Try extracting first {...} block
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+          try {
+            parsed = JSON.parse(cleaned.substring(firstBrace, lastBrace + 1));
+          } catch {
+            throw new Error(`Failed to parse Gemini JSON: ${(parseErr as Error).message}`);
+          }
+        } else {
+          throw new Error(`Failed to parse Gemini JSON: ${(parseErr as Error).message}`);
+        }
+      }
+    }
 
     return {
-      text: options.json ? JSON.parse(text) : text,
+      text: parsed,
       usage: {
         inputTokens: (usage as any).promptTokenCount || 0,
         outputTokens: (usage as any).candidatesTokenCount || 0,

@@ -30,13 +30,6 @@
         </el-select>
       </el-form-item>
 
-      <el-form-item :label="$t('topicRules.postType')" prop="postType">
-        <el-radio-group v-model="form.postType">
-          <el-radio value="new-post">{{ $t('common.newPost') }}</el-radio>
-          <el-radio value="reply">{{ $t('common.reply') }}</el-radio>
-        </el-radio-group>
-      </el-form-item>
-
       <el-form-item :label="$t('feed.targetFid')" prop="targetFid">
         <el-select v-model="form.targetFid" filterable clearable :placeholder="$t('feed.placeholder.targetFid')" style="width: 100%" :loading="boardsLoading">
           <el-option v-for="b in boards" :key="b.fid" :label="`${b.name} (fid:${b.fid})`" :value="b.fid" />
@@ -137,6 +130,7 @@ const form = reactive(defaultForm())
 
 const rules = {
   topic: [{ required: true, message: t('common.required'), trigger: 'blur' }],
+  targetFid: [{ required: true, message: t('common.required'), trigger: 'change' }],
 }
 
 watch(

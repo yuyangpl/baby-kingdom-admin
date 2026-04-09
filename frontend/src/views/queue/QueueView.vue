@@ -148,7 +148,16 @@ const loadQueues = async () => {
   loading.value = true
   try {
     const { data } = await api.get('/v1/queues')
-    queues.value = data.data ?? data
+    const raw = data.data ?? data
+    // Flatten counts into top-level for template access (q.waiting, q.completed, etc.)
+    queues.value = (Array.isArray(raw) ? raw : []).map((q: any) => ({
+      ...q,
+      waiting: q.counts?.waiting ?? q.waiting ?? 0,
+      active: q.counts?.active ?? q.active ?? 0,
+      completed: q.counts?.completed ?? q.completed ?? 0,
+      failed: q.counts?.failed ?? q.failed ?? 0,
+      paused: q.counts?.paused ?? q.paused ?? 0,
+    }))
   } finally {
     loading.value = false
   }

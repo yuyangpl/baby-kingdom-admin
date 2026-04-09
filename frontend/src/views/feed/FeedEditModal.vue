@@ -3,38 +3,63 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     :title="$t('feed.editContent')"
-    width="700px"
+    width="750px"
     :close-on-click-modal="false"
   >
     <div v-if="editData" class="feed-edit-modal">
-      <!-- Read-only section -->
+      <!-- Read-only info -->
       <el-descriptions :column="2" border size="small" class="readonly-section">
-        <el-descriptions-item :label="$t('feed.feedId')">{{ editData.feedId }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('feed.feedId')">
+          <code>{{ editData.feedId }}</code>
+        </el-descriptions-item>
         <el-descriptions-item :label="$t('trends.source')">
-          <el-tag size="small">{{ editData.source }}</el-tag>
+          <el-tag v-for="s in (Array.isArray(editData.source) ? editData.source : [editData.source])" :key="s" size="small" style="margin-right: 4px;">{{ s }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item :label="$t('feed.board')">
+          {{ editData.threadFid ? (boardMap?.[editData.threadFid] || `fid:${editData.threadFid}`) : '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item :label="$t('feed.sensitivityTier')">
+          <el-tag :type="tierType(editData.sensitivityTier)" size="small">
+            {{ editData.sensitivityTier || '-' }}
+          </el-tag>
         </el-descriptions-item>
         <el-descriptions-item :label="$t('feed.threadSubject')" :span="2">
-          {{ editData.threadSubject || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item :label="$t('feed.persona')">{{ editData.personaId }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('feed.toneMode')">{{ toneLabel(editData.toneMode) }}</el-descriptions-item>
-        <el-descriptions-item :label="$t('feed.sensitivityTier')">
-          <el-tag
-            :type="tierType(editData.sensitivityTier)"
-            size="small"
-          >
-            Tier {{ editData.sensitivityTier }}
-          </el-tag>
+          {{ editData.subject || editData.threadSubject || '-' }}
+          <a v-if="editData.threadTid" :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${editData.threadTid}`" target="_blank" rel="noopener" style="margin-left: 8px; font-size: 12px;">{{ $t('feed.viewThread') }} ↗</a>
         </el-descriptions-item>
       </el-descriptions>
 
-      <!-- Editable section -->
-      <el-form
-        ref="formRef"
-        :model="form"
-        label-position="top"
-        class="edit-section"
-      >
+      <!-- Original thread content (replies only) -->
+      <div v-if="editData.postType === 'reply' && editData.threadContent" class="original-content">
+        <div class="section-label">{{ $t('feed.originalThread') }}</div>
+        <div class="content-box content-box--muted">{{ editData.threadContent }}</div>
+      </div>
+
+      <!-- Trend summary (replies only, scanner source) -->
+      <div v-if="editData.postType === 'reply' && editData.trendSummary" class="original-content">
+        <div class="section-label">{{ $t('feed.trendSummary') }}</div>
+        <div class="content-box content-box--muted">{{ editData.trendSummary }}</div>
+      </div>
+
+      <!-- Editable form -->
+      <el-form ref="formRef" :model="form" label-position="top" class="edit-section">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item :label="$t('feed.persona')">
+              <el-select v-model="form.personaId" filterable style="width: 100%" :loading="personasLoading">
+                <el-option v-for="p in personas" :key="p.accountId" :label="`${p.accountId} — ${p.username} (${$t('persona.archetypeOptions.' + p.archetype)})`" :value="p.accountId" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item :label="$t('feed.toneMode')">
+              <el-select v-model="form.toneMode" style="width: 100%" clearable :loading="tonesLoading">
+                <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
         <el-form-item :label="$t('feed.content')" prop="content">
           <el-input
             v-model="form.content"
@@ -42,16 +67,10 @@
             :rows="8"
             :placeholder="$t('feed.content')"
           />
-          <div class="char-counter">{{ form.content.length }} characters</div>
+          <div class="char-counter">{{ $t('feed.charCount', { count: form.content.length }) }}</div>
         </el-form-item>
 
-        <el-form-item :label="$t('feed.toneMode')" prop="toneModeOverride">
-          <el-select v-model="form.toneModeOverride" :placeholder="$t('persona.selectTone')" style="width: 100%" clearable :loading="tonesLoading">
-            <el-option v-for="t in tones" :key="t.toneId" :label="`${t.displayName} (${t.toneId})`" :value="t.toneId" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item :label="$t('feed.adminNotes')" prop="adminNotes">
+        <el-form-item :label="$t('feed.adminNotes')">
           <el-input
             v-model="form.adminNotes"
             type="textarea"
@@ -86,6 +105,7 @@ const { t } = useI18n()
 const props = defineProps<{
   modelValue: boolean
   editData: Record<string, any> | null
+  boardMap?: Record<number, string>
 }>()
 
 const emit = defineEmits<{
@@ -94,11 +114,14 @@ const emit = defineEmits<{
 }>()
 
 const formRef = ref<FormInstance>()
-const savingDraft = ref<boolean>(false)
-const savingApprove = ref<boolean>(false)
+const savingDraft = ref(false)
+const savingApprove = ref(false)
 
 const tones = ref<{ toneId: string; displayName: string }[]>([])
 const tonesLoading = ref(false)
+const personas = ref<{ accountId: string; username: string; archetype: string }[]>([])
+
+const personasLoading = ref(false)
 
 const loadTones = async () => {
   if (tones.value.length > 0) return
@@ -110,6 +133,17 @@ const loadTones = async () => {
   tonesLoading.value = false
 }
 
+const loadPersonas = async () => {
+  if (personas.value.length > 0) return
+  personasLoading.value = true
+  try {
+    const res = await api.get('/v1/personas', { params: { limit: 100 } })
+    const list = res.data || res
+    personas.value = (Array.isArray(list) ? list : []).map((p: any) => ({ accountId: p.accountId, username: p.username, archetype: p.archetype || '' }))
+  } catch { /* ignore */ }
+  personasLoading.value = false
+}
+
 const toneLabel = (toneId: string): string => {
   const t = tones.value.find(t => t.toneId === toneId)
   return t ? `${t.displayName} (${toneId})` : toneId
@@ -117,13 +151,16 @@ const toneLabel = (toneId: string): string => {
 
 const form = reactive({
   content: '',
-  toneModeOverride: '',
+  toneMode: '',
+  personaId: '',
   adminNotes: '',
 })
 
-const tierType = (tier: number): string => {
-  const map: Record<number, string> = { 1: 'success', 2: 'warning', 3: 'danger' }
-  return map[tier] || 'info'
+const tierType = (tier: string | number): string => {
+  const s = String(tier || '')
+  if (s.includes('3')) return 'danger'
+  if (s.includes('2')) return 'warning'
+  return 'success'
 }
 
 watch(
@@ -131,8 +168,10 @@ watch(
   (open) => {
     if (open && props.editData) {
       loadTones()
-      form.content = props.editData.content || ''
-      form.toneModeOverride = ''
+      loadPersonas()
+      form.content = props.editData.finalContent || props.editData.draftContent || ''
+      form.toneMode = props.editData.toneMode || ''
+      form.personaId = props.editData.personaId || ''
       form.adminNotes = props.editData.adminNotes || ''
     }
   }
@@ -140,7 +179,8 @@ watch(
 
 const buildPayload = (): Record<string, any> => {
   const payload: Record<string, any> = { content: form.content }
-  if (form.toneModeOverride) payload.toneMode = form.toneModeOverride
+  if (form.toneMode) payload.toneMode = form.toneMode
+  if (form.personaId && form.personaId !== props.editData?.personaId) payload.personaId = form.personaId
   if (form.adminNotes) payload.adminNotes = form.adminNotes
   return payload
 }
@@ -189,7 +229,30 @@ const handleSaveAndApprove = async () => {
   gap: 16px;
 }
 .readonly-section {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+}
+.original-content {
+  margin-bottom: 4px;
+}
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 6px;
+}
+.content-box {
+  padding: 10px 12px;
+  border-radius: 4px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-size: 13px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.content-box--muted {
+  background: #f5f7fa;
+  border: 1px solid #ebeef5;
+  color: #606266;
 }
 .edit-section {
   padding: 0 4px;

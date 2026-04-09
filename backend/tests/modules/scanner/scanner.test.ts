@@ -71,7 +71,7 @@ describe('Scanner', () => {
   });
 
   it('creates feeds in pending status after scan', async () => {
-    const feeds = await Feed.find({ source: 'scanner' });
+    const feeds = await Feed.find({ source: { $in: ['scanner'] } });
     expect(feeds.length).toBeGreaterThan(0);
 
     const feed = feeds[0];
@@ -94,13 +94,13 @@ describe('Scanner', () => {
   });
 
   it('does not create duplicate feeds for same tid', async () => {
-    const beforeCount = await Feed.countDocuments({ source: 'scanner' });
+    const beforeCount = await Feed.countDocuments({ source: { $in: ['scanner'] } });
 
     await request
       .post('/api/v1/scanner/trigger')
       .set('Authorization', `Bearer ${adminToken}`);
 
-    const afterCount = await Feed.countDocuments({ source: 'scanner' });
+    const afterCount = await Feed.countDocuments({ source: { $in: ['scanner'] } });
     expect(afterCount).toBe(beforeCount); // no new feeds since same mock tids
   });
 });
@@ -123,7 +123,7 @@ describe('Scanner — deep behaviour tests', () => {
       feedId: `FQ-QFULL-${String(i).padStart(3, '0')}`,
       type: 'reply',
       status: 'pending',
-      source: 'custom',
+      source: ['custom'],
       threadTid: 9990000 + i,
       threadFid: 162,
       threadSubject: `Dummy feed ${i}`,
@@ -179,7 +179,7 @@ describe('Scanner — deep behaviour tests', () => {
     await Persona.updateMany({ accountId: 'BK001' }, { postsToday: 10, maxPostsPerDay: 10 });
 
     // Remove existing scanner feeds so duplicate-check doesn't mask the noPersona path
-    await Feed.deleteMany({ source: 'scanner' });
+    await Feed.deleteMany({ source: { $in: ['scanner'] } });
 
     const res = await request
       .post('/api/v1/scanner/trigger')
@@ -207,7 +207,7 @@ describe('Scanner — deep behaviour tests', () => {
     await Config.updateOne({ key: 'SCANNER_RELEVANCE_THRESHOLD' }, { value: '100' });
 
     // Remove existing scanner feeds so duplicates don't interfere
-    await Feed.deleteMany({ source: 'scanner' });
+    await Feed.deleteMany({ source: { $in: ['scanner'] } });
 
     const res = await request
       .post('/api/v1/scanner/trigger')

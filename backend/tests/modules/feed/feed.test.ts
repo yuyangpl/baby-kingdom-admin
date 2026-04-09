@@ -52,7 +52,7 @@ beforeAll(async () => {
 
   // Create a test feed
   const feed = await Feed.create({
-    feedId: 'FQ-TEST-001', type: 'reply', status: 'pending', source: 'scanner',
+    feedId: 'FQ-TEST-001', type: 'reply', status: 'pending', source: ['scanner'],
     threadTid: 99999, threadFid: 162, threadSubject: 'Test thread',
     personaId: 'BK-FEED-TEST', bkUsername: 'feedtester', archetype: 'pregnant',
     toneMode: 'CASUAL', postType: 'reply',
@@ -169,7 +169,7 @@ describe('Edit & Regenerate', () => {
 
   beforeAll(async () => {
     const feed = await Feed.create({
-      feedId: 'FQ-TEST-EDIT', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-TEST-EDIT', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 88888, threadFid: 162, threadSubject: 'Edit test',
       personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
       draftContent: '原始內容', charCount: 4,
@@ -206,8 +206,8 @@ describe('Batch', () => {
 
   beforeAll(async () => {
     const feeds = await Promise.all([
-      Feed.create({ feedId: 'FQ-BATCH-1', type: 'reply', status: 'pending', source: 'scanner', threadTid: 77771, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch1', charCount: 6 }),
-      Feed.create({ feedId: 'FQ-BATCH-2', type: 'reply', status: 'pending', source: 'scanner', threadTid: 77772, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch2', charCount: 6 }),
+      Feed.create({ feedId: 'FQ-BATCH-1', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 77771, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch1', charCount: 6 }),
+      Feed.create({ feedId: 'FQ-BATCH-2', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 77772, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch2', charCount: 6 }),
     ]);
     batchIds = feeds.map(f => f._id.toString());
   });
@@ -239,7 +239,7 @@ describe('Reject', () => {
 
   beforeAll(async () => {
     const feed1 = await Feed.create({
-      feedId: 'FQ-REJECT-1', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-REJECT-1', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66661, threadFid: 162, threadSubject: 'Reject test 1',
       personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
       draftContent: '待拒絕內容', charCount: 5,
@@ -247,7 +247,7 @@ describe('Reject', () => {
     rejectFeedId = feed1._id.toString();
 
     const feed2 = await Feed.create({
-      feedId: 'FQ-REJECT-2', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-REJECT-2', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66662, threadFid: 162, threadSubject: 'Reject test 2',
       personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
       draftContent: '待拒絕內容2', charCount: 6,
@@ -255,8 +255,8 @@ describe('Reject', () => {
     rejectFeedId2 = feed2._id.toString();
 
     const feeds = await Promise.all([
-      Feed.create({ feedId: 'FQ-BREJECT-1', type: 'reply', status: 'pending', source: 'scanner', threadTid: 66671, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject1', charCount: 8 }),
-      Feed.create({ feedId: 'FQ-BREJECT-2', type: 'reply', status: 'pending', source: 'scanner', threadTid: 66672, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject2', charCount: 8 }),
+      Feed.create({ feedId: 'FQ-BREJECT-1', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 66671, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject1', charCount: 8 }),
+      Feed.create({ feedId: 'FQ-BREJECT-2', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 66672, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject2', charCount: 8 }),
     ]);
     batchRejectIds = feeds.map(f => f._id.toString());
   });
@@ -350,7 +350,7 @@ describe('Auto-post after approval', () => {
 
   it('auto-queues poster job when board.enableAutoReply is true', async () => {
     const feed = await Feed.create({
-      feedId: 'FQ-AUTO-001', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-AUTO-001', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 88801, threadFid: 88162, personaId: 'BK-FEED-TEST',
       draftContent: '自動發帖測試', charCount: 6,
     });
@@ -366,7 +366,7 @@ describe('Auto-post after approval', () => {
 
   it('does NOT auto-queue when board.enableAutoReply is false', async () => {
     const feed = await Feed.create({
-      feedId: 'FQ-AUTO-002', type: 'reply', status: 'pending', source: 'scanner',
+      feedId: 'FQ-AUTO-002', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 88802, threadFid: 88163, personaId: 'BK-FEED-TEST',
       draftContent: '手動發帖測試', charCount: 6,
     });
