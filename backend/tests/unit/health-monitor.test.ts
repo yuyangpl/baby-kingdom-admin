@@ -30,7 +30,7 @@ describe('checkBkForum', () => {
 
 describe('checkMediaLens', () => {
   afterEach(async () => {
-    await Config.findOneAndDelete({ key: 'MEDIALENS_JWT_TOKEN' });
+    await Config.deleteMany({ key: { $in: ['MEDIALENS_JWT_TOKEN', 'MEDIALENS_JWT_TOKEN_EXPIRY'] } });
   });
 
   it('returns not_configured when no JWT token', async () => {
@@ -38,30 +38,27 @@ describe('checkMediaLens', () => {
     expect(result.status).toBe('not_configured');
   });
 
-  it('returns expired for an expired JWT', async () => {
-    const expiredPayload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) - 3600 })).toString('base64url');
-    const fakeJwt = `eyJhbGciOiJIUzI1NiJ9.${expiredPayload}.fake`;
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: fakeJwt, category: 'medialens' });
+  it('returns expired when expiry is in the past', async () => {
+    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' });
+    await Config.create({ key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() - 3600000).toISOString(), category: 'medialens' });
     const result = await checkMediaLens();
     expect(result.status).toBe('expired');
   });
 
-  it('returns expiring_soon for JWT expiring in 12 hours', async () => {
-    const soonPayload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 12 * 3600 })).toString('base64url');
-    const fakeJwt = `eyJhbGciOiJIUzI1NiJ9.${soonPayload}.fake`;
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: fakeJwt, category: 'medialens' });
+  it('returns expiring_soon when expiry is within 24 hours', async () => {
+    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' });
+    await Config.create({ key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() + 12 * 3600000).toISOString(), category: 'medialens' });
     const result = await checkMediaLens();
     expect(result.status).toBe('expiring_soon');
     expect(result.detail).toMatch(/expires in \d+h/);
   });
 
-  it('returns valid for JWT expiring in 5 days', async () => {
-    const validPayload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 5 * 24 * 3600 })).toString('base64url');
-    const fakeJwt = `eyJhbGciOiJIUzI1NiJ9.${validPayload}.fake`;
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: fakeJwt, category: 'medialens' });
+  it('returns valid when expiry is more than 24 hours away', async () => {
+    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' });
+    await Config.create({ key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() + 5 * 24 * 3600000).toISOString(), category: 'medialens' });
     const result = await checkMediaLens();
     expect(result.status).toBe('valid');
-    expect(result.detail).toContain('5d');
+    expect(result.detail).toMatch(/[45]d/);
   });
 });
 

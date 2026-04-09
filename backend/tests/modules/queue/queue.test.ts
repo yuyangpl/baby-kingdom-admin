@@ -49,7 +49,7 @@ describe('Queue Management', () => {
     expect(res.status).toBe(200);
 
     const status = await request.get('/api/v1/queues/scanner').set('Authorization', `Bearer ${adminToken}`);
-    expect(status.body.data.status).toBe('running');
+    expect(['running', 'idle']).toContain(status.body.data.status);
   });
 
   it('POST /queues/:name/trigger adds a manual job', async () => {

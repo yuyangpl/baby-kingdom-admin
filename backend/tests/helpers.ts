@@ -1,6 +1,7 @@
 import supertest from 'supertest';
 import { connectDB, disconnectDB } from '../src/shared/database.js';
 import { connectRedis, disconnectRedis } from '../src/shared/redis.js';
+import { initQueues } from '../src/modules/queue/queue.service.js';
 import app from '../src/app.js';
 
 export const request = supertest(app as any);
@@ -8,6 +9,7 @@ export const request = supertest(app as any);
 export async function setupDB(): Promise<void> {
   await connectDB();
   await connectRedis();
+  initQueues();
 }
 
 export async function teardownDB(): Promise<void> {
