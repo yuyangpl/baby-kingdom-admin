@@ -140,7 +140,7 @@
             </div>
             <div v-if="feed.draftContent && feed.postType === 'reply'" class="feed-card__preview">
               <span class="feed-card__preview-label">{{ feed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
-              {{ truncate(feed.draftContent, 160) }}
+              {{ feed.draftContent }}
             </div>
             <div v-if="feed.finalContent" class="feed-card__draft-box">
               {{ truncate(feed.finalContent, 200) }}
@@ -833,8 +833,6 @@ onMounted(() => {
   padding: 8px 10px;
   line-height: 1.6;
   white-space: pre-wrap;
-  max-height: 200px;
-  overflow-y: auto;
 }
 .feed-card__preview-label {
   font-size: 11px;
