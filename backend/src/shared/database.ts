@@ -1,4 +1,6 @@
 import { PrismaClient } from '../generated/prisma/client.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import logger from './logger.js';
 
 let prisma: PrismaClient;
@@ -6,7 +8,10 @@ let isConnected = false;
 
 export function getPrisma(): PrismaClient {
   if (!prisma) {
+    const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const adapter = new PrismaPg(pool);
     prisma = new PrismaClient({
+      adapter,
       log: process.env.NODE_ENV === 'development'
         ? [{ emit: 'event', level: 'query' } as const]
         : [{ emit: 'event', level: 'error' } as const],
