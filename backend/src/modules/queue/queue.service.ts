@@ -8,50 +8,6 @@ export function initQueues(): void {
   logger.info(`Queue service ready (${QUEUE_NAMES.length} queues, DB-backed)`);
 }
 
-// Worker HTTP service URL (local dev or Cloud Run)
-function getWorkerUrl(): string {
-  return process.env.WORKER_SERVICE_URL || `http://localhost:${process.env.WORKER_PORT || 3001}`;
-}
-
-// Task endpoint mapping
-const TASK_ENDPOINTS: Record<string, string> = {
-  scanner: '/tasks/scanner',
-  trends: '/tasks/trends',
-  poster: '/tasks/poster',
-  'daily-reset': '/tasks/daily-reset',
-  'stats-aggregator': '/tasks/stats',
-  'google-trends': '/tasks/gtrends',
-};
-
-/**
- * Dispatch a task to the worker HTTP service.
- * In local dev: direct HTTP call to worker-http.ts
- * In production: will be replaced by Cloud Tasks createTask()
- */
-async function dispatchToWorker(queueName: string, data: any): Promise<void> {
-  const endpoint = TASK_ENDPOINTS[queueName];
-  if (!endpoint) {
-    logger.warn({ queueName }, 'No task endpoint mapped for queue');
-    return;
-  }
-
-  const workerUrl = getWorkerUrl();
-  try {
-    const resp = await fetch(`${workerUrl}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data || {}),
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!resp.ok) {
-      const body = await resp.text();
-      logger.warn({ queueName, status: resp.status, body }, 'Worker dispatch returned non-OK');
-    }
-  } catch (err) {
-    // Non-fatal: worker might not be running in dev
-    logger.warn({ err, queueName, workerUrl }, 'Failed to dispatch to worker (is worker-http running?)');
-  }
-}
 
 export interface QueueStatusItem {
   name: string;
@@ -159,8 +115,23 @@ export async function triggerQueue(name: string, userId: string, ip: string) {
     targetId: name, actionDetail: `Manual trigger queue: ${name}`, ip,
   });
 
-  // Dispatch to worker HTTP service
-  dispatchToWorker(name, { triggeredBy: 'manual', triggeredByUser: userId });
+  // Dispatch task locally (same process)
+  const taskEndpoints: Record<string, string> = {
+    scanner: '/tasks/scanner',
+    trends: '/tasks/trends',
+    poster: '/tasks/poster',
+    'google-trends': '/tasks/gtrends',
+  };
+  const endpoint = taskEndpoints[name];
+  if (endpoint) {
+    const port = process.env.PORT || 3000;
+    fetch(`http://localhost:${port}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ triggeredBy: 'manual', triggeredByUser: userId }),
+      signal: AbortSignal.timeout(30000),
+    }).catch(err => logger.warn({ err, name }, 'Local task dispatch failed'));
+  }
 
   return { jobId: job.id, queueName: name };
 }
@@ -275,9 +246,6 @@ export async function addToQueue(queueName: string, data: any): Promise<{ id: st
       triggeredBy: 'manual',
     },
   });
-
-  // Dispatch to worker HTTP service
-  dispatchToWorker(queueName, data);
 
   logger.info({ queueName, jobId: job.id }, 'Job added to queue and dispatched');
   return { id: job.id, queueName };
