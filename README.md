@@ -24,7 +24,7 @@ docker compose logs -f worker    # 仅 worker
 启动后访问：
 - **前端界面：** http://localhost:8080
 - **后端 API：** http://localhost:3001
-- **默认账号：** yu.yang@mintinglabs.com / admin123
+- **默认账号：** yu.yang@mintinglabs.com / presslogic
 
 **自动初始化数据：**
 - 1 个 Admin 用户、46 项系统配置
@@ -100,7 +100,7 @@ cd frontend && npm install && npm run dev
 启动后访问：
 - **前端界面：** http://localhost:5173
 - **后端 API：** http://localhost:3000
-- **默认账号：** yu.yang@mintinglabs.com / admin123
+- **默认账号：** yu.yang@mintinglabs.com / presslogic
 
 ---
 
