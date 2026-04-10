@@ -221,9 +221,9 @@ async function start(): Promise<void> {
       }
     }, 5 * 60 * 1000));
 
-    // Trends: configurable interval (default 1 hour)
-    const trendsIntervalHrs = parseFloat(await configService.getValue('TREND_PULL_INTERVAL_HRS') || '1');
-    const trendsIntervalMs = trendsIntervalHrs * 60 * 60 * 1000;
+    // Trends: configurable interval in minutes (default 60)
+    const trendsIntervalMin = parseInt(await configService.getValue('TREND_PULL_INTERVAL_MIN') || '60', 10);
+    const trendsIntervalMs = trendsIntervalMin * 60 * 1000;
     intervals.push(setInterval(async () => {
       const q = getQueue('trends');
       if (q && !(await q.isPaused())) {
@@ -271,7 +271,7 @@ async function start(): Promise<void> {
       }
     }));
 
-    logger.info(`Cron jobs registered: scanner(per-board interval, check 5m), trends(${trendsIntervalHrs}h), daily-reset(midnight), stats(1h), google-trends(${gtrendsInterval}m), health(5m)`);
+    logger.info(`Cron jobs registered: scanner(per-board interval, check 5m), trends(${trendsIntervalMin}m), daily-reset(midnight), stats(1h), google-trends(${gtrendsInterval}m), health(5m)`);
   }
 
   const isLeader = await tryAcquireLock();

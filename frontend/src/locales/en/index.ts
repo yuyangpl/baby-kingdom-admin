@@ -237,6 +237,7 @@ export default {
   trends: {
     title: 'Trends',
     desc: 'Fetches trending topics from MediaLens and auto-generates new threads. Pull interval and max feeds per pull can be configured in System Config → MediaLens.',
+    pullInterval: '(auto-pull every {minutes} minutes)',
     pullTriggered: 'Pull job triggered',
     queuePaused: 'Trends queue is paused. Resume it in Queue Management first.',
     triggerPull: 'Trigger Pull',
@@ -489,7 +490,7 @@ export default {
     MEDIALENS_JWT_TOKEN: 'MediaLens JWT token (auto-cached)',
     MEDIALENS_JWT_TOKEN_EXPIRY: 'JWT expiry (auto-set on OTP verify)',
     TREND_LOOKBACK_DAYS: 'Trend lookback days',
-    TREND_PULL_INTERVAL_HRS: 'Trend pull interval (hours)',
+    TREND_PULL_INTERVAL_MIN: 'Trend pull interval (minutes)',
     SCANNER_RELEVANCE_THRESHOLD: 'Gemini relevance score threshold',
     SCANNER_TIMEOUT_MINUTES: 'Scanner timeout minutes',
   },

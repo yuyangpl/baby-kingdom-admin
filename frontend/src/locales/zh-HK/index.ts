@@ -245,6 +245,7 @@ export default {
     title: '熱門趨勢',
     desc: '從 MediaLens 抓取熱門話題，自動生成新帖到指定版塊。抓取間隔及每次最大生成數可在「系統配置 → MediaLens」中修改。',
     triggerPull: '觸發拉取',
+    pullInterval: '（每 {minutes} 分鐘自動拉取）',
     pullTriggered: '拉取任務已觸發',
     queuePaused: 'Trends 佇列已暫停，請先在佇列管理中恢復',
     source: '來源',
@@ -508,7 +509,7 @@ export default {
     MEDIALENS_JWT_TOKEN: 'MediaLens JWT Token（自動緩存）',
     MEDIALENS_JWT_TOKEN_EXPIRY: 'JWT 有效期至（OTP 驗證時自動設置）',
     TREND_LOOKBACK_DAYS: '趨勢回顧天數',
-    TREND_PULL_INTERVAL_HRS: '趨勢拉取間隔（小時）',
+    TREND_PULL_INTERVAL_MIN: '趨勢拉取間隔（分鐘）',
     // scanner
     SCANNER_RELEVANCE_THRESHOLD: 'Gemini 相關性評分閾值',
     SCANNER_TIMEOUT_MINUTES: '掃描器超時分鐘數',

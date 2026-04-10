@@ -73,7 +73,7 @@ export const CONFIG_PRESETS: ConfigPreset[] = [
   { key: 'MEDIALENS_JWT_TOKEN', value: '', category: 'medialens', description: 'MediaLens JWT token (auto-cached)', isSecret: true },
   { key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: '', category: 'medialens', description: 'JWT expiry time (auto-set on OTP verify)' },
   { key: 'TREND_LOOKBACK_DAYS', value: '1', category: 'medialens', description: 'Trend lookback days' },
-  { key: 'TREND_PULL_INTERVAL_HRS', value: '1', category: 'medialens', description: 'Trend pull interval (hours)' },
+  { key: 'TREND_PULL_INTERVAL_MIN', value: '60', category: 'medialens', description: 'Trend pull interval (minutes)' },
 
   // -- Scanner --
   { key: 'SCANNER_RELEVANCE_THRESHOLD', value: '35', category: 'scanner', description: 'Gemini relevance score threshold' },

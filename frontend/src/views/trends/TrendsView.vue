@@ -3,7 +3,10 @@
     <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
       <div>
         <h1 class="page-title" style="margin: 0;">{{ $t('trends.title') }}</h1>
-        <p style="margin: 4px 0 0; font-size: 13px; color: #909399;">{{ $t('trends.desc') }}</p>
+        <p style="margin: 4px 0 0; font-size: 13px; color: #909399;">
+          {{ $t('trends.desc') }}
+          <span v-if="pullIntervalMin" style="margin-left: 4px;">{{ $t('trends.pullInterval', { minutes: pullIntervalMin }) }}</span>
+        </p>
       </div>
       <el-button type="primary" :loading="pulling" :disabled="queuePaused" @click="triggerPull">
         {{ $t('trends.triggerPull') }}
@@ -156,6 +159,7 @@ const trends = ref<any[]>([])
 const loading = ref(false)
 const pulling = ref(false)
 const queuePaused = ref(false)
+const pullIntervalMin = ref(0)
 const tokenValid = ref(true)
 const tokenExpiry = ref('')
 
@@ -174,6 +178,7 @@ const loadSourceConfig = async () => {
     for (const c of configs) {
       if (c.key === 'ENABLE_LIHKG') sources.lihkg = c.value === 'true'
       if (c.key === 'ENABLE_FB_VIRAL') sources.facebook = c.value === 'true'
+      if (c.key === 'TREND_PULL_INTERVAL_MIN') pullIntervalMin.value = parseInt(c.value, 10) || 60
     }
   } catch { /* keep defaults */ }
 }
