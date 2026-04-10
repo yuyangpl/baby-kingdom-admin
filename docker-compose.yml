@@ -1,12 +1,10 @@
-version: "3.9"
-
 services:
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -19,9 +17,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
-      - .env.development
+      - .env.docker
     depends_on:
       mongodb:
         condition: service_healthy
@@ -44,7 +42,7 @@ services:
       dockerfile: Dockerfile
     command: ["node", "dist/worker.js"]
     env_file:
-      - .env.development
+      - .env.docker
     depends_on:
       mongodb:
         condition: service_healthy
@@ -62,7 +60,7 @@ services:
   mongodb:
     image: mongo:7.0.14
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo-data:/data/db
     healthcheck:
@@ -78,7 +76,7 @@ services:
   redis:
     image: redis:7.4.1-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data

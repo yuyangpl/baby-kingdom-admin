@@ -27,13 +27,15 @@
 
 ### 核心组件
 
-| 组件 | 技术 | 特点 |
-|---|---|---|
-| **Backend API** | Express + Socket.io | 65+ REST endpoints, WebSocket 实时推送 |
-| **Worker** | BullMQ (6 queues) | 后台任务处理, Redis leader election |
-| **Frontend** | Vue 3 SPA (Vite) | 13 页面, 静态资源 |
-| **Database** | MongoDB 7 | 12+ collections, TTL index |
-| **Cache/Queue** | Redis 7 | BullMQ backend, Socket.io adapter, 分布式锁 |
+
+| 组件              | 技术                  | 特点                                      |
+| --------------- | ------------------- | --------------------------------------- |
+| **Backend API** | Express + Socket.io | 65+ REST endpoints, WebSocket 实时推送      |
+| **Worker**      | BullMQ (6 queues)   | 后台任务处理, Redis leader election           |
+| **Frontend**    | Vue 3 SPA (Vite)    | 13 页面, 静态资源                             |
+| **Database**    | MongoDB 7           | 12+ collections, TTL index              |
+| **Cache/Queue** | Redis 7             | BullMQ backend, Socket.io adapter, 分布式锁 |
+
 
 ### 关键约束
 
@@ -49,14 +51,16 @@
 
 ### 方案 A: Cloud Run
 
-| 维度 | 评分 | 说明 |
-|---|---|---|
-| **部署复杂度** | ⭐⭐⭐⭐⭐ | Container 直接部署, 与 Docker Compose 天然兼容 |
-| **自动扩缩** | ⭐⭐⭐⭐⭐ | 0→N 自动缩放, 按请求计费 |
-| **成本** | ⭐⭐⭐⭐ | 低流量时极便宜 (可缩至 0) |
-| **WebSocket** | ⭐⭐⭐ | 支持, 但有限制 (最长 3600s 连接, 冷启动断连) |
-| **长时间任务** | ⭐⭐ | 默认超时 5min, 最长 60min; Worker 需特殊处理 |
-| **运维** | ⭐⭐⭐⭐⭐ | 全托管, 无需管理服务器 |
+
+| 维度            | 评分    | 说明                                    |
+| ------------- | ----- | ------------------------------------- |
+| **部署复杂度**     | ⭐⭐⭐⭐⭐ | Container 直接部署, 与 Docker Compose 天然兼容 |
+| **自动扩缩**      | ⭐⭐⭐⭐⭐ | 0→N 自动缩放, 按请求计费                       |
+| **成本**        | ⭐⭐⭐⭐  | 低流量时极便宜 (可缩至 0)                       |
+| **WebSocket** | ⭐⭐⭐   | 支持, 但有限制 (最长 3600s 连接, 冷启动断连)         |
+| **长时间任务**     | ⭐⭐    | 默认超时 5min, 最长 60min; Worker 需特殊处理     |
+| **运维**        | ⭐⭐⭐⭐⭐ | 全托管, 无需管理服务器                          |
+
 
 **Cloud Run 关键限制:**
 
@@ -76,14 +80,16 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 
 ### 方案 B: Compute Engine VM
 
-| 维度 | 评分 | 说明 |
-|---|---|---|
-| **部署复杂度** | ⭐⭐⭐ | 需要手动配置, 但 docker-compose 可直接运行 |
-| **自动扩缩** | ⭐⭐ | 需 MIG (Managed Instance Group), 配置复杂 |
-| **成本** | ⭐⭐⭐ | 固定月费, 低流量时偏贵, 高流量时可预测 |
-| **WebSocket** | ⭐⭐⭐⭐⭐ | 完全支持, 无限制 |
-| **长时间任务** | ⭐⭐⭐⭐⭐ | Worker 可 24/7 运行, 无超时限制 |
-| **运维** | ⭐⭐ | 需自行管理 OS 更新、安全补丁、监控 |
+
+| 维度            | 评分    | 说明                                   |
+| ------------- | ----- | ------------------------------------ |
+| **部署复杂度**     | ⭐⭐⭐   | 需要手动配置, 但 docker-compose 可直接运行       |
+| **自动扩缩**      | ⭐⭐    | 需 MIG (Managed Instance Group), 配置复杂 |
+| **成本**        | ⭐⭐⭐   | 固定月费, 低流量时偏贵, 高流量时可预测                |
+| **WebSocket** | ⭐⭐⭐⭐⭐ | 完全支持, 无限制                            |
+| **长时间任务**     | ⭐⭐⭐⭐⭐ | Worker 可 24/7 运行, 无超时限制              |
+| **运维**        | ⭐⭐    | 需自行管理 OS 更新、安全补丁、监控                  |
+
 
 **VM 适配方案:**
 
@@ -99,14 +105,16 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 
 ### 对比总结
 
-| 考量点 | Cloud Run | VM |
-|---|---|---|
-| 项目规模匹配度 | 中 (Worker 需额外处理) | 高 (docker-compose 直接跑) |
-| 初期成本 (月) | ~$5-15 | ~$15-30 (e2-small) |
-| 运维负担 | 低 | 中-高 |
-| 扩展性 | 高 | 需手动 |
-| WebSocket 支持 | 有限制 | 完美 |
-| Worker 适配性 | 差 (需改造) | 好 (原生运行) |
+
+| 考量点          | Cloud Run        | VM                     |
+| ------------ | ---------------- | ---------------------- |
+| 项目规模匹配度      | 中 (Worker 需额外处理) | 高 (docker-compose 直接跑) |
+| 初期成本 (月)     | ~$5-15           | ~$15-30 (e2-small)     |
+| 运维负担         | 低                | 中-高                    |
+| 扩展性          | 高                | 需手动                    |
+| WebSocket 支持 | 有限制              | 完美                     |
+| Worker 适配性   | 差 (需改造)          | 好 (原生运行)               |
+
 
 ---
 
@@ -115,18 +123,21 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 ### 现状
 
 项目已实现完整的内部 Cron 系统:
+
 - BullMQ `repeatableJobs` 管理 6 个定时任务
 - Redis 分布式锁实现 Leader Election
 - 任务粒度: 5min (健康检查) ~ 24h (每日重置)
 
 ### 方案: Cloud Scheduler
 
-| 优势 | 劣势 |
-|---|---|
-| GCP 原生, 可观测性好 | 需改造: 每个 cron → HTTP endpoint |
-| 自动重试, 精确调度 | 丢失 BullMQ 内建的去重、重试、超时 |
-| 与 Cloud Run 配合好 | 需额外开发 6 个 trigger endpoint |
-| $0.10/job/月 | Leader Election 机制变得冗余 |
+
+| 优势              | 劣势                           |
+| --------------- | ---------------------------- |
+| GCP 原生, 可观测性好   | 需改造: 每个 cron → HTTP endpoint |
+| 自动重试, 精确调度      | 丢失 BullMQ 内建的去重、重试、超时        |
+| 与 Cloud Run 配合好 | 需额外开发 6 个 trigger endpoint   |
+| $0.10/job/月     | Leader Election 机制变得冗余       |
+
 
 ### 分析结论
 
@@ -146,6 +157,7 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 ### 现状: BullMQ + Redis
 
 6 个队列, 核心特性:
+
 - `poster`: concurrency:1, rate limiter 1job/35s
 - `scanner`: concurrency:1, 30min 定时
 - Leader election 保证单实例调度
@@ -153,16 +165,19 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 
 ### 方案 A: Google Cloud Pub/Sub
 
-| 维度 | 评分 | 说明 |
-|---|---|---|
-| **可靠性** | ⭐⭐⭐⭐⭐ | 全球分布式, 99.95% SLA |
-| **Rate Limiting** | ⭐ | **无原生支持**, 需自行实现 |
-| **串行处理** | ⭐⭐ | 需 ordering key, 无 concurrency 控制 |
-| **延迟调度** | ⭐ | **不支持** 延迟/定时发送 |
-| **成本** | ⭐⭐⭐⭐ | 前 10GB/月免费 |
-| **改造成本** | 大 | 需重写所有 queue 逻辑 |
+
+| 维度                | 评分    | 说明                               |
+| ----------------- | ----- | -------------------------------- |
+| **可靠性**           | ⭐⭐⭐⭐⭐ | 全球分布式, 99.95% SLA                |
+| **Rate Limiting** | ⭐     | **无原生支持**, 需自行实现                 |
+| **串行处理**          | ⭐⭐    | 需 ordering key, 无 concurrency 控制 |
+| **延迟调度**          | ⭐     | **不支持** 延迟/定时发送                  |
+| **成本**            | ⭐⭐⭐⭐  | 前 10GB/月免费                       |
+| **改造成本**          | 大     | 需重写所有 queue 逻辑                   |
+
 
 **Pub/Sub 关键缺失:**
+
 - 无 rate limiter (poster 35s 限频无法实现)
 - 无 delayed jobs
 - 无 job 状态追踪 (completed/failed/waiting)
@@ -171,16 +186,19 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 
 ### 方案 B: Google Cloud Tasks
 
-| 维度 | 评分 | 说明 |
-|---|---|---|
-| **可靠性** | ⭐⭐⭐⭐⭐ | 全托管, 高可用 |
-| **Rate Limiting** | ⭐⭐⭐⭐ | **原生支持** `maxDispatchesPerSecond` |
-| **串行处理** | ⭐⭐⭐⭐ | `maxConcurrentDispatches: 1` 可串行 |
-| **延迟调度** | ⭐⭐⭐⭐ | 支持 `scheduleTime` 延迟 |
-| **成本** | ⭐⭐⭐⭐ | 前 100 万次/月免费 |
-| **改造成本** | 中-大 | 需 HTTP handler, 改写 queue 逻辑 |
+
+| 维度                | 评分    | 说明                                |
+| ----------------- | ----- | --------------------------------- |
+| **可靠性**           | ⭐⭐⭐⭐⭐ | 全托管, 高可用                          |
+| **Rate Limiting** | ⭐⭐⭐⭐  | **原生支持** `maxDispatchesPerSecond` |
+| **串行处理**          | ⭐⭐⭐⭐  | `maxConcurrentDispatches: 1` 可串行  |
+| **延迟调度**          | ⭐⭐⭐⭐  | 支持 `scheduleTime` 延迟              |
+| **成本**            | ⭐⭐⭐⭐  | 前 100 万次/月免费                      |
+| **改造成本**          | 中-大   | 需 HTTP handler, 改写 queue 逻辑       |
+
 
 **Cloud Tasks 可行但受限:**
+
 - 支持 rate limiting 和 concurrency 控制
 - 但无 repeatable jobs, 需配合 Cloud Scheduler
 - 无 job 状态追踪 (需自建)
@@ -188,24 +206,28 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 
 ### 方案 C: 保留 BullMQ + Redis (推荐)
 
-| 维度 | 评分 | 说明 |
-|---|---|---|
-| **改造成本** | ⭐⭐⭐⭐⭐ | 零改造 |
+
+| 维度        | 评分    | 说明                                               |
+| --------- | ----- | ------------------------------------------------ |
+| **改造成本**  | ⭐⭐⭐⭐⭐ | 零改造                                              |
 | **功能完整度** | ⭐⭐⭐⭐⭐ | rate limiter, concurrency, cron, delayed, 状态追踪全有 |
-| **运维** | ⭐⭐⭐ | 依赖 Redis (需 Memorystore 或自建) |
-| **可观测性** | ⭐⭐⭐ | BullMQ Dashboard 或自建 |
+| **运维**    | ⭐⭐⭐   | 依赖 Redis (需 Memorystore 或自建)                     |
+| **可观测性**  | ⭐⭐⭐   | BullMQ Dashboard 或自建                             |
+
 
 ### 对比总结
 
-| 特性 | BullMQ | Pub/Sub | Cloud Tasks |
-|---|---|---|---|
-| Rate Limiting | ✅ 原生 | ❌ 无 | ✅ 原生 |
-| Concurrency 控制 | ✅ per-queue | ❌ 无 | ✅ per-queue |
-| Delayed Jobs | ✅ | ❌ | ✅ |
-| Repeatable/Cron | ✅ | ❌ | ❌ (需 Scheduler) |
-| Job 状态追踪 | ✅ | ❌ | ❌ (需自建) |
-| 改造成本 | 零 | 大 | 中-大 |
-| 运维成本 | 需 Redis | 全托管 | 全托管 |
+
+| 特性              | BullMQ      | Pub/Sub | Cloud Tasks     |
+| --------------- | ----------- | ------- | --------------- |
+| Rate Limiting   | ✅ 原生        | ❌ 无     | ✅ 原生            |
+| Concurrency 控制  | ✅ per-queue | ❌ 无     | ✅ per-queue     |
+| Delayed Jobs    | ✅           | ❌       | ✅               |
+| Repeatable/Cron | ✅           | ❌       | ❌ (需 Scheduler) |
+| Job 状态追踪        | ✅           | ❌       | ❌ (需自建)         |
+| 改造成本            | 零           | 大       | 中-大             |
+| 运维成本            | 需 Redis     | 全托管     | 全托管             |
+
 
 **结论: 保留 BullMQ**, Pub/Sub 和 Cloud Tasks 均无法替代 BullMQ 的完整功能集, 且改造成本高。
 
@@ -224,31 +246,37 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 
 **部署选项:**
 
-| 选项 | 成本/月 | 运维 | 适合场景 |
-|---|---|---|---|
-| **MongoDB Atlas (M0 Free)** | $0 | 全托管 | 开发/测试, 512MB 限制 |
-| **MongoDB Atlas (M10)** | ~$57 | 全托管 | 生产, 10GB, 自动备份 |
-| **MongoDB Atlas (M20)** | ~$140 | 全托管 | 生产, 更大存储, Replica Set |
-| **VM 自建 MongoDB** | $0 (VM 内) | 自行运维 | 低成本, 高运维 |
+
+| 选项                          | 成本/月      | 运维   | 适合场景                  |
+| --------------------------- | --------- | ---- | --------------------- |
+| **MongoDB Atlas (M0 Free)** | $0        | 全托管  | 开发/测试, 512MB 限制       |
+| **MongoDB Atlas (M10)**     | ~$57      | 全托管  | 生产, 10GB, 自动备份        |
+| **MongoDB Atlas (M20)**     | ~$140     | 全托管  | 生产, 更大存储, Replica Set |
+| **VM 自建 MongoDB**           | $0 (VM 内) | 自行运维 | 低成本, 高运维              |
+
 
 **优势:**
+
 - ✅ 零迁移成本, 代码完全兼容
 - ✅ Mongoose ODM 无需修改
 - ✅ 文档模型与业务匹配
 - ✅ Atlas 提供自动备份、监控、告警
 
 **劣势:**
+
 - ❌ Atlas 非 GCP 原生 (但有 GCP region 可选)
 - ❌ 费用比 Cloud SQL 略高
 
 ### 方案 B: GCP Cloud SQL (PostgreSQL/MySQL)
 
-| 维度 | 评分 | 说明 |
-|---|---|---|
-| **GCP 整合** | ⭐⭐⭐⭐⭐ | 原生 IAM, VPC, 备份 |
-| **成本** | ⭐⭐⭐ | db-f1-micro ~$8/月, db-g1-small ~$26/月 |
-| **性能** | ⭐⭐⭐⭐ | 关系型查询优秀, 但文档查询需 JOIN |
-| **迁移成本** | ⭐ | **极大** — 需重写全部数据层 |
+
+| 维度         | 评分    | 说明                                    |
+| ---------- | ----- | ------------------------------------- |
+| **GCP 整合** | ⭐⭐⭐⭐⭐ | 原生 IAM, VPC, 备份                       |
+| **成本**     | ⭐⭐⭐   | db-f1-micro ~$8/月, db-g1-small ~$26/月 |
+| **性能**     | ⭐⭐⭐⭐  | 关系型查询优秀, 但文档查询需 JOIN                  |
+| **迁移成本**   | ⭐     | **极大** — 需重写全部数据层                     |
+
 
 **迁移 Cloud SQL 的代价:**
 
@@ -260,19 +288,22 @@ Frontend     → Cloud Run (静态 Nginx) 或 Cloud Storage + CDN
 6. **测试**: 108 个集成测试全部重写
 
 **估计工作量: 3-6 周全职开发**, 且收益极小:
+
 - 业务不需要 ACID 事务 (帖子审核流程是最终一致)
 - 不需要复杂 JOIN (数据以文档为中心)
 - 不需要关系完整性约束
 
 ### 对比总结
 
-| 考量点 | MongoDB (Atlas) | Cloud SQL |
-|---|---|---|
-| 迁移成本 | 零 | 极大 (3-6 周) |
-| 业务匹配度 | 高 (文档模型) | 中 (需 normalize) |
-| GCP 整合 | 中 (非原生) | 高 (原生) |
-| 运维 | 低 (Atlas 全托管) | 低 (Cloud SQL 全托管) |
-| 月费 (生产) | ~$57 (M10) | ~$26 (g1-small) |
+
+| 考量点     | MongoDB (Atlas) | Cloud SQL         |
+| ------- | --------------- | ----------------- |
+| 迁移成本    | 零               | 极大 (3-6 周)        |
+| 业务匹配度   | 高 (文档模型)        | 中 (需 normalize)   |
+| GCP 整合  | 中 (非原生)         | 高 (原生)            |
+| 运维      | 低 (Atlas 全托管)   | 低 (Cloud SQL 全托管) |
+| 月费 (生产) | ~$57 (M10)      | ~$26 (g1-small)   |
+
 
 **结论: 继续用 MongoDB**, 迁移到关系型数据库无业务收益, 改造成本极高。
 
@@ -320,6 +351,7 @@ Redis     → Cloud Memorystore (Basic, 1GB)
 ---
 
 **CA**: 让我重新评估。项目特点:
+
 - 低流量 (1-5 管理员)
 - 需要 WebSocket
 - 需要 BullMQ Worker 常驻
@@ -340,6 +372,7 @@ Git Push → Cloud Build → Build Images → Push to AR → Deploy to VM
 **PO**: 初期预算有限，我们先跑 VM 里，稳定后再考虑 Atlas。
 
 **DO**: 那备份策略要做好。建议:
+
 1. VM disk snapshot (每日, 7 天保留)
 2. mongodump 到 Cloud Storage (每日)
 3. Redis RDB 备份 (已有 AOF)
@@ -402,14 +435,16 @@ Git Push → Cloud Build → Build Images → Push to AR → Deploy to VM
 
 ### 各组件决策
 
-| 组件 | 决策 | 理由 |
-|---|---|---|
-| **Server** | Compute Engine VM | Worker 需常驻; WebSocket 无限制; docker-compose 零改造 |
-| **Cron** | 保留 BullMQ 内部调度 | 已有完善的 leader election + repeatable jobs |
-| **Queue** | 保留 BullMQ + Redis | rate limiter, concurrency, job tracking 不可替代 |
-| **Database** | 保留 MongoDB (VM 内) | 零迁移成本; 文档模型匹配业务; 初期 Atlas 太贵 |
-| **CI/CD** | Cloud Build | Docker image → Artifact Registry → VM 部署 |
-| **Frontend** | Nginx (VM 内) | 流量极低, 无需 CDN; 简化架构 |
+
+| 组件           | 决策                | 理由                                            |
+| ------------ | ----------------- | --------------------------------------------- |
+| **Server**   | Compute Engine VM | Worker 需常驻; WebSocket 无限制; docker-compose 零改造 |
+| **Cron**     | 保留 BullMQ 内部调度    | 已有完善的 leader election + repeatable jobs       |
+| **Queue**    | 保留 BullMQ + Redis | rate limiter, concurrency, job tracking 不可替代  |
+| **Database** | 保留 MongoDB (VM 内) | 零迁移成本; 文档模型匹配业务; 初期 Atlas 太贵                  |
+| **CI/CD**    | Cloud Build       | Docker image → Artifact Registry → VM 部署      |
+| **Frontend** | Nginx (VM 内)      | 流量极低, 无需 CDN; 简化架构                            |
+
 
 ### Phase 2: 混合部署 (可选, 视增长情况)
 
@@ -429,25 +464,29 @@ Redis     → Cloud Memorystore (1GB Basic)
 
 ### Phase 1 月费
 
-| 服务 | 规格 | 月费 (USD) |
-|---|---|---|
-| Compute Engine | e2-small (2 vCPU, 2GB) | ~$15 |
-| Persistent Disk | 30GB SSD | ~$5 |
-| Cloud Build | 120 min/月免费额度 | $0 |
-| Artifact Registry | < 500MB | ~$0.5 |
-| Static IP | 1 个 | ~$3 |
-| **合计** | | **~$24/月** |
+
+| 服务                | 规格                     | 月费 (USD)   |
+| ----------------- | ---------------------- | ---------- |
+| Compute Engine    | e2-small (2 vCPU, 2GB) | ~$15       |
+| Persistent Disk   | 30GB SSD               | ~$5        |
+| Cloud Build       | 120 min/月免费额度          | $0         |
+| Artifact Registry | < 500MB                | ~$0.5      |
+| Static IP         | 1 个                    | ~$3        |
+| **合计**            |                        | **~$24/月** |
+
 
 ### Phase 2 月费 (如需升级)
 
-| 服务 | 规格 | 月费 (USD) |
-|---|---|---|
-| Cloud Run (Backend) | min=1, 1 vCPU, 512MB | ~$15 |
-| Compute Engine (Worker) | e2-micro | ~$8 |
-| MongoDB Atlas | M10 (10GB) | ~$57 |
-| Cloud Memorystore | 1GB Basic | ~$35 |
-| Cloud Storage + CDN | < 1GB | ~$1 |
-| **合计** | | **~$116/月** |
+
+| 服务                      | 规格                   | 月费 (USD)    |
+| ----------------------- | -------------------- | ----------- |
+| Cloud Run (Backend)     | min=1, 1 vCPU, 512MB | ~$15        |
+| Compute Engine (Worker) | e2-micro             | ~$8         |
+| MongoDB Atlas           | M10 (10GB)           | ~$57        |
+| Cloud Memorystore       | 1GB Basic            | ~$35        |
+| Cloud Storage + CDN     | < 1GB                | ~$1         |
+| **合计**                  |                      | **~$116/月** |
+
 
 ---
 
@@ -535,39 +574,45 @@ images:
 
 #### 方案 A: VM + docker-compose
 
-| 优点 | 缺点 |
-|---|---|
-| ✅ **零改造成本** — docker-compose 直接部署 | ❌ **运维负担重** — OS 补丁、安全更新、磁盘监控 |
-| ✅ **架构简单** — 单 VM 一键启动全栈 | ❌ **单点故障** — VM 宕机 = 全部停止 |
-| ✅ **内网通信快** — 所有服务在同一台机器 | ❌ **扩展困难** — 纵向扩展有上限, 横向需大改 |
-| ✅ **调试方便** — SSH 进去直接 docker logs | ❌ **备份需自建** — mongodump + cron + Cloud Storage |
-| ✅ **WebSocket 无限制** — 如果后续恢复需要 | ❌ **资源浪费** — 低流量时 VM 仍在收费 |
-| ✅ **固定成本可预测** — $24/月不变 | ❌ **Redis 单点** — 内存不足或宕机影响所有队列 |
-| ✅ **团队学习成本低** — docker-compose 人人会 | ❌ **SSL/域名需手动** — Let's Encrypt 配置 + 续签 |
+
+| 优点                                 | 缺点                                             |
+| ---------------------------------- | ---------------------------------------------- |
+| ✅ **零改造成本** — docker-compose 直接部署  | ❌ **运维负担重** — OS 补丁、安全更新、磁盘监控                  |
+| ✅ **架构简单** — 单 VM 一键启动全栈           | ❌ **单点故障** — VM 宕机 = 全部停止                      |
+| ✅ **内网通信快** — 所有服务在同一台机器           | ❌ **扩展困难** — 纵向扩展有上限, 横向需大改                    |
+| ✅ **调试方便** — SSH 进去直接 docker logs  | ❌ **备份需自建** — mongodump + cron + Cloud Storage |
+| ✅ **WebSocket 无限制** — 如果后续恢复需要     | ❌ **资源浪费** — 低流量时 VM 仍在收费                      |
+| ✅ **固定成本可预测** — $24/月不变            | ❌ **Redis 单点** — 内存不足或宕机影响所有队列                 |
+| ✅ **团队学习成本低** — docker-compose 人人会 | ❌ **SSL/域名需手动** — Let's Encrypt 配置 + 续签        |
+
 
 #### 方案 B: Cloud Run + Cloud Tasks (全托管)
 
-| 优点 | 缺点 |
-|---|---|
-| ✅ **零运维** — 无服务器管理, 无 OS 补丁 | ❌ **迁移成本** — ~5-6 天开发改造 |
-| ✅ **自动扩缩** — 0→N, 低流量可缩至 0 | ❌ **冷启动** — 缩至 0 时首次请求 2-5s 延迟 |
-| ✅ **消除 Redis** — 减少一个基础设施依赖 | ❌ **Atlas 费用** — 生产 M10 ~$57/月 |
-| ✅ **高可用内建** — GCP 多区域, 自动故障转移 | ❌ **调试复杂** — 需通过 Cloud Logging 查日志 |
-| ✅ **按量付费** — 开发环境几乎免费 | ❌ **GCP 锁定** — Cloud Tasks API 非标准 |
-| ✅ **原生监控** — Cloud Monitoring 开箱即用 | ❌ **Queue pause/resume 需改造** — 改用 config flag |
-| ✅ **SSL 自动** — Cloud Run 自带 HTTPS | ❌ **本地开发需模拟** — 需 emulator 或降级方案 |
-| ✅ **CI/CD 更简单** — Cloud Build → Cloud Run 一步到位 | ❌ **多服务协调** — Scheduler + Tasks + Run 配置多 |
+
+| 优点                                             | 缺点                                            |
+| ---------------------------------------------- | --------------------------------------------- |
+| ✅ **零运维** — 无服务器管理, 无 OS 补丁                    | ❌ **迁移成本** — ~5-6 天开发改造                       |
+| ✅ **自动扩缩** — 0→N, 低流量可缩至 0                     | ❌ **冷启动** — 缩至 0 时首次请求 2-5s 延迟                |
+| ✅ **消除 Redis** — 减少一个基础设施依赖                    | ❌ **Atlas 费用** — 生产 M10 ~$57/月                |
+| ✅ **高可用内建** — GCP 多区域, 自动故障转移                  | ❌ **调试复杂** — 需通过 Cloud Logging 查日志            |
+| ✅ **按量付费** — 开发环境几乎免费                          | ❌ **GCP 锁定** — Cloud Tasks API 非标准            |
+| ✅ **原生监控** — Cloud Monitoring 开箱即用             | ❌ **Queue pause/resume 需改造** — 改用 config flag |
+| ✅ **SSL 自动** — Cloud Run 自带 HTTPS              | ❌ **本地开发需模拟** — 需 emulator 或降级方案              |
+| ✅ **CI/CD 更简单** — Cloud Build → Cloud Run 一步到位 | ❌ **多服务协调** — Scheduler + Tasks + Run 配置多     |
+
 
 ### 10.2 成本深度对比
 
 #### 运行成本 (月费)
 
-| 场景 | 方案 A (VM) | 方案 B (全托管) | 差额 |
-|---|---|---|---|
-| **开发/测试** | $15 (e2-small 不能关) | ~$1 (全部缩至 0) | **B 省 $14** |
-| **生产 (低流量)** | ~$24 | ~$66 (含 Atlas M10) | A 省 $42 |
-| **生产 (中流量)** | ~$30 (升级 e2-medium) | ~$70 | A 省 $40 |
-| **生产 (不用 Atlas, 用 VM MongoDB)** | ~$24 | N/A (无 VM) | — |
+
+| 场景                              | 方案 A (VM)           | 方案 B (全托管)         | 差额          |
+| ------------------------------- | ------------------- | ------------------ | ----------- |
+| **开发/测试**                       | $15 (e2-small 不能关)  | ~$1 (全部缩至 0)       | **B 省 $14** |
+| **生产 (低流量)**                    | ~$24                | ~$66 (含 Atlas M10) | A 省 $42     |
+| **生产 (中流量)**                    | ~$30 (升级 e2-medium) | ~$70               | A 省 $40     |
+| **生产 (不用 Atlas, 用 VM MongoDB)** | ~$24                | N/A (无 VM)         | —           |
+
 
 > **注:** 方案 B 的主要费用来自 MongoDB Atlas ($57/月)。如果有自建 MongoDB 的途径（如另一台小 VM），生产成本可降至 ~$15/月。
 
@@ -575,67 +620,78 @@ images:
 
 **方案 A 明细:**
 
-| 项目 | 月费 (USD) |
-|---|---|
-| Compute Engine e2-small (2 vCPU, 2GB) | $15.33 |
-| Persistent Disk 30GB SSD | $5.10 |
-| Static IP | $2.88 |
-| Cloud Build (免费额度) | $0 |
-| Artifact Registry (<500MB) | ~$0.50 |
-| Snapshot 备份 (30GB × 7 天) | ~$1.40 |
-| **合计** | **~$25** |
+
+| 项目                                    | 月费 (USD) |
+| ------------------------------------- | -------- |
+| Compute Engine e2-small (2 vCPU, 2GB) | $15.33   |
+| Persistent Disk 30GB SSD              | $5.10    |
+| Static IP                             | $2.88    |
+| Cloud Build (免费额度)                    | $0       |
+| Artifact Registry (<500MB)            | ~$0.50   |
+| Snapshot 备份 (30GB × 7 天)              | ~$1.40   |
+| **合计**                                | **~$25** |
+
 
 **方案 B 明细:**
 
-| 项目 | 月费 (USD) |
-|---|---|
-| Cloud Run Backend (min=0, ~5k req/天) | ~$0-5 |
-| Cloud Run Worker (min=0, ~200 task/天) | ~$0-3 |
-| Cloud Tasks (前 100 万次免费) | $0 |
-| Cloud Scheduler (6 jobs × $0.10) | $0.60 |
-| MongoDB Atlas M10 (生产) | $57 |
-| MongoDB Atlas M0 (开发, 免费) | $0 |
-| Cloud Storage + CDN (<1GB) | ~$0.50 |
-| Cloud Build (免费额度) | $0 |
-| **合计 (开发)** | **~$1** |
-| **合计 (生产)** | **~$66** |
+
+| 项目                                    | 月费 (USD) |
+| ------------------------------------- | -------- |
+| Cloud Run Backend (min=0, ~5k req/天)  | ~$0-5    |
+| Cloud Run Worker (min=0, ~200 task/天) | ~$0-3    |
+| Cloud Tasks (前 100 万次免费)              | $0       |
+| Cloud Scheduler (6 jobs × $0.10)      | $0.60    |
+| MongoDB Atlas M10 (生产)                | $57      |
+| MongoDB Atlas M0 (开发, 免费)             | $0       |
+| Cloud Storage + CDN (<1GB)            | ~$0.50   |
+| Cloud Build (免费额度)                    | $0       |
+| **合计 (开发)**                           | **~$1**  |
+| **合计 (生产)**                           | **~$66** |
+
 
 #### 迁移成本 (一次性)
 
-| 项目 | 方案 A | 方案 B |
-|---|---|---|
-| **代码改造** | 0 天 | 5-6 天 |
-| **GCP 环境配置** | 1 天 (VM + Docker) | 2 天 (Run + Tasks + Scheduler) |
+
+| 项目           | 方案 A                       | 方案 B                            |
+| ------------ | -------------------------- | ------------------------------- |
+| **代码改造**     | 0 天                        | 5-6 天                           |
+| **GCP 环境配置** | 1 天 (VM + Docker)          | 2 天 (Run + Tasks + Scheduler)   |
 | **CI/CD 搭建** | 1 天 (Cloud Build → VM SSH) | 0.5 天 (Cloud Build → Cloud Run) |
-| **域名 + SSL** | 0.5 天 (Let's Encrypt 手动) | 0.5 天 (Cloud Run 自动) |
-| **数据迁移** | 0.5 天 (mongodump/restore) | 0.5 天 (同上) |
-| **测试验证** | 1 天 | 2 天 (新架构需额外验证) |
-| **合计** | **~4 天** | **~11 天** |
+| **域名 + SSL** | 0.5 天 (Let's Encrypt 手动)   | 0.5 天 (Cloud Run 自动)            |
+| **数据迁移**     | 0.5 天 (mongodump/restore)  | 0.5 天 (同上)                      |
+| **测试验证**     | 1 天                        | 2 天 (新架构需额外验证)                  |
+| **合计**       | **~4 天**                   | **~11 天**                       |
+
 
 #### 隐性成本对比
 
-| 项目 | 方案 A | 方案 B |
-|---|---|---|
-| 每月运维时间 | ~2-4 小时 (更新、监控、备份检查) | ~0.5 小时 (偶尔看看 dashboard) |
-| 故障恢复时间 | 高 (需 SSH 排查, 可能需重建 VM) | 低 (Cloud Run 自动重启) |
-| 安全更新 | 需手动 (apt update, Docker image 更新) | 自动 (只管 app image) |
-| 年化运维人力成本 (按 $50/h) | ~$1,200-2,400 | ~$300 |
+
+| 项目                 | 方案 A                              | 方案 B                     |
+| ------------------ | --------------------------------- | ------------------------ |
+| 每月运维时间             | ~2-4 小时 (更新、监控、备份检查)              | ~0.5 小时 (偶尔看看 dashboard) |
+| 故障恢复时间             | 高 (需 SSH 排查, 可能需重建 VM)            | 低 (Cloud Run 自动重启)       |
+| 安全更新               | 需手动 (apt update, Docker image 更新) | 自动 (只管 app image)        |
+| 年化运维人力成本 (按 $50/h) | ~$1,200-2,400                     | ~$300                    |
+
 
 ### 10.3 风险对比
 
-| 风险 | 方案 A | 方案 B |
-|---|---|---|
-| VM 宕机 | 🔴 全栈停止, 需手动恢复 | ✅ N/A |
-| Redis OOM | 🔴 队列全停 | ✅ 无 Redis |
-| MongoDB 损坏 | 🔴 需从备份恢复 | 🟡 Atlas 自动备份/恢复 |
-| DDoS | 🔴 VM 直接承受 | 🟡 Cloud Run 自动扩缩+限流 |
-| 代码 bug 导致内存泄漏 | 🔴 影响同 VM 其他服务 | 🟡 容器隔离, 自动重启 |
-| GCP 服务中断 | 🟡 VM 级别 | 🟡 Cloud Run 级别 |
-| 供应商锁定 | ✅ Docker 可迁任何云 | 🔴 Cloud Tasks API 绑定 GCP |
+
+| 风险            | 方案 A           | 方案 B                      |
+| ------------- | -------------- | ------------------------- |
+| VM 宕机         | 🔴 全栈停止, 需手动恢复 | ✅ N/A                     |
+| Redis OOM     | 🔴 队列全停        | ✅ 无 Redis                 |
+| MongoDB 损坏    | 🔴 需从备份恢复      | 🟡 Atlas 自动备份/恢复          |
+| DDoS          | 🔴 VM 直接承受     | 🟡 Cloud Run 自动扩缩+限流      |
+| 代码 bug 导致内存泄漏 | 🔴 影响同 VM 其他服务 | 🟡 容器隔离, 自动重启             |
+| GCP 服务中断      | 🟡 VM 级别       | 🟡 Cloud Run 级别           |
+| 供应商锁定         | ✅ Docker 可迁任何云 | 🔴 Cloud Tasks API 绑定 GCP |
+
 
 ### 10.4 适用场景建议
 
 **选方案 A 的情况:**
+
 - 预算极度敏感 (生产 $25 vs $66)
 - 团队不熟悉 GCP 托管服务
 - 需要最快上线 (4 天 vs 11 天)
@@ -643,6 +699,7 @@ images:
 - 希望保持云平台可移植性
 
 **选方案 B 的情况:**
+
 - 重视零运维 (团队精力有限)
 - 有多套环境 (dev/staging/prod, 方案 B 闲时几乎免费)
 - 重视高可用和自动恢复
@@ -669,13 +726,15 @@ Step 3 (3-6月): BullMQ → Cloud Tasks         → 全托管, 去 Redis
 
 **完全支持。** GCP 是对 Docker 支持最好的云平台之一:
 
-| GCP 服务 | Docker 支持方式 | 适合场景 |
-|---|---|---|
-| **Cloud Run** | 直接部署 Docker image | 无状态 HTTP 服务, 自动扩缩 |
-| **Compute Engine** | VM 上装 Docker / Container-Optimized OS | 有状态服务, 长运行进程 |
-| **GKE (Kubernetes)** | Docker container 编排 | 大规模微服务 |
-| **Artifact Registry** | Docker image 仓库 (替代 Docker Hub) | 所有方案的 image 存储 |
-| **Cloud Build** | Docker build + push 自动化 | CI/CD pipeline |
+
+| GCP 服务                | Docker 支持方式                           | 适合场景              |
+| --------------------- | ------------------------------------- | ----------------- |
+| **Cloud Run**         | 直接部署 Docker image                     | 无状态 HTTP 服务, 自动扩缩 |
+| **Compute Engine**    | VM 上装 Docker / Container-Optimized OS | 有状态服务, 长运行进程      |
+| **GKE (Kubernetes)**  | Docker container 编排                   | 大规模微服务            |
+| **Artifact Registry** | Docker image 仓库 (替代 Docker Hub)       | 所有方案的 image 存储    |
+| **Cloud Build**       | Docker build + push 自动化               | CI/CD pipeline    |
+
 
 ### 11.2 各方案的 Docker 使用方式
 
@@ -688,6 +747,7 @@ VM 生产 (docker-compose.production.yml)
 ```
 
 **项目已有的 Docker 文件可直接使用:**
+
 - `frontend/Dockerfile` — 多阶段构建 (Node build → Nginx serve)
 - `backend/Dockerfile` — 多阶段构建 (TypeScript compile → Node production)
 - `docker-compose.yml` — 开发环境编排
@@ -696,10 +756,12 @@ VM 生产 (docker-compose.production.yml)
 
 **GCP 上运行 docker-compose 的两种方式:**
 
-| 方式 | 说明 | 推荐度 |
-|---|---|---|
-| **Ubuntu VM + Docker Engine** | `apt install docker.io docker-compose-v2` | ⭐⭐⭐⭐ 灵活, 标准 |
-| **Container-Optimized OS (COS)** | GCP 官方 Docker 优化 OS, 自带 Docker | ⭐⭐⭐ 更安全, 但不支持 docker-compose |
+
+| 方式                               | 说明                                        | 推荐度                          |
+| -------------------------------- | ----------------------------------------- | ---------------------------- |
+| **Ubuntu VM + Docker Engine**    | `apt install docker.io docker-compose-v2` | ⭐⭐⭐⭐ 灵活, 标准                  |
+| **Container-Optimized OS (COS)** | GCP 官方 Docker 优化 OS, 自带 Docker            | ⭐⭐⭐ 更安全, 但不支持 docker-compose |
+
 
 > **注:** COS 不支持 docker-compose, 需要用 `docker run` 逐个启动, 或改用 Kubernetes。推荐直接用 Ubuntu + Docker。
 
@@ -1267,11 +1329,13 @@ options:
 
 去掉 WebSocket 后，Cloud Run 的主要限制消失:
 
-| 之前的顾虑 | 去掉 WebSocket 后 |
-|---|---|
-| 3600s 连接时长限制 | 不再相关 |
-| 冷启动导致 WebSocket 断连 | 不再相关 |
+
+| 之前的顾虑                   | 去掉 WebSocket 后   |
+| ----------------------- | ---------------- |
+| 3600s 连接时长限制            | 不再相关             |
+| 冷启动导致 WebSocket 断连      | 不再相关             |
 | 需要 Redis adapter 做多实例广播 | **Redis 依赖减少一层** |
+
 
 **结论:** Backend API 变成纯 REST，Cloud Run 成为理想选择。
 
@@ -1279,17 +1343,19 @@ options:
 
 审查 `worker.ts` 后发现，BullMQ 的使用比预想的轻量:
 
-| BullMQ 功能 | 是否使用 | 说明 |
-|---|---|---|
-| 基本生产/消费 | ✅ | 全部 6 个队列 |
-| `concurrency: 1` | ✅ | 全部 6 个队列 |
-| `limiter: 1/35s` | ✅ | **仅 poster 队列** |
-| Queue pause/resume | ✅ | scanner, trends, google-trends |
-| Job data 传递 | ✅ | poster (feedId), 其他 (triggeredBy) |
-| Cron 调度 | ❌ | 用的是 `node-cron` 库，不是 BullMQ repeatable jobs |
-| Job 状态追踪 | ❌ | 自己写到 MongoDB (`recordJob`)，不依赖 BullMQ |
-| Delayed jobs | ❌ | 未使用 |
-| Priority | ❌ | 未使用 |
+
+| BullMQ 功能          | 是否使用 | 说明                                          |
+| ------------------ | ---- | ------------------------------------------- |
+| 基本生产/消费            | ✅    | 全部 6 个队列                                    |
+| `concurrency: 1`   | ✅    | 全部 6 个队列                                    |
+| `limiter: 1/35s`   | ✅    | **仅 poster 队列**                             |
+| Queue pause/resume | ✅    | scanner, trends, google-trends              |
+| Job data 传递        | ✅    | poster (feedId), 其他 (triggeredBy)           |
+| Cron 调度            | ❌    | 用的是 `node-cron` 库，不是 BullMQ repeatable jobs |
+| Job 状态追踪           | ❌    | 自己写到 MongoDB (`recordJob`)，不依赖 BullMQ       |
+| Delayed jobs       | ❌    | 未使用                                         |
+| Priority           | ❌    | 未使用                                         |
+
 
 **核心发现:** Cron 调度和 Job 状态追踪都是独立实现的，BullMQ 实际只充当 "带 concurrency 和 rate limit 的任务队列"。
 
@@ -1353,16 +1419,18 @@ options:
 
 #### Cloud Tasks 功能覆盖验证
 
-| BullMQ 需求 | Cloud Tasks 方案 | 状态 |
-|---|---|---|
-| 串行处理 (concurrency:1) | `maxConcurrentDispatches: 1` | ✅ 完全覆盖 |
-| Poster rate limit (1/35s) | `maxDispatchesPerSecond: 0.028` | ✅ 完全覆盖 |
-| Job data 传递 | HTTP request body (JSON) | ✅ 完全覆盖 |
-| 自动重试 | 内置指数退避 (可配 maxAttempts) | ✅ 完全覆盖 |
-| Cron 调度 | Cloud Scheduler 发 HTTP → Cloud Tasks | ✅ 完全覆盖 |
-| Job 状态追踪 | 保留现有 `recordJob()` 写 MongoDB | ✅ 无需改动 |
-| Queue pause/resume | MongoDB config flag 开关 | ⚠️ 需改造 (见下) |
-| 幂等性 (poster) | 保留现有 `feed.postId` 检查 | ✅ 无需改动 |
+
+| BullMQ 需求                 | Cloud Tasks 方案                       | 状态          |
+| ------------------------- | ------------------------------------ | ----------- |
+| 串行处理 (concurrency:1)      | `maxConcurrentDispatches: 1`         | ✅ 完全覆盖      |
+| Poster rate limit (1/35s) | `maxDispatchesPerSecond: 0.028`      | ✅ 完全覆盖      |
+| Job data 传递               | HTTP request body (JSON)             | ✅ 完全覆盖      |
+| 自动重试                      | 内置指数退避 (可配 maxAttempts)              | ✅ 完全覆盖      |
+| Cron 调度                   | Cloud Scheduler 发 HTTP → Cloud Tasks | ✅ 完全覆盖      |
+| Job 状态追踪                  | 保留现有 `recordJob()` 写 MongoDB         | ✅ 无需改动      |
+| Queue pause/resume        | MongoDB config flag 开关               | ⚠️ 需改造 (见下) |
+| 幂等性 (poster)              | 保留现有 `feed.postId` 检查                | ✅ 无需改动      |
+
 
 #### Queue Pause/Resume 替代方案
 
@@ -1389,28 +1457,32 @@ app.post('/tasks/scanner', async (req, res) => {
 
 ### 13.4 GCP 托管 vs BullMQ 特点对比
 
-| 维度 | BullMQ + Redis | Cloud Tasks + Scheduler |
-|---|---|---|
-| **运维负担** | 需维护 Redis (内存、持久化、监控) | 零运维，GCP 全托管 |
-| **高可用** | Redis 单点风险 (Memorystore HA ~$70/月) | 内建 99.5% SLA，无需额外配置 |
-| **水平扩展** | Leader election 协调多 Worker | GCP 自动分布式调度 |
-| **成本模型** | 固定费 (Redis 实例按时计费) | 按量付费 (前 100 万次/月免费) |
-| **冷启动** | 无 (Worker 常驻进程) | Cloud Run 可能 2-5s (poster 35s 间隔内不影响) |
-| **监控告警** | 需自建 BullMQ Dashboard | GCP Console 原生: 队列深度、延迟、错误率 |
-| **日志** | 自建 (pino logger) | Cloud Logging 自动采集, 可查询 |
-| **代码复杂度** | Worker 进程 + leader election + cron | 无状态 HTTP handler, 更简单 |
-| **故障恢复** | Redis 宕机 = 队列全停 | Cloud Tasks 自动重试 + 死信队列 |
-| **调度精度** | node-cron 秒级 | Cloud Scheduler 分钟级 (足够) |
+
+| 维度        | BullMQ + Redis                     | Cloud Tasks + Scheduler               |
+| --------- | ---------------------------------- | ------------------------------------- |
+| **运维负担**  | 需维护 Redis (内存、持久化、监控)              | 零运维，GCP 全托管                           |
+| **高可用**   | Redis 单点风险 (Memorystore HA ~$70/月) | 内建 99.5% SLA，无需额外配置                   |
+| **水平扩展**  | Leader election 协调多 Worker         | GCP 自动分布式调度                           |
+| **成本模型**  | 固定费 (Redis 实例按时计费)                 | 按量付费 (前 100 万次/月免费)                   |
+| **冷启动**   | 无 (Worker 常驻进程)                    | Cloud Run 可能 2-5s (poster 35s 间隔内不影响) |
+| **监控告警**  | 需自建 BullMQ Dashboard               | GCP Console 原生: 队列深度、延迟、错误率           |
+| **日志**    | 自建 (pino logger)                   | Cloud Logging 自动采集, 可查询               |
+| **代码复杂度** | Worker 进程 + leader election + cron | 无状态 HTTP handler, 更简单                 |
+| **故障恢复**  | Redis 宕机 = 队列全停                    | Cloud Tasks 自动重试 + 死信队列               |
+| **调度精度**  | node-cron 秒级                       | Cloud Scheduler 分钟级 (足够)              |
+
 
 ### 13.5 最大收益: 消除 Redis 依赖
 
 去掉 Socket.io + BullMQ 后，Redis 的三个用途全部消失:
 
-| Redis 用途 | 替代 |
-|---|---|
-| BullMQ 队列 backend | Cloud Tasks |
-| Socket.io 多实例 adapter | 不再需要 WebSocket |
-| Leader election 分布式锁 | Cloud Scheduler 天然单实例调度 |
+
+| Redis 用途              | 替代                      |
+| --------------------- | ----------------------- |
+| BullMQ 队列 backend     | Cloud Tasks             |
+| Socket.io 多实例 adapter | 不再需要 WebSocket          |
+| Leader election 分布式锁  | Cloud Scheduler 天然单实例调度 |
+
 
 **架构简化:**
 
@@ -1422,69 +1494,79 @@ app.post('/tasks/scanner', async (req, res) => {
 
 ### 13.6 改造工作量
 
-| 改造项 | 工作量 | 详情 |
-|---|---|---|
-| Worker 改为 HTTP handler | 1-2 天 | 6 个 POST endpoint, 业务逻辑不变, 只换触发方式 |
-| Queue service 改写 | 1 天 | `queue.add()` → Cloud Tasks `createTask()` |
-| 移除 Redis 依赖 | 0.5 天 | 删除 redis.ts, socket.ts, leader election 代码 |
-| 移除 Socket.io | 0.5 天 | 删除 socket 相关代码, 前端移除 socket 监听 |
-| Cloud Scheduler 配置 | 0.5 天 | 6 条 cron 规则 (gcloud / Terraform) |
-| Cloud Tasks queue 配置 | 0.5 天 | 6 个 queue (含 poster rate limit) |
-| Queue pause/resume 改造 | 0.5 天 | 改用 MongoDB config flag |
-| 测试调整 | 1 天 | Queue 相关集成测试重写 |
-| **合计** | **~5-6 天** | |
+
+| 改造项                    | 工作量        | 详情                                         |
+| ---------------------- | ---------- | ------------------------------------------ |
+| Worker 改为 HTTP handler | 1-2 天      | 6 个 POST endpoint, 业务逻辑不变, 只换触发方式          |
+| Queue service 改写       | 1 天        | `queue.add()` → Cloud Tasks `createTask()` |
+| 移除 Redis 依赖            | 0.5 天      | 删除 redis.ts, socket.ts, leader election 代码 |
+| 移除 Socket.io           | 0.5 天      | 删除 socket 相关代码, 前端移除 socket 监听             |
+| Cloud Scheduler 配置     | 0.5 天      | 6 条 cron 规则 (gcloud / Terraform)           |
+| Cloud Tasks queue 配置   | 0.5 天      | 6 个 queue (含 poster rate limit)            |
+| Queue pause/resume 改造  | 0.5 天      | 改用 MongoDB config flag                     |
+| 测试调整                   | 1 天        | Queue 相关集成测试重写                             |
+| **合计**                 | **~5-6 天** |                                            |
+
 
 ### 13.7 修订后的推荐方案
 
 #### 新 Phase 1: GCP 全托管 (替代原 VM 方案)
 
-| 组件 | 服务 | 理由 |
-|---|---|---|
-| **Backend API** | Cloud Run | 纯 REST, 按需扩缩, 低流量极便宜 |
-| **Worker** | Cloud Run (HTTP) | 无状态 handler, Cloud Tasks 触发 |
-| **Cron** | Cloud Scheduler | 替代 node-cron + leader election |
-| **Queue** | Cloud Tasks | 替代 BullMQ, 原生 rate limit + concurrency |
-| **Database** | MongoDB Atlas (M0→M10) | 全托管, 自动备份 |
-| **Frontend** | Cloud Storage + CDN | 静态资源, 全球加速 |
-| **Redis** | ❌ 不需要 | 三个用途全部被替代 |
+
+| 组件              | 服务                     | 理由                                     |
+| --------------- | ---------------------- | -------------------------------------- |
+| **Backend API** | Cloud Run              | 纯 REST, 按需扩缩, 低流量极便宜                   |
+| **Worker**      | Cloud Run (HTTP)       | 无状态 handler, Cloud Tasks 触发            |
+| **Cron**        | Cloud Scheduler        | 替代 node-cron + leader election         |
+| **Queue**       | Cloud Tasks            | 替代 BullMQ, 原生 rate limit + concurrency |
+| **Database**    | MongoDB Atlas (M0→M10) | 全托管, 自动备份                              |
+| **Frontend**    | Cloud Storage + CDN    | 静态资源, 全球加速                             |
+| **Redis**       | ❌ 不需要                  | 三个用途全部被替代                              |
+
 
 #### 修订后成本估算
 
-| 服务 | 规格 | 月费 (USD) |
-|---|---|---|
-| Cloud Run (Backend) | min=0, 按请求计费 | ~$0-5 |
-| Cloud Run (Worker) | min=0, 按 task 触发 | ~$0-3 |
-| Cloud Tasks | < 100 万次/月 | $0 (免费额度) |
-| Cloud Scheduler | 6 jobs | ~$0.60 |
-| MongoDB Atlas | M0 (开发) / M10 (生产) | $0 / ~$57 |
-| Cloud Storage | < 1GB | ~$0.03 |
-| Cloud Build | 免费额度 | $0 |
-| **合计 (开发)** | | **~$1/月** |
-| **合计 (生产)** | | **~$66/月** |
+
+| 服务                  | 规格                 | 月费 (USD)   |
+| ------------------- | ------------------ | ---------- |
+| Cloud Run (Backend) | min=0, 按请求计费       | ~$0-5      |
+| Cloud Run (Worker)  | min=0, 按 task 触发   | ~$0-3      |
+| Cloud Tasks         | < 100 万次/月         | $0 (免费额度)  |
+| Cloud Scheduler     | 6 jobs             | ~$0.60     |
+| MongoDB Atlas       | M0 (开发) / M10 (生产) | $0 / ~$57  |
+| Cloud Storage       | < 1GB              | ~$0.03     |
+| Cloud Build         | 免费额度               | $0         |
+| **合计 (开发)**         |                    | **~$1/月**  |
+| **合计 (生产)**         |                    | **~$66/月** |
+
 
 #### 与原 VM 方案对比
 
-| 维度 | 原方案 (VM) | 修订方案 (全托管) |
-|---|---|---|
-| 月费 (生产) | ~$24 (但需自运维 Redis/MongoDB) | ~$66 (全托管) |
-| 月费 (开发) | ~$15 (VM 不能关) | ~$1 (缩至 0) |
-| 运维负担 | 中-高 (OS 补丁, Redis, MongoDB 备份) | 极低 (只管代码) |
-| 高可用 | 需自行配置 | 内建 |
-| 扩展性 | 手动 | 自动 |
-| 代码改造 | 零 | ~5-6 天 |
-| Redis 依赖 | 需要 | 移除 |
+
+| 维度       | 原方案 (VM)                       | 修订方案 (全托管) |
+| -------- | ------------------------------ | ---------- |
+| 月费 (生产)  | ~$24 (但需自运维 Redis/MongoDB)     | ~$66 (全托管) |
+| 月费 (开发)  | ~$15 (VM 不能关)                  | ~$1 (缩至 0) |
+| 运维负担     | 中-高 (OS 补丁, Redis, MongoDB 备份) | 极低 (只管代码)  |
+| 高可用      | 需自行配置                          | 内建         |
+| 扩展性      | 手动                             | 自动         |
+| 代码改造     | 零                              | ~5-6 天     |
+| Redis 依赖 | 需要                             | 移除         |
+
 
 ### 13.8 修订后的决策矩阵
 
-| 决策点 | 原推荐 | 修订推荐 | 变更原因 |
-|---|---|---|---|
-| **Server** | ✅ VM | ✅ **Cloud Run** | 去掉 WebSocket 后无限制 |
-| **Cron** | ✅ BullMQ 内部 | ✅ **Cloud Scheduler** | 无需 Redis + leader election |
-| **Queue** | ✅ BullMQ | ✅ **Cloud Tasks** | 功能够用, 移除 Redis 依赖 |
-| **Database** | ✅ MongoDB (VM 内) | ✅ **MongoDB Atlas** | 全托管, 无 VM 则无法自建 |
-| **Redis** | ✅ VM 内 | ❌ **移除** | 三个用途全部被替代 |
-| **Frontend** | ✅ VM Nginx | ✅ **Cloud Storage + CDN** | 无 VM 则用 Storage |
-| **CI/CD** | ✅ Cloud Build | ✅ Cloud Build (不变) | — |
+
+| 决策点          | 原推荐              | 修订推荐                      | 变更原因                       |
+| ------------ | ---------------- | ------------------------- | -------------------------- |
+| **Server**   | ✅ VM             | ✅ **Cloud Run**           | 去掉 WebSocket 后无限制          |
+| **Cron**     | ✅ BullMQ 内部      | ✅ **Cloud Scheduler**     | 无需 Redis + leader election |
+| **Queue**    | ✅ BullMQ         | ✅ **Cloud Tasks**         | 功能够用, 移除 Redis 依赖          |
+| **Database** | ✅ MongoDB (VM 内) | ✅ **MongoDB Atlas**       | 全托管, 无 VM 则无法自建            |
+| **Redis**    | ✅ VM 内           | ❌ **移除**                  | 三个用途全部被替代                  |
+| **Frontend** | ✅ VM Nginx       | ✅ **Cloud Storage + CDN** | 无 VM 则用 Storage            |
+| **CI/CD**    | ✅ Cloud Build    | ✅ Cloud Build (不变)        | —                          |
+
 
 ---
 
@@ -1492,25 +1574,30 @@ app.post('/tasks/scanner', async (req, res) => {
 
 ### 初始评估 (含 WebSocket + BullMQ)
 
-| 决策点 | 选项 | 推荐 | 核心理由 |
-|---|---|---|---|
-| **Server** | Cloud Run vs VM | ✅ VM | Worker 常驻需求 + WebSocket + 简单架构 |
-| **Cron** | Cloud Scheduler vs BullMQ | ✅ BullMQ | 零改造, 功能更完整 |
-| **Queue** | Pub/Sub vs Cloud Tasks vs BullMQ | ✅ BullMQ | rate limiter 不可替代 |
-| **Database** | Cloud SQL vs MongoDB | ✅ MongoDB | 零迁移, 文档模型匹配 |
-| **MongoDB Host** | Atlas vs VM 内 | ✅ VM 内 (Phase 1) | 初期省钱, 后期可迁 Atlas |
-| **Redis Host** | Memorystore vs VM 内 | ✅ VM 内 (Phase 1) | 初期省钱, 后期可迁 |
-| **Frontend** | Cloud Storage vs VM Nginx | ✅ VM Nginx (Phase 1) | 简化架构, 流量极低 |
-| **CI/CD** | Cloud Build | ✅ Cloud Build | GCP 原生, 免费额度够用 |
+
+| 决策点              | 选项                               | 推荐                   | 核心理由                           |
+| ---------------- | -------------------------------- | -------------------- | ------------------------------ |
+| **Server**       | Cloud Run vs VM                  | ✅ VM                 | Worker 常驻需求 + WebSocket + 简单架构 |
+| **Cron**         | Cloud Scheduler vs BullMQ        | ✅ BullMQ             | 零改造, 功能更完整                     |
+| **Queue**        | Pub/Sub vs Cloud Tasks vs BullMQ | ✅ BullMQ             | rate limiter 不可替代              |
+| **Database**     | Cloud SQL vs MongoDB             | ✅ MongoDB            | 零迁移, 文档模型匹配                    |
+| **MongoDB Host** | Atlas vs VM 内                    | ✅ VM 内 (Phase 1)     | 初期省钱, 后期可迁 Atlas               |
+| **Redis Host**   | Memorystore vs VM 内              | ✅ VM 内 (Phase 1)     | 初期省钱, 后期可迁                     |
+| **Frontend**     | Cloud Storage vs VM Nginx        | ✅ VM Nginx (Phase 1) | 简化架构, 流量极低                     |
+| **CI/CD**        | Cloud Build                      | ✅ Cloud Build        | GCP 原生, 免费额度够用                 |
+
 
 ### 修订评估 (去 WebSocket + 全托管)
 
-| 决策点 | 原推荐 | 修订推荐 | 变更原因 |
-|---|---|---|---|
-| **Server** | ✅ VM | ✅ **Cloud Run** | 去掉 WebSocket 后无限制 |
-| **Cron** | ✅ BullMQ 内部 | ✅ **Cloud Scheduler** | 无需 Redis + leader election |
-| **Queue** | ✅ BullMQ | ✅ **Cloud Tasks** | 功能够用, 移除 Redis 依赖 |
-| **Database** | ✅ MongoDB (VM 内) | ✅ **MongoDB Atlas** | 全托管, 无 VM 则无法自建 |
-| **Redis** | ✅ VM 内 | ❌ **移除** | 三个用途全部被替代 |
-| **Frontend** | ✅ VM Nginx | ✅ **Cloud Storage + CDN** | 无 VM 则用 Storage |
-| **CI/CD** | ✅ Cloud Build | ✅ Cloud Build (不变) | — |
+
+| 决策点          | 原推荐              | 修订推荐                      | 变更原因                       |
+| ------------ | ---------------- | ------------------------- | -------------------------- |
+| **Server**   | ✅ VM             | ✅ **Cloud Run**           | 去掉 WebSocket 后无限制          |
+| **Cron**     | ✅ BullMQ 内部      | ✅ **Cloud Scheduler**     | 无需 Redis + leader election |
+| **Queue**    | ✅ BullMQ         | ✅ **Cloud Tasks**         | 功能够用, 移除 Redis 依赖          |
+| **Database** | ✅ MongoDB (VM 内) | ✅ **MongoDB Atlas**       | 全托管, 无 VM 则无法自建            |
+| **Redis**    | ✅ VM 内           | ❌ **移除**                  | 三个用途全部被替代                  |
+| **Frontend** | ✅ VM Nginx       | ✅ **Cloud Storage + CDN** | 无 VM 则用 Storage            |
+| **CI/CD**    | ✅ Cloud Build    | ✅ Cloud Build (不变)        | —                          |
+
+

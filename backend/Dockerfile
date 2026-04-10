@@ -1,11 +1,11 @@
-FROM node:20.12.2-alpine AS base
+FROM node:20.19.0-alpine AS base
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:20.12.2-alpine AS production
+FROM node:20.19.0-alpine AS production
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev

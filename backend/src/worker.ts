@@ -24,6 +24,16 @@ async function start(): Promise<void> {
   await connectRedis();
   initQueues();
 
+  // Pause all queues on startup if PAUSE_QUEUES_ON_START=true
+  if (process.env.PAUSE_QUEUES_ON_START === 'true') {
+    const queueNames = ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'google-trends'];
+    for (const name of queueNames) {
+      const q = getQueue(name);
+      if (q) await q.pause();
+    }
+    logger.info('All queues paused on startup (PAUSE_QUEUES_ON_START=true)');
+  }
+
   const connection = getRedis();
 
   // Fix 5: Track cron tasks and interval IDs for clean shutdown

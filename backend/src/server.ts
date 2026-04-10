@@ -8,6 +8,7 @@ import { initQueues } from './modules/queue/queue.service.js';
 import { seedAdmin } from './modules/auth/auth.service.js';
 import { seed as seedConfigs } from './modules/config/config.service.js';
 import { CONFIG_PRESETS } from './seeds/config.seeds.js';
+import { seedImportData } from './seeds/import-data.js';
 import logger from './shared/logger.js';
 
 const PORT: string | number = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ async function start(): Promise<void> {
   getRedis();
   await seedAdmin();
   await seedConfigs(CONFIG_PRESETS);
+  await seedImportData();
 
   // Create HTTP server and attach Socket.io
   const httpServer: http.Server = http.createServer(app);

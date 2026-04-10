@@ -647,10 +647,7 @@ function mapPostType(pref: string): string {
   return 'any'; // "New Post or Reply" or anything else
 }
 
-async function run() {
-  await connectDB();
-  console.log('Connected to MongoDB');
-
+export async function seedImportData(): Promise<void> {
   // Seed Tone Modes
   let toneCount = 0;
   for (const t of TONES) {
@@ -739,9 +736,16 @@ async function run() {
     }
   }
   console.log(`Forum: ${catCount} categories, ${boardCount} boards created`);
-
-  await disconnectDB();
-  console.log('Done!');
 }
 
-run().catch((err: Error) => { console.error(err); process.exit(1); });
+// Allow standalone execution: npx tsx src/seeds/import-data.ts
+const isMain = process.argv[1]?.includes('import-data');
+if (isMain) {
+  (async () => {
+    await connectDB();
+    console.log('Connected to MongoDB');
+    await seedImportData();
+    await disconnectDB();
+    console.log('Done!');
+  })().catch((err: Error) => { console.error(err); process.exit(1); });
+}
