@@ -1,18 +1,18 @@
 # Cloud Build CI/CD Pipeline — Baby Kingdom Admin
 # 一键部署: gcloud builds submit --config=cloudbuild.yaml --substitutions=_CLOUD_SQL_INSTANCE=PROJECT:REGION:INSTANCE
 #
-# 架构: Backend (API + Tasks + Cron) + Frontend (静态文件)
-# 无独立 Worker 服务 — task 端点合并在 Backend 中
+# 架构: 2 个 Cloud Run 服务
+#   - bk-backend: API + Tasks + Cron
+#   - bk-frontend: Nginx 反代 + Vue SPA（同域名访问，无 CORS）
 
 substitutions:
   _REGION: asia-east1
   _AR_REPO: bk-admin
   _CLOUD_SQL_INSTANCE: ''  # 必填: PROJECT_ID:REGION:INSTANCE_NAME
-  _FRONTEND_BUCKET: ${PROJECT_ID}-frontend
   _BACKEND_SA: bk-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com
 
 steps:
-  # ===== 1. Build (并行) =====
+  # ===== 1. Build Images (并行) =====
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-backend'
@@ -24,19 +24,27 @@ steps:
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:latest'
       - './backend'
 
-  - name: 'node:20-alpine'
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'build-frontend'
-    entrypoint: 'sh'
     args:
-      - '-c'
-      - 'cd frontend && npm ci && npm run build'
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:latest'
+      - './frontend'
 
-  # ===== 2. Push Image =====
+  # ===== 2. Push Images =====
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-backend'
     args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend']
     waitFor: ['build-backend']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-frontend'
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend']
+    waitFor: ['build-frontend']
 
   # ===== 3. Database Migration =====
 
@@ -92,12 +100,31 @@ steps:
       - '--allow-unauthenticated'
     waitFor: ['db-migrate']
 
-  # ===== 5. Deploy Frontend to Cloud Storage =====
+  # ===== 5. Deploy Frontend to Cloud Run =====
+  # 需要先获取 Backend URL，注入到 Frontend 容器的 BACKEND_URL 环境变量
+  # Nginx 通过 envsubst 将 BACKEND_URL 写入 nginx.conf
 
-  - name: 'gcr.io/cloud-builders/gsutil'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy-frontend'
-    args: ['-m', 'rsync', '-r', '-d', 'frontend/dist/', 'gs://${_FRONTEND_BUCKET}/']
-    waitFor: ['build-frontend']
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        BACKEND_URL=$$(gcloud run services describe bk-backend --region=${_REGION} --format='value(status.url)')
+        gcloud run deploy bk-frontend \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${SHORT_SHA} \
+          --region=${_REGION} \
+          --platform=managed \
+          --set-env-vars="BACKEND_URL=$${BACKEND_URL}" \
+          --memory=256Mi \
+          --cpu=1 \
+          --min-instances=0 \
+          --max-instances=2 \
+          --timeout=60s \
+          --concurrency=200 \
+          --port=8080 \
+          --allow-unauthenticated
+    waitFor: ['deploy-backend', 'push-frontend']
 
   # ===== 6. 输出部署信息 =====
 
@@ -111,15 +138,15 @@ steps:
         echo "  Deployment Complete!"
         echo "============================================"
         BACKEND_URL=$$(gcloud run services describe bk-backend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
+        FRONTEND_URL=$$(gcloud run services describe bk-frontend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
         echo "  Backend:  $${BACKEND_URL}"
-        echo "  Frontend: https://storage.googleapis.com/${_FRONTEND_BUCKET}/index.html"
+        echo "  Frontend: $${FRONTEND_URL}"
         echo ""
         echo "  首次部署后续步骤:"
         echo "  1. 运行 setup-scheduler.sh 创建定时任务:"
         echo "     ./scripts/setup-scheduler.sh ${PROJECT_ID} $${BACKEND_URL}"
-        echo "  2. 更新前端 VITE_API_URL 指向 Backend URL（或配置 Load Balancer）"
         echo "============================================"
-    waitFor: ['deploy-backend', 'deploy-frontend']
+    waitFor: ['deploy-frontend']
 
 availableSecrets:
   secretManager:
@@ -129,6 +156,8 @@ availableSecrets:
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY

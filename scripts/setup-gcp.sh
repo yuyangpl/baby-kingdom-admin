@@ -17,7 +17,6 @@ REGION="asia-east1"
 DB_NAME="baby_kingdom"
 DB_USER="bkadmin"
 AR_REPO="bk-admin"
-FRONTEND_BUCKET="${PROJECT_ID}-frontend"
 
 echo ""
 echo "============================================"
@@ -34,20 +33,19 @@ gcloud config set project "${PROJECT_ID}"
 # ==============================================================================
 # 1. 启用 API
 # ==============================================================================
-echo "=== [1/7] 启用 GCP API ==="
+echo "=== [1/6] 启用 GCP API ==="
 gcloud services enable \
   run.googleapis.com \
   sqladmin.googleapis.com \
   cloudbuild.googleapis.com \
   artifactregistry.googleapis.com \
   cloudscheduler.googleapis.com \
-  storage.googleapis.com \
   secretmanager.googleapis.com
 
 # ==============================================================================
 # 2. 创建 Artifact Registry
 # ==============================================================================
-echo "=== [2/7] 创建 Artifact Registry ==="
+echo "=== [2/6] 创建 Artifact Registry ==="
 gcloud artifacts repositories create "${AR_REPO}" \
   --repository-format=docker \
   --location="${REGION}" \
@@ -57,7 +55,7 @@ gcloud artifacts repositories create "${AR_REPO}" \
 # ==============================================================================
 # 3. 在现有 Cloud SQL 上创建数据库和用户
 # ==============================================================================
-echo "=== [3/7] 创建数据库和用户 (实例: ${DB_INSTANCE}) ==="
+echo "=== [3/6] 创建数据库和用户 (实例: ${DB_INSTANCE}) ==="
 
 if ! gcloud sql instances describe "${DB_INSTANCE}" --format="value(name)" &>/dev/null; then
   echo "  错误: Cloud SQL 实例 '${DB_INSTANCE}' 不存在！"
@@ -85,7 +83,7 @@ gcloud sql users create "${DB_USER}" \
 # ==============================================================================
 # 4. 创建 Secret Manager 密钥
 # ==============================================================================
-echo "=== [4/7] 创建 Secret Manager 密钥 ==="
+echo "=== [4/6] 创建 Secret Manager 密钥 ==="
 
 JWT_SECRET=$(openssl rand -base64 48)
 ENCRYPTION_KEY=$(openssl rand -hex 16)
@@ -119,7 +117,7 @@ fi
 # ==============================================================================
 # 5. 创建 Service Account + IAM 授权
 # ==============================================================================
-echo "=== [5/7] 创建 Service Account + IAM 授权 ==="
+echo "=== [5/6] 创建 Service Account + IAM 授权 ==="
 
 create_sa() {
   local name=$1
@@ -146,31 +144,16 @@ grant_role() {
 grant_role "${BACKEND_SA}" "roles/cloudsql.client"
 grant_role "${BACKEND_SA}" "roles/secretmanager.secretAccessor"
 
-# Cloud Build SA: 部署 Cloud Run + 使用 Service Account + 管理 Storage
+# Cloud Build SA: 部署 Cloud Run + 使用 Service Account
 CLOUDBUILD_SA="${PROJECT_ID}@cloudbuild.gserviceaccount.com"
 grant_role "${CLOUDBUILD_SA}" "roles/run.admin"
 grant_role "${CLOUDBUILD_SA}" "roles/iam.serviceAccountUser"
-grant_role "${CLOUDBUILD_SA}" "roles/storage.admin"
 grant_role "${CLOUDBUILD_SA}" "roles/secretmanager.secretAccessor"
 
 # ==============================================================================
-# 6. 创建前端 Cloud Storage Bucket
+# 6. 验证所有资源
 # ==============================================================================
-echo "=== [6/7] 创建前端 Bucket ==="
-
-if gsutil ls -b "gs://${FRONTEND_BUCKET}" &>/dev/null; then
-  echo "  已存在: gs://${FRONTEND_BUCKET}"
-else
-  gsutil mb -l "${REGION}" "gs://${FRONTEND_BUCKET}"
-  echo "  创建: gs://${FRONTEND_BUCKET}"
-fi
-gsutil web set -m index.html -e index.html "gs://${FRONTEND_BUCKET}"
-gsutil iam ch allUsers:objectViewer "gs://${FRONTEND_BUCKET}"
-
-# ==============================================================================
-# 7. 验证所有资源
-# ==============================================================================
-echo "=== [7/7] 验证资源 ==="
+echo "=== [6/6] 验证资源 ==="
 
 echo ""
 check() {
@@ -190,7 +173,6 @@ check "Secret: JWT_SECRET" "gcloud secrets describe JWT_SECRET"
 check "Secret: ENCRYPTION_KEY" "gcloud secrets describe ENCRYPTION_KEY"
 check "Secret: GEMINI_API_KEY" "gcloud secrets describe GEMINI_API_KEY"
 check "SA: bk-backend-sa" "gcloud iam service-accounts describe ${BACKEND_SA}"
-check "Frontend Bucket" "gsutil ls -b gs://${FRONTEND_BUCKET}"
 
 # ==============================================================================
 # 完成
