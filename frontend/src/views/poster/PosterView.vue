@@ -132,37 +132,37 @@
         v-loading="loading"
         style="width: 100%"
         highlight-current-row
-        @expand-change="(row: any, expanded: any[]) => { if (expanded.length) loadExpandData(row._id) }"
+        @expand-change="(row: any, expanded: any[]) => { if (expanded.length) loadExpandData(row.id || row._id) }"
       >
         <el-table-column type="expand">
           <template #default="{ row }">
-            <div v-if="expandData[row._id]" class="expand-detail">
+            <div v-if="expandData[row.id || row._id]" class="expand-detail">
               <div class="expand-detail__row">
                 <div class="expand-detail__persona">
                   <span class="expand-detail__label">{{ $t('feed.persona') }}</span>
-                  <strong>{{ expandData[row._id].personaId }}</strong>
-                  <span v-if="expandData[row._id].bkUsername" class="expand-detail__sub">{{ expandData[row._id].bkUsername }}</span>
-                  <el-tag v-if="expandData[row._id].archetype" size="small" effect="plain" style="margin-left: 6px;">
-                    {{ expandData[row._id].archetype }}
+                  <strong>{{ expandData[row.id || row._id].personaId }}</strong>
+                  <span v-if="expandData[row.id || row._id].bkUsername" class="expand-detail__sub">{{ expandData[row.id || row._id].bkUsername }}</span>
+                  <el-tag v-if="expandData[row.id || row._id].archetype" size="small" effect="plain" style="margin-left: 6px;">
+                    {{ expandData[row.id || row._id].archetype }}
                   </el-tag>
                 </div>
                 <div>
                   <span class="expand-detail__label">{{ $t('feed.toneMode') }}</span>
-                  <span>{{ toneLabel(expandData[row._id].toneMode) }}</span>
+                  <span>{{ toneLabel(expandData[row.id || row._id].toneMode) }}</span>
                 </div>
               </div>
               <el-descriptions :column="2" border size="small" style="margin-top: 10px;">
                 <el-descriptions-item :label="$t('feed.threadSubject')">
-                  {{ expandData[row._id].subject || expandData[row._id].threadSubject || '--' }}
-                  <a v-if="expandData[row._id].threadTid" :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${expandData[row._id].threadTid}`" target="_blank" rel="noopener" style="margin-left: 6px; font-size: 12px;">{{ $t('feed.viewThread') }} ↗</a>
+                  {{ expandData[row.id || row._id].subject || expandData[row.id || row._id].threadSubject || '--' }}
+                  <a v-if="expandData[row.id || row._id].threadTid" :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${expandData[row.id || row._id].threadTid}`" target="_blank" rel="noopener" style="margin-left: 6px; font-size: 12px;">{{ $t('feed.viewThread') }} ↗</a>
                 </el-descriptions-item>
                 <el-descriptions-item :label="$t('feed.board')">
-                  {{ boardMap[expandData[row._id].threadFid] || `fid:${expandData[row._id].threadFid}` }}
+                  {{ boardMap[expandData[row.id || row._id].threadFid] || `fid:${expandData[row.id || row._id].threadFid}` }}
                 </el-descriptions-item>
               </el-descriptions>
-              <div v-if="expandData[row._id].finalContent || expandData[row._id].draftContent" style="margin-top: 12px;">
+              <div v-if="expandData[row.id || row._id].finalContent || expandData[row.id || row._id].draftContent" style="margin-top: 12px;">
                 <strong style="font-size: 13px; color: #909399;">{{ $t('feed.content') }}</strong>
-                <div class="expand-text">{{ expandData[row._id].finalContent || expandData[row._id].draftContent }}</div>
+                <div class="expand-text">{{ expandData[row.id || row._id].finalContent || expandData[row.id || row._id].draftContent }}</div>
               </div>
             </div>
             <div v-else style="padding: 12px 20px; color: #909399;">{{ $t('common.loading') }}...</div>
@@ -355,7 +355,7 @@ const manualPost = async (row: any) => {
 
 const cancelJob = async (row: any) => {
   try {
-    await api.delete(`/v1/queues/poster/jobs/${row.jobId || row.postId || row._id}`)
+    await api.delete(`/v1/queues/poster/jobs/${row.jobId || row.postId || row.id || row._id}`)
     ElMessage.success(t('common.jobCancelled'))
     loadHistory()
     loadQueue()

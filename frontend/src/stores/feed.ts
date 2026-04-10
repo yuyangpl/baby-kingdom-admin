@@ -17,7 +17,8 @@ interface FeedFilters {
 }
 
 interface Feed {
-  _id: string;
+  id: string;
+  _id?: string;
   status: string;
   claimedBy: string | null;
   claimedAt: string | null;
@@ -79,12 +80,12 @@ export const useFeedStore = defineStore('feed', {
     },
 
     updateFeedStatus(feedId: string, status: string) {
-      const feed = this.feeds.find((f) => f._id === feedId);
+      const feed = this.feeds.find((f) => (f.id || f._id) === feedId);
       if (feed) feed.status = status;
     },
 
     updateFeedClaim(feedId: string, claimedBy: string | null) {
-      const feed = this.feeds.find((f) => f._id === feedId);
+      const feed = this.feeds.find((f) => (f.id || f._id) === feedId);
       if (feed) {
         feed.claimedBy = claimedBy;
         feed.claimedAt = claimedBy ? new Date().toISOString() : null;

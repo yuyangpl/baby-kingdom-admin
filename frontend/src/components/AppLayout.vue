@@ -131,8 +131,6 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../stores/auth';
 import { useNotificationStore } from '../stores/notification';
 import { useAppStore } from '../stores/app';
-import { connectSocket, disconnectSocket } from '../socket';
-import { registerListeners } from '../socket/listeners';
 import api from '../api';
 
 const auth = useAuthStore();
@@ -151,19 +149,26 @@ function toggleLanguage() {
   appStore.setLanguage(newLang);
 }
 
+// Poll for updates (replaces Socket.io real-time events)
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
 onMounted(async () => {
   try {
     const res = await api.get('/v1/dashboard/realtime');
     pendingCount.value = res.data?.pendingFeeds || 0;
   } catch { /* ignore */ }
 
-  // Connect socket
-  const socket = connectSocket();
-  registerListeners(socket);
+  // Poll for pending feed count every 30s
+  pollTimer = setInterval(async () => {
+    try {
+      const res = await api.get('/v1/dashboard/realtime');
+      pendingCount.value = res.data?.pendingFeeds || 0;
+    } catch { /* ignore */ }
+  }, 30000);
 });
 
 onUnmounted(() => {
-  disconnectSocket();
+  if (pollTimer) clearInterval(pollTimer);
 });
 
 async function handleLogout() {

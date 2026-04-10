@@ -19,7 +19,8 @@ interface GoogleTrendAnalysis {
 }
 
 interface GoogleTrend {
-  _id: string;
+  id: string;
+  _id?: string;
   query: string;
   score: number;
   peakVolume: number;
@@ -150,7 +151,7 @@ onMounted(() => {
     </div>
 
     <!-- Table -->
-    <el-table :data="trends" v-loading="loading" stripe row-key="_id">
+    <el-table :data="trends" v-loading="loading" stripe row-key="id">
       <el-table-column type="expand">
         <template #default="{ row }">
           <div style="padding: 12px 20px;">

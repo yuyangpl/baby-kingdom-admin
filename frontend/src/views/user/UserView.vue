@@ -138,7 +138,7 @@ const avatarInitial = (name: string) => {
 }
 
 const isCurrentUser = (row: any) => {
-  return auth.user?.id === (row._id || row.id)
+  return auth.user?.id === (row.id || row._id)
 }
 
 const rowClassName = ({ row }: { row: any }) => {
@@ -162,7 +162,7 @@ const openAdd = () => {
 const handleRoleChange = async (row: any, newRole: string) => {
   const oldRole = row.role
   try {
-    await api.put(`/v1/auth/users/${row._id || row.id}/role`, { role: newRole })
+    await api.put(`/v1/auth/users/${row.id || row._id}/role`, { role: newRole })
     row.role = newRole
     ElMessage.success(t('user.roleUpdated', { role: newRole }))
   } catch (err: any) {
@@ -173,7 +173,7 @@ const handleRoleChange = async (row: any, newRole: string) => {
 
 const handleDelete = async (row: any) => {
   try {
-    await api.delete(`/v1/auth/users/${row._id || row.id}`)
+    await api.delete(`/v1/auth/users/${row.id || row._id}`)
     ElMessage.success(t('common.success'))
     loadUsers()
   } catch (err: any) {

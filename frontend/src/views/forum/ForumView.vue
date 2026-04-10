@@ -229,7 +229,7 @@ const saveBoard = async () => {
   if (!selectedBoard.value) return
   saving.value = true
   try {
-    await api.put(`/v1/forums/boards/${selectedBoard.value._id}`, { ...formData })
+    await api.put(`/v1/forums/boards/${selectedBoard.value.id || selectedBoard.value._id}`, { ...formData })
     Object.assign(selectedBoard.value, formData)
     ElMessage.success(t('common.success'))
   } catch (err: any) {

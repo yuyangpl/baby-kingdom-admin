@@ -87,7 +87,7 @@
     <div v-loading="feedStore.loading" class="feed-cards">
       <div
         v-for="feed in feedStore.feeds"
-        :key="feed._id"
+        :key="feed.id || feed._id"
         class="feed-card"
         :class="[
           tierBorderClass(feed.sensitivityTier),
@@ -459,7 +459,7 @@ const isClaimedByMe = (feed: any): boolean => {
 
 const isClaimedByOther = (feed: any): boolean => {
   if (!feed.claimedBy) return false
-  const myId = authStore.user?._id || authStore.user?.id
+  const myId = authStore.user?.id
   return feed.claimedBy !== myId
 }
 
@@ -586,7 +586,7 @@ const postNow = async (row: any) => {
       t('feed.postNow'),
       { confirmButtonText: t('feed.postNow'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
-    await api.post(`/v1/poster/${row._id}/post`)
+    await api.post(`/v1/poster/${row.id || row._id}/post`)
     ElMessage.success(t('feed.postQueued'))
     loadFeeds()
   } catch (err: any) {

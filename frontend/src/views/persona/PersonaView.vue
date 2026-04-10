@@ -26,7 +26,7 @@
     <el-row :gutter="16" v-loading="loading">
       <el-col
         v-for="p in filteredPersonas"
-        :key="p._id"
+        :key="p.id || p._id"
         :xs="24"
         :sm="12"
         :lg="8"
@@ -99,7 +99,7 @@
             <el-button size="small" @click="openForm(p)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-popconfirm :title="$t('persona.deleteConfirm')" @confirm="handleDelete(p._id)">
+            <el-popconfirm :title="$t('persona.deleteConfirm')" @confirm="handleDelete(p.id || p._id)">
               <template #reference>
                 <el-button size="small" type="danger" plain>{{ $t('common.delete') }}</el-button>
               </template>
@@ -180,7 +180,7 @@ const filteredPersonas = computed(() => {
     const board = boardOptions.value.find(b => b.fid === filters.boardFid)
     if (board?.personaBindings?.length) {
       const ids = new Set(board.personaBindings.map((b: any) => b.personaId?.toString()))
-      list = list.filter(p => ids.has(p._id?.toString()))
+      list = list.filter(p => ids.has((p.id || p._id)?.toString()))
     }
   }
   return list

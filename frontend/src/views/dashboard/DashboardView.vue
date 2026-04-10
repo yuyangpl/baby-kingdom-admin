@@ -141,7 +141,7 @@
         <el-timeline v-else>
           <el-timeline-item
             v-for="item in recentFeeds"
-            :key="item._id"
+            :key="item.id || item._id"
             :timestamp="new Date(item.updatedAt).toLocaleString()"
             placement="top"
             :color="getTimelineColor(item.status)"
@@ -209,7 +209,8 @@ interface TodayStat {
 }
 
 interface RecentFeed {
-  _id: string;
+  id: string;
+  _id?: string;
   feedId: string;
   status: string;
   threadSubject?: string;

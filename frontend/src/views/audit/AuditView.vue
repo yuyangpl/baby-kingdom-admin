@@ -62,7 +62,7 @@
       stripe
       border
       style="width: 100%; margin-top: 16px"
-      row-key="_id"
+      row-key="id"
       :expand-row-keys="expandedRows"
       @expand-change="handleExpand"
     >
@@ -204,7 +204,7 @@ const moduleTagType = (mod: string): string => {
 }
 
 const handleExpand = (row: any, expanded: any[]) => {
-  expandedRows.value = expanded.map((r: any) => r._id)
+  expandedRows.value = expanded.map((r: any) => r.id || r._id)
 }
 
 const loadAudits = async () => {
