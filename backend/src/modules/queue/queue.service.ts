@@ -4,9 +4,53 @@ import logger from '../../shared/logger.js';
 
 const QUEUE_NAMES = ['scanner', 'trends', 'poster', 'daily-reset', 'stats-aggregator', 'google-trends'] as const;
 
-// No-op: BullMQ initialization removed. Cloud Tasks will be wired in Phase 2.
 export function initQueues(): void {
-  logger.info(`Queue service ready (${QUEUE_NAMES.length} queues, DB-backed, Cloud Tasks pending Phase 2)`);
+  logger.info(`Queue service ready (${QUEUE_NAMES.length} queues, DB-backed)`);
+}
+
+// Worker HTTP service URL (local dev or Cloud Run)
+function getWorkerUrl(): string {
+  return process.env.WORKER_SERVICE_URL || `http://localhost:${process.env.WORKER_PORT || 3001}`;
+}
+
+// Task endpoint mapping
+const TASK_ENDPOINTS: Record<string, string> = {
+  scanner: '/tasks/scanner',
+  trends: '/tasks/trends',
+  poster: '/tasks/poster',
+  'daily-reset': '/tasks/daily-reset',
+  'stats-aggregator': '/tasks/stats',
+  'google-trends': '/tasks/gtrends',
+};
+
+/**
+ * Dispatch a task to the worker HTTP service.
+ * In local dev: direct HTTP call to worker-http.ts
+ * In production: will be replaced by Cloud Tasks createTask()
+ */
+async function dispatchToWorker(queueName: string, data: any): Promise<void> {
+  const endpoint = TASK_ENDPOINTS[queueName];
+  if (!endpoint) {
+    logger.warn({ queueName }, 'No task endpoint mapped for queue');
+    return;
+  }
+
+  const workerUrl = getWorkerUrl();
+  try {
+    const resp = await fetch(`${workerUrl}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      logger.warn({ queueName, status: resp.status, body }, 'Worker dispatch returned non-OK');
+    }
+  } catch (err) {
+    // Non-fatal: worker might not be running in dev
+    logger.warn({ err, queueName, workerUrl }, 'Failed to dispatch to worker (is worker-http running?)');
+  }
 }
 
 export interface QueueStatusItem {
@@ -97,7 +141,6 @@ export async function resumeQueue(name: string, userId: string, ip: string) {
   return true;
 }
 
-// Records a waiting job — actual Cloud Tasks dispatch will be wired in Phase 2
 export async function triggerQueue(name: string, userId: string, ip: string) {
   const prisma = getPrisma();
 
@@ -112,9 +155,12 @@ export async function triggerQueue(name: string, userId: string, ip: string) {
   });
 
   await auditService.log({
-    operator: userId, eventType: 'QUEUE_RESUMED', module: 'queue',
+    operator: userId, eventType: 'QUEUE_TRIGGERED', module: 'queue',
     targetId: name, actionDetail: `Manual trigger queue: ${name}`, ip,
   });
+
+  // Dispatch to worker HTTP service
+  dispatchToWorker(name, { triggeredBy: 'manual', triggeredByUser: userId });
 
   return { jobId: job.id, queueName: name };
 }
@@ -230,6 +276,9 @@ export async function addToQueue(queueName: string, data: any): Promise<{ id: st
     },
   });
 
-  logger.info({ queueName, jobId: job.id }, 'Job added to queue (DB record, Cloud Tasks pending Phase 2)');
+  // Dispatch to worker HTTP service
+  dispatchToWorker(queueName, data);
+
+  logger.info({ queueName, jobId: job.id }, 'Job added to queue and dispatched');
   return { id: job.id, queueName };
 }

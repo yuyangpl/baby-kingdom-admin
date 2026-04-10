@@ -1,10 +1,13 @@
 import * as configService from '../modules/config/config.service.js';
-import { getRedis } from './redis.js';
 import { sendAlert } from './email.js';
-import Feed from '../modules/feed/feed.model.js';
+import { getPrisma } from './database.js';
 import logger from './logger.js';
 
-const ALERT_TTL = 3 * 24 * 60 * 60; // 3 days in seconds
+const ALERT_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days in ms
+
+// In-memory alert cache (replaces Redis keys)
+// Key: service name, Value: { status, sentAt }
+const alertCache = new Map<string, { status: string; sentAt: number }>();
 
 interface ServiceCheckResult {
   status: string;
@@ -12,9 +15,6 @@ interface ServiceCheckResult {
   checkedAt?: string;
 }
 
-/**
- * Check BK Forum API connectivity.
- */
 export async function checkBkForum(): Promise<ServiceCheckResult> {
   const baseUrl = await configService.getValue('BK_BASE_URL');
   if (!baseUrl) return { status: 'not_configured', detail: null };
@@ -29,9 +29,6 @@ export async function checkBkForum(): Promise<ServiceCheckResult> {
   }
 }
 
-/**
- * Check MediaLens JWT token validity using stored expiry time.
- */
 export async function checkMediaLens(): Promise<ServiceCheckResult> {
   const token = await configService.getValue('MEDIALENS_JWT_TOKEN');
   if (!token) return { status: 'not_configured', detail: null };
@@ -56,19 +53,20 @@ export async function checkMediaLens(): Promise<ServiceCheckResult> {
   return { status: 'valid', detail: `expires in ${days}d ${hours % 24}h` };
 }
 
-/**
- * Check Gemini API: key configured + recent generation activity.
- */
 export async function checkGemini(): Promise<ServiceCheckResult> {
   const apiKey = await configService.getValue('GEMINI_API_KEY');
   if (!apiKey) return { status: 'not_configured', detail: null };
 
+  const prisma = getPrisma();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const recentFeed = await (Feed as any).findOne({
-    createdAt: { $gte: oneHourAgo },
-    draftContent: { $ne: null },
-    source: { $in: ['scanner', 'custom'] },
-  }).sort({ createdAt: -1 }).lean();
+  const recentFeed = await prisma.feed.findFirst({
+    where: {
+      createdAt: { gte: oneHourAgo },
+      draftContent: { not: null },
+      source: { hasSome: ['scanner', 'custom'] },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 
   if (recentFeed) {
     const mins = Math.floor((Date.now() - new Date(recentFeed.createdAt).getTime()) / 60000);
@@ -78,9 +76,6 @@ export async function checkGemini(): Promise<ServiceCheckResult> {
   return { status: 'no_recent_activity', detail: 'No generation in last 1h' };
 }
 
-/**
- * Check Google Trends API connectivity.
- */
 export async function checkGoogleTrends(): Promise<ServiceCheckResult> {
   const baseUrl = await configService.getValue('GOOGLE_TRENDS_BASE_URL');
   const apiKey = await configService.getValue('GOOGLE_TRENDS_API_KEY');
@@ -109,9 +104,6 @@ interface AllServicesResult {
   googleTrends: ServiceCheckResult;
 }
 
-/**
- * Run all 4 service checks and return results.
- */
 export async function checkAllServices(): Promise<AllServicesResult> {
   const now = new Date().toISOString();
   const [bkForum, mediaLens, gemini, googleTrends] = await Promise.all([
@@ -129,13 +121,8 @@ export async function checkAllServices(): Promise<AllServicesResult> {
   };
 }
 
-// Statuses considered unhealthy (trigger alert)
 const UNHEALTHY = new Set(['disconnected', 'expired', 'expiring_soon']);
 
-/**
- * Check all services, send alerts for unhealthy ones, send recovery for restored ones.
- * Uses Redis keys with 3-day TTL: first alert immediately, no repeat for 3 days, then re-alert if still unhealthy.
- */
 export async function runHealthCheck(): Promise<AllServicesResult> {
   const results = await checkAllServices();
   const adminEmails = await configService.getValue('ADMIN_EMAILS');
@@ -144,15 +131,12 @@ export async function runHealthCheck(): Promise<AllServicesResult> {
     return results;
   }
 
-  const redis = getRedis();
-
   for (const [name, result] of Object.entries(results)) {
-    const alertKey = `health:alert:${name}`;
     const isUnhealthy = UNHEALTHY.has(result.status);
-    const alertSent = await redis.get(alertKey);
+    const cached = alertCache.get(name);
+    const alertExpired = !cached || (Date.now() - cached.sentAt) > ALERT_TTL_MS;
 
-    if (isUnhealthy && !alertSent) {
-      // First alert or 3-day TTL expired → send alert and set key
+    if (isUnhealthy && (!cached || alertExpired)) {
       await sendAlert(
         adminEmails,
         `[BK Admin 告警] ${name} 服务异常`,
@@ -163,10 +147,9 @@ export async function runHealthCheck(): Promise<AllServicesResult> {
         <p><b>检测时间:</b> ${result.checkedAt}</p>
         <p>请及时处理。如 3 天内未修复将再次提醒。</p>`,
       );
-      await redis.set(alertKey, result.status, 'EX', ALERT_TTL);
+      alertCache.set(name, { status: result.status, sentAt: Date.now() });
       logger.info({ name, status: result.status }, 'Health alert sent');
-    } else if (!isUnhealthy && alertSent) {
-      // Service recovered → send recovery and delete key
+    } else if (!isUnhealthy && cached) {
       await sendAlert(
         adminEmails,
         `[BK Admin 恢复] ${name} 服务已恢复`,
@@ -175,7 +158,7 @@ export async function runHealthCheck(): Promise<AllServicesResult> {
         <p><b>状态:</b> ${result.status}</p>
         <p><b>恢复时间:</b> ${result.checkedAt}</p>`,
       );
-      await redis.del(alertKey);
+      alertCache.delete(name);
       logger.info({ name, status: result.status }, 'Health recovery sent');
     }
   }
