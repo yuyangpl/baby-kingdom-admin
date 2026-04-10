@@ -1,17 +1,28 @@
-# Cloud Build CI/CD Pipeline
-# Trigger: push to main branch
-# Flow: build images → push to AR → migrate DB → deploy Cloud Run → deploy frontend
+# Cloud Build CI/CD Pipeline — Baby Kingdom Admin
+# 一键部署: gcloud builds submit --config=cloudbuild.yaml --substitutions=_CLOUD_SQL_INSTANCE=PROJECT:REGION:INSTANCE
+#
+# 首次部署前需准备:
+#   1. 启用 API: run, sqladmin, cloudbuild, artifactregistry, cloudscheduler, storage, secretmanager
+#   2. 创建 Artifact Registry: gcloud artifacts repositories create bk-admin --repository-format=docker --location=asia-east1
+#   3. 创建 Secret Manager 密钥: DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, GEMINI_API_KEY
+#   4. 创建 Service Account: bk-backend-sa, bk-worker-sa (授予 cloudsql.client + secretmanager.secretAccessor)
+#   5. 创建前端 Bucket: gsutil mb -l asia-east1 gs://PROJECT_ID-frontend
+#   6. 授予 Cloud Build SA 权限: roles/run.admin, roles/iam.serviceAccountUser, roles/storage.admin
 
 substitutions:
   _REGION: asia-east1
   _AR_REPO: bk-admin
-  _CLOUD_SQL_INSTANCE: ''  # Set via trigger: PROJECT_ID:REGION:INSTANCE_NAME
+  _CLOUD_SQL_INSTANCE: ''  # 必填: PROJECT_ID:REGION:INSTANCE_NAME
+  _FRONTEND_BUCKET: ${PROJECT_ID}-frontend
+  _BACKEND_SA: bk-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com
+  _WORKER_SA: bk-worker-sa@${PROJECT_ID}.iam.gserviceaccount.com
 
 steps:
-  # ===== Build =====
+  # ===== 1. Build Images (并行) =====
 
   # Build backend image
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-backend'
     args:
       - 'build'
       - '-t'
@@ -22,6 +33,7 @@ steps:
 
   # Build worker image
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-worker'
     args:
       - 'build'
       - '-t'
@@ -34,23 +46,28 @@ steps:
 
   # Build frontend
   - name: 'node:20-alpine'
+    id: 'build-frontend'
     entrypoint: 'sh'
     args:
       - '-c'
       - 'cd frontend && npm ci && npm run build'
 
-  # ===== Push Images =====
+  # ===== 2. Push Images =====
 
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-backend'
     args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend']
+    waitFor: ['build-backend']
 
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-worker'
     args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker']
+    waitFor: ['build-worker']
 
-  # ===== Database Migration =====
+  # ===== 3. Database Migration (Prisma) =====
 
-  # Run Prisma migrate deploy (uses Cloud SQL Proxy)
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'db-migrate'
     args:
       - 'run'
       - '--rm'
@@ -60,13 +77,13 @@ steps:
       - 'prisma'
       - 'migrate'
       - 'deploy'
-    env:
-      - 'DATABASE_URL=$$DATABASE_URL'
     secretEnv: ['DATABASE_URL']
+    waitFor: ['push-backend']
 
-  # ===== Deploy Backend to Cloud Run =====
+  # ===== 4. Deploy Backend to Cloud Run =====
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-backend'
     entrypoint: 'gcloud'
     args:
       - 'run'
@@ -78,10 +95,39 @@ steps:
       - '${_REGION}'
       - '--platform'
       - 'managed'
+      # Service Account
+      - '--service-account'
+      - '${_BACKEND_SA}'
+      # Cloud SQL 连接
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_INSTANCE}'
+      # Secret Manager → 环境变量
+      - '--set-secrets'
+      - 'DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ENCRYPTION_KEY=ENCRYPTION_KEY:latest'
+      # 环境变量
+      - '--set-env-vars'
+      - 'NODE_ENV=production,FRONTEND_URL=https://bk-backend-${SHORT_SHA}-de.a.run.app'
+      # 资源配置
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '3'
+      - '--timeout'
+      - '60s'
+      - '--concurrency'
+      - '80'
+      # 允许公网访问 (前端需要调用 API)
+      - '--allow-unauthenticated'
+    waitFor: ['db-migrate']
 
-  # ===== Deploy Worker to Cloud Run =====
+  # ===== 5. Deploy Worker to Cloud Run =====
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-worker'
     entrypoint: 'gcloud'
     args:
       - 'run'
@@ -93,11 +139,65 @@ steps:
       - '${_REGION}'
       - '--platform'
       - 'managed'
+      # Service Account
+      - '--service-account'
+      - '${_WORKER_SA}'
+      # Cloud SQL 连接
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_INSTANCE}'
+      # Secret Manager → 环境变量
+      - '--set-secrets'
+      - 'DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ENCRYPTION_KEY=ENCRYPTION_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest'
+      # 环境变量
+      - '--set-env-vars'
+      - 'NODE_ENV=production,WORKER_PORT=3001'
+      # 资源配置
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '2'
+      - '--timeout'
+      - '300s'
+      - '--concurrency'
+      - '1'
+      # Worker 不对外开放，仅 Cloud Scheduler 通过 OIDC 调用
+      - '--no-allow-unauthenticated'
+    waitFor: ['db-migrate']
 
-  # ===== Deploy Frontend to Cloud Storage =====
+  # ===== 6. Deploy Frontend to Cloud Storage =====
 
   - name: 'gcr.io/cloud-builders/gsutil'
-    args: ['-m', 'rsync', '-r', '-d', 'frontend/dist/', 'gs://${PROJECT_ID}-frontend/']
+    id: 'deploy-frontend'
+    args: ['-m', 'rsync', '-r', '-d', 'frontend/dist/', 'gs://${_FRONTEND_BUCKET}/']
+    waitFor: ['build-frontend']
+
+  # ===== 7. 输出部署信息 =====
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'print-urls'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "============================================"
+        echo "  Deployment Complete!"
+        echo "============================================"
+        BACKEND_URL=$$(gcloud run services describe bk-backend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
+        WORKER_URL=$$(gcloud run services describe bk-worker --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
+        echo "  Backend:  $${BACKEND_URL}"
+        echo "  Worker:   $${WORKER_URL}"
+        echo "  Frontend: https://storage.googleapis.com/${_FRONTEND_BUCKET}/index.html"
+        echo ""
+        echo "  首次部署后续步骤:"
+        echo "  1. 更新 Backend FRONTEND_URL 环境变量为实际前端域名"
+        echo "  2. 前端 VITE_API_URL 指向 Backend URL（或配置 Load Balancer）"
+        echo "  3. 运行 setup-scheduler.sh 创建定时任务"
+        echo "============================================"
+    waitFor: ['deploy-backend', 'deploy-worker', 'deploy-frontend']
 
 availableSecrets:
   secretManager:
@@ -106,7 +206,10 @@ availableSecrets:
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:latest'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  # 构建步骤默认并行执行（通过 waitFor 控制依赖）
