@@ -1,22 +1,17 @@
 import { PrismaClient } from '../generated/prisma/client.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import logger from './logger.js';
 
 let prisma: PrismaClient;
+let pool: pg.Pool;
 let isConnected = false;
 
 export function getPrisma(): PrismaClient {
   if (!prisma) {
-    prisma = new PrismaClient({
-      log: process.env.NODE_ENV === 'development'
-        ? [{ emit: 'event', level: 'query' } as const]
-        : [{ emit: 'event', level: 'error' } as const],
-    } as any);
-
-    prisma.$on('query' as never, (e: any) => {
-      if (process.env.NODE_ENV === 'development' && process.env.LOG_QUERIES === 'true') {
-        logger.debug({ query: e.query, duration: e.duration }, 'Prisma query');
-      }
-    });
+    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const adapter = new PrismaPg(pool);
+    prisma = new PrismaClient({ adapter } as any);
   }
   return prisma;
 }
@@ -33,6 +28,9 @@ export async function connectDB(): Promise<void> {
 export async function disconnectDB(): Promise<void> {
   if (prisma) {
     await prisma.$disconnect();
+  }
+  if (pool) {
+    await pool.end();
   }
   isConnected = false;
 }
