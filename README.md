@@ -1,93 +1,144 @@
 # Baby Kingdom Admin
 
-Baby Kingdom 论坛自动化运营管理系统，从 Google Apps Script 完整迁移到 Vue 3 + Node.js + MongoDB 独立后台。
+BK 论坛自动化运营后台 — Vue 3 + Express + MongoDB + Redis + BullMQ
 
-## 技术栈
+## 快速开始
 
-| 层级 | 技术 |
-|------|------|
-| 前端 | Vue 3 + Element Plus + Pinia + Vue Router |
-| 后端 | Express + Mongoose + BullMQ + Socket.io |
-| AI | Google AI SDK (`@google/generative-ai`) |
-| 数据库 | MongoDB 7 |
-| 缓存/队列 | Redis 7 |
-| 部署 | Docker Compose |
+### 方式一：Docker 部署（推荐）
 
-## 项目结构
+**前置条件：** 安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-```
-baby-kingdom-new/
-├── backend/                # Express API 后端
-├── frontend/               # Vue 3 前端
-├── docker-compose.yml      # Docker Compose (开发)
-├── docker-compose.production.yml  # 生产环境覆盖
-├── .env.example            # 环境变量模板
-├── .env.development        # 开发环境变量 (不提交 git)
-└── docs/
-    ├── superpowers/specs/  # 设计文档
-    ├── superpowers/plans/  # 实施计划
-    └── figma-make-prompts.md  # UI 设计 prompts
+```bash
+# 一键启动（首次会自动构建镜像 + 初始化数据）
+docker compose up -d
+
+# 查看所有服务状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f           # 所有服务
+docker compose logs -f backend   # 仅 backend
+docker compose logs -f worker    # 仅 worker
 ```
 
-## 本地开发
+启动后访问：
+- **前端界面：** http://localhost:8080
+- **后端 API：** http://localhost:3001
+- **默认账号：** yu.yang@mintinglabs.com / admin123
 
-### 前置条件
+**自动初始化数据：**
+- 1 个 Admin 用户、46 项系统配置
+- 5 个语气模式、30 个人设、22 条话题规则
+- 6 个版块分类 + 34 个版块
 
-- Node.js >= 20
-- MongoDB 7 (本地运行)
-- Redis 7 (本地运行)
+> Docker 默认暂停所有队列，需在前端「队列管理」页面手动恢复。
+
+#### 常用命令
+
+```bash
+# 停止服务（保留数据）
+docker compose down
+
+# 停止服务并重置数据库
+docker compose down -v
+
+# 重建镜像（代码修改后）
+docker compose up --build -d
+
+# 重建单个服务
+docker compose up --build -d backend
+docker compose up --build -d worker
+
+# 重置数据库并重启
+docker compose down -v && docker compose up -d
+```
+
+#### 端口映射
+
+| 服务 | 宿主机端口 | 容器内部端口 |
+|------|-----------|-------------|
+| Frontend (Nginx) | 8080 | 80 |
+| Backend (Express) | 3001 | 3000 |
+| MongoDB | 27018 | 27017 |
+| Redis | 6380 | 6379 |
+
+> 端口已与本地开发错开，两套可同时运行。
+
+#### 环境变量 (.env.docker)
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `PAUSE_QUEUES_ON_START` | 启动时暂停所有队列 | `true` |
+| `MONGO_URI` | MongoDB 连接 | `mongodb://mongodb:27017/baby-kingdom-dev` |
+| `REDIS_HOST` | Redis 地址 | `redis` |
+
+---
+
+### 方式二：本地开发
+
+**前置条件：** Node.js >= 20.19, MongoDB 7, Redis 7
 
 ```bash
 # 安装 MongoDB 和 Redis (macOS)
 brew tap mongodb/brew
 brew install mongodb-community@7.0 redis
 
-# 启动服务
+# 启动基础服务
 brew services start mongodb-community@7.0
 brew services start redis
+
+# 后端 API
+cd backend && cp ../.env.development .env && npm install && npm run dev
+
+# Worker（新终端）
+cd backend && npm run worker
+
+# 前端（新终端）
+cd frontend && npm install && npm run dev
 ```
 
-### 启动后端
+启动后访问：
+- **前端界面：** http://localhost:5173
+- **后端 API：** http://localhost:3000
+- **默认账号：** yu.yang@mintinglabs.com / admin123
 
-```bash
-cd backend
-cp ../.env.development .env
-npm install
-npm run dev          # 开发模式 (自动重启)
-npm run test         # 运行测试 (108 tests)
-```
+---
 
-后端启动后访问:
-- API: http://localhost:3000
-- 健康检查: http://localhost:3000/api/health
-
-### 启动前端
-
-```bash
-cd frontend
-npm install
-npm run dev          # 开发模式
-npm run build        # 生产构建
-```
-
-前端启动后访问: http://localhost:5173
-
-### 默认管理员账号
+## 项目结构
 
 ```
-Email:    admin@dev.local
-Password: admin123
+baby-kingdom-new/
+├── backend/              # Express API (14 模块, 65+ 端点)
+│   ├── src/
+│   │   ├── modules/      # 业务模块 (auth, feed, scanner, poster, trends...)
+│   │   ├── shared/       # 公共工具 (database, redis, socket, errors...)
+│   │   ├── seeds/        # 种子数据 (config, persona, tone, rule, forum)
+│   │   ├── server.ts     # API 服务入口
+│   │   └── worker.ts     # 队列处理 + 定时任务
+│   └── Dockerfile
+├── frontend/             # Vue 3 SPA (13 页面)
+│   ├── src/
+│   │   ├── views/        # 页面组件
+│   │   ├── stores/       # Pinia 状态管理
+│   │   ├── router/       # 路由 + 权限守卫
+│   │   └── api/          # Axios (JWT 自动刷新)
+│   ├── nginx.conf
+│   └── Dockerfile
+├── docker-compose.yml    # Docker 编排 (5 服务)
+├── .env.docker           # Docker 环境变量
+├── .env.development      # 本地开发环境变量
+└── docs/                 # 设计文档
 ```
 
-## Docker 部署
+## 技术栈
 
-```bash
-# 开发环境
-docker-compose up -d
-
-# 生产环境
-docker-compose -f docker-compose.yml -f docker-compose.production.yml up -d
-```
+| 层 | 技术 |
+|---|------|
+| Frontend | TypeScript + Vue 3 + Element Plus + Pinia + Vue Router |
+| Backend | TypeScript + Express + Mongoose + BullMQ + Socket.io |
+| Database | MongoDB 7 + Redis 7 |
+| AI | Google Gemini (@google/generative-ai) |
+| Deploy | Docker Compose |
 
 ## API 概览
 
@@ -107,3 +158,9 @@ docker-compose -f docker-compose.yml -f docker-compose.production.yml up -d
 | Queues | `/api/v1/queues` | 7 |
 | Dashboard | `/api/v1/dashboard` | 4 |
 | Audit | `/api/v1/audits` | 1 |
+
+## 测试
+
+```bash
+cd backend && npm test    # 集成测试 (Jest)
+```
