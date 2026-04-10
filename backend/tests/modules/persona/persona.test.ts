@@ -1,22 +1,24 @@
-import { request, setupDB, teardownDB } from '../../helpers.js';
-import User from '../../../src/modules/auth/auth.model.js';
-import Persona from '../../../src/modules/persona/persona.model.js';
+import bcrypt from 'bcryptjs';
+import { request, setupDB, teardownDB, cleanDB, expectSuccess, expectError } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
 
 let adminToken: string, personaId: string;
 
 beforeAll(async () => {
   await setupDB();
-  await User.deleteMany({});
-  await Persona.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({});
+  await prisma.persona.deleteMany({});
 
-  await User.create({ username: 'admin', email: 'admin@test.com', password: 'admin123', role: 'admin' });
+  await prisma.user.create({ data: { username: 'admin', email: 'admin@test.com', passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' } });
   const res = await request.post('/api/v1/auth/login').send({ email: 'admin@test.com', password: 'admin123' });
   adminToken = res.body.data.accessToken;
 });
 
 afterAll(async () => {
-  await User.deleteMany({});
-  await Persona.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({});
+  await prisma.persona.deleteMany({});
   await teardownDB();
 });
 
@@ -40,7 +42,7 @@ describe('Persona CRUD', () => {
     expect(res.status).toBe(201);
     expect(res.body.data.accountId).toBe('BK001');
     expect(res.body.data.bkPassword).toBe('••••••••'); // masked
-    personaId = res.body.data._id;
+    personaId = res.body.data._id || res.body.data.id;
   });
 
   it('GET list returns personas with masked passwords', async () => {

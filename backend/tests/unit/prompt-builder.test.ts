@@ -4,78 +4,82 @@
  */
 
 import { setupDB, teardownDB } from '../helpers.js';
+import { getPrisma } from '../../src/shared/database.js';
 import { buildPrompt, autoAssignTier, resolveToneMode, matchTopicRule } from '../../src/modules/gemini/prompt.builder.js';
-import TopicRule from '../../src/modules/topic-rules/topic-rules.model.js';
-import Config from '../../src/modules/config/config.model.js';
-import Persona from '../../src/modules/persona/persona.model.js';
-import ToneMode from '../../src/modules/tone/tone.model.js';
 
 // Unique prefix to avoid conflicts with parallel tests
 const PREFIX = 'pb-unit';
 
 beforeAll(async () => {
   await setupDB();
+  const prisma = getPrisma();
 
   // Clean up test data
-  await TopicRule.deleteMany({ ruleId: new RegExp(`^${PREFIX}`) });
-  await Config.deleteMany({ key: { $in: ['SENTIMENT_NEGATIVE_THRESHOLD', 'TONE_OVERRIDE_ON_TIER3', 'GEMINI_SYSTEM_PROMPT', 'MEDIUM_POST_MAX_CHARS', 'GEMINI_TASK_TEMPLATE'] } });
-  await Persona.deleteMany({ accountId: new RegExp(`^${PREFIX}`) });
-  await ToneMode.deleteMany({ toneId: new RegExp(`^${PREFIX}`) });
+  await prisma.topicRule.deleteMany({ where: { ruleId: { startsWith: PREFIX } } });
+  await prisma.config.deleteMany({ where: { key: { in: ['SENTIMENT_NEGATIVE_THRESHOLD', 'TONE_OVERRIDE_ON_TIER3', 'GEMINI_SYSTEM_PROMPT', 'MEDIUM_POST_MAX_CHARS', 'GEMINI_TASK_TEMPLATE'] } } });
+  await prisma.persona.deleteMany({ where: { accountId: { startsWith: PREFIX } } });
+  await prisma.toneMode.deleteMany({ where: { toneId: { startsWith: PREFIX } } });
 
   // Seed configs needed by resolveToneMode / buildPrompt
-  await Config.create({ key: 'SENTIMENT_NEGATIVE_THRESHOLD', value: '45', category: 'gemini' });
-  await Config.create({ key: 'TONE_OVERRIDE_ON_TIER3', value: 'EMPATHISE', category: 'gemini' });
-  await Config.create({ key: 'MEDIUM_POST_MAX_CHARS', value: '300', category: 'gemini' });
+  await prisma.config.create({ data: { key: 'SENTIMENT_NEGATIVE_THRESHOLD', value: '45', category: 'gemini' } });
+  await prisma.config.create({ data: { key: 'TONE_OVERRIDE_ON_TIER3', value: 'EMPATHISE', category: 'gemini' } });
+  await prisma.config.create({ data: { key: 'MEDIUM_POST_MAX_CHARS', value: '300', category: 'gemini' } });
 
   // Seed a tone mode used by buildPrompt
-  await ToneMode.create({
-    toneId: `${PREFIX}-CASUAL`,
-    displayName: '輕鬆閒聊',
-    openingStyle: '隨意開頭',
-    sentenceStructure: '口語化短句',
-    whatToAvoid: '不要太正式',
-    suitableForTier3: false,
-    overridePriority: 3,
+  await prisma.toneMode.create({
+    data: {
+      toneId: `${PREFIX}-CASUAL`,
+      displayName: '輕鬆閒聊',
+      openingStyle: '隨意開頭',
+      sentenceStructure: '口語化短句',
+      whatToAvoid: '不要太正式',
+      suitableForTier3: false,
+      overridePriority: 3,
+    },
   });
 
   // Seed a persona with voiceCues and tier3Script
-  await Persona.create({
-    accountId: `${PREFIX}-P001`,
-    username: 'unit-test-mom',
-    archetype: 'pregnant',
-    primaryToneMode: `${PREFIX}-CASUAL`,
-    voiceCues: ['句首常用「唉」', '愛用省略號'],
-    catchphrases: ['大家點睇？'],
-    tier3Script: '保持沉默，不輕易建議。',
-    maxPostsPerDay: 3,
+  await prisma.persona.create({
+    data: {
+      accountId: `${PREFIX}-P001`,
+      username: 'unit-test-mom',
+      archetype: 'pregnant',
+      primaryToneMode: `${PREFIX}-CASUAL`,
+      voiceCues: ['句首常用「唉」', '愛用省略號'],
+      catchphrases: ['大家點睇？'],
+      tier3Script: '保持沉默，不輕易建議。',
+      maxPostsPerDay: 3,
+    },
   });
 
   // Seed a persona WITHOUT voiceCues
-  await Persona.create({
-    accountId: `${PREFIX}-P002`,
-    username: 'unit-test-dad',
-    archetype: 'multi-kid',
-    primaryToneMode: `${PREFIX}-CASUAL`,
-    voiceCues: [],
-    catchphrases: [],
-    tier3Script: null,
-    maxPostsPerDay: 3,
+  await prisma.persona.create({
+    data: {
+      accountId: `${PREFIX}-P002`,
+      username: 'unit-test-dad',
+      archetype: 'multi-kid',
+      primaryToneMode: `${PREFIX}-CASUAL`,
+      voiceCues: [],
+      catchphrases: [],
+      tier3Script: null,
+      maxPostsPerDay: 3,
+    },
   });
 });
 
 afterAll(async () => {
-  await TopicRule.deleteMany({ ruleId: new RegExp(`^${PREFIX}`) });
-  await Config.deleteMany({ key: { $in: ['SENTIMENT_NEGATIVE_THRESHOLD', 'TONE_OVERRIDE_ON_TIER3', 'GEMINI_SYSTEM_PROMPT', 'MEDIUM_POST_MAX_CHARS', 'GEMINI_TASK_TEMPLATE'] } });
-  await Persona.deleteMany({ accountId: new RegExp(`^${PREFIX}`) });
-  await ToneMode.deleteMany({ toneId: new RegExp(`^${PREFIX}`) });
+  const prisma = getPrisma();
+  await prisma.topicRule.deleteMany({ where: { ruleId: { startsWith: PREFIX } } });
+  await prisma.config.deleteMany({ where: { key: { in: ['SENTIMENT_NEGATIVE_THRESHOLD', 'TONE_OVERRIDE_ON_TIER3', 'GEMINI_SYSTEM_PROMPT', 'MEDIUM_POST_MAX_CHARS', 'GEMINI_TASK_TEMPLATE'] } } });
+  await prisma.persona.deleteMany({ where: { accountId: { startsWith: PREFIX } } });
+  await prisma.toneMode.deleteMany({ where: { toneId: { startsWith: PREFIX } } });
   await teardownDB();
 });
 
-// ── autoAssignTier (pure function, no DB) ───────────────────────────────────
+// -- autoAssignTier (pure function, no DB) --
 
 describe('autoAssignTier', () => {
-  it('T1: mixed Tier2+Tier3 keywords → returns Tier3 (highest wins)', () => {
-    // 抑鬱 is Tier3, 情緒 is Tier2 — Tier3 should win
+  it('T1: mixed Tier2+Tier3 keywords -> returns Tier3 (highest wins)', () => {
     const result = autoAssignTier('情緒失控加埋抑鬱真係好辛苦');
     expect(result).toBe(3);
   });
@@ -102,25 +106,31 @@ describe('autoAssignTier', () => {
   });
 });
 
-// ── matchTopicRule (needs DB) ───────────────────────────────────────────────
+// -- matchTopicRule (needs DB) --
 
 describe('matchTopicRule', () => {
   beforeEach(async () => {
-    await TopicRule.deleteMany({ ruleId: new RegExp(`^${PREFIX}-rule`) });
+    const prisma = getPrisma();
+    await prisma.topicRule.deleteMany({ where: { ruleId: { startsWith: `${PREFIX}-rule` } } });
   });
 
-  it('T7: multiple rules matching same topic → returns highest sensitivityTier', async () => {
-    await TopicRule.create({
-      ruleId: `${PREFIX}-rule-low`,
-      topicKeywords: ['試管嬰兒'],
-      sensitivityTier: 1,
-      sentimentTrigger: 'any',
+  it('T7: multiple rules matching same topic -> returns highest sensitivityTier', async () => {
+    const prisma = getPrisma();
+    await prisma.topicRule.create({
+      data: {
+        ruleId: `${PREFIX}-rule-low`,
+        topicKeywords: ['試管嬰兒'],
+        sensitivityTier: 1,
+        sentimentTrigger: 'any',
+      },
     });
-    await TopicRule.create({
-      ruleId: `${PREFIX}-rule-high`,
-      topicKeywords: ['試管嬰兒', 'IVF'],
-      sensitivityTier: 3,
-      sentimentTrigger: 'any',
+    await prisma.topicRule.create({
+      data: {
+        ruleId: `${PREFIX}-rule-high`,
+        topicKeywords: ['試管嬰兒', 'IVF'],
+        sensitivityTier: 3,
+        sentimentTrigger: 'any',
+      },
     });
 
     const result = await matchTopicRule('IVF 試管嬰兒分享');
@@ -129,11 +139,14 @@ describe('matchTopicRule', () => {
   });
 
   it('T8: keyword match is case-insensitive', async () => {
-    await TopicRule.create({
-      ruleId: `${PREFIX}-rule-case`,
-      topicKeywords: ['IVF'],
-      sensitivityTier: 2,
-      sentimentTrigger: 'any',
+    const prisma = getPrisma();
+    await prisma.topicRule.create({
+      data: {
+        ruleId: `${PREFIX}-rule-case`,
+        topicKeywords: ['IVF'],
+        sensitivityTier: 2,
+        sentimentTrigger: 'any',
+      },
     });
 
     const result = await matchTopicRule('ivf 經驗分享');
@@ -142,12 +155,15 @@ describe('matchTopicRule', () => {
   });
 
   it('T9: isActive=false rules are not matched', async () => {
-    await TopicRule.create({
-      ruleId: `${PREFIX}-rule-inactive`,
-      topicKeywords: ['特殊教育'],
-      sensitivityTier: 3,
-      sentimentTrigger: 'any',
-      isActive: false,
+    const prisma = getPrisma();
+    await prisma.topicRule.create({
+      data: {
+        ruleId: `${PREFIX}-rule-inactive`,
+        topicKeywords: ['特殊教育'],
+        sensitivityTier: 3,
+        sentimentTrigger: 'any',
+        isActive: false,
+      },
     });
 
     const result = await matchTopicRule('特殊教育支援計劃');
@@ -155,24 +171,21 @@ describe('matchTopicRule', () => {
   });
 });
 
-// ── resolveToneMode (needs DB for Config) ───────────────────────────────────
+// -- resolveToneMode (needs DB for Config) --
 
 describe('resolveToneMode', () => {
-  it('T10: sentimentScore=45 triggers negative → EMPATHISE', async () => {
-    // threshold is 45, score <= threshold → EMPATHISE
+  it('T10: sentimentScore=45 triggers negative -> EMPATHISE', async () => {
     const tone = await resolveToneMode(null, 'auto', 45, 1);
     expect(tone).toBe('EMPATHISE');
   });
 
   it('T11: sentimentScore=46 does NOT trigger negative sentiment', async () => {
-    // score > threshold → should NOT be EMPATHISE from sentiment rule
     const tone = await resolveToneMode(null, 'auto', 46, 1);
-    // No persona, no explicit tone → falls back to INFO_SHARE
     expect(tone).toBe('INFO_SHARE');
   });
 });
 
-// ── buildPrompt (needs DB) ──────────────────────────────────────────────────
+// -- buildPrompt (needs DB) --
 
 describe('buildPrompt', () => {
   it('T1: persona=null produces no persona block (no 角色 section)', async () => {
@@ -192,21 +205,17 @@ describe('buildPrompt', () => {
       sentimentScore: 70,
       sensitivityTier: 1,
     });
-    // Should have persona block but no voiceCues content
     expect(result.userPrompt).toContain('unit-test-dad');
     expect(result.userPrompt).not.toContain('說話特點：');
   });
 
   it('T3: Tier3 with no tier3Script falls back to toneDoc', async () => {
-    // P002 has no tier3Script, so even at tier3 it should use toneDoc if available
     const result = await buildPrompt({
       persona: `${PREFIX}-P002`,
       topic: '離婚custody問題',
       sentimentScore: 70,
       sensitivityTier: 3,
     });
-    // Since tier3Script is null/falsy, it should NOT show tier3 script block
-    // and resolvedToneMode should be 'EMPATHISE' (tier3 override from config)
     expect(result.resolvedToneMode).toBe('EMPATHISE');
     expect(result.userPrompt).not.toContain('保持沉默，不輕易建議');
   });
@@ -222,21 +231,20 @@ describe('buildPrompt', () => {
   });
 
   it('T5: MEDIUM_POST_MAX_CHARS replaces {max_chars} in task template', async () => {
-    // Config seeded with MEDIUM_POST_MAX_CHARS = '300'
     const result = await buildPrompt({
       persona: `${PREFIX}-P001`,
       topic: '幼稚園面試',
       sentimentScore: 70,
       sensitivityTier: 1,
     });
-    // The task template has {max_chars} replaced with '300'
     expect(result.userPrompt).toContain('300');
     expect(result.userPrompt).not.toContain('{max_chars}');
   });
 
   it('T6: GEMINI_SYSTEM_PROMPT custom value used as systemPrompt', async () => {
+    const prisma = getPrisma();
     // Seed a custom system prompt
-    await Config.create({ key: 'GEMINI_SYSTEM_PROMPT', value: '你係自訂系統提示語。', category: 'gemini' });
+    await prisma.config.create({ data: { key: 'GEMINI_SYSTEM_PROMPT', value: '你係自訂系統提示語。', category: 'gemini' } });
 
     const result = await buildPrompt({
       persona: `${PREFIX}-P001`,
@@ -246,6 +254,6 @@ describe('buildPrompt', () => {
     });
     expect(result.systemPrompt).toBe('你係自訂系統提示語。');
 
-    await Config.deleteOne({ key: 'GEMINI_SYSTEM_PROMPT' });
+    await prisma.config.deleteMany({ where: { key: 'GEMINI_SYSTEM_PROMPT' } });
   });
 });

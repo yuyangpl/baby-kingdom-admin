@@ -1,22 +1,24 @@
-import { request, setupDB, teardownDB } from '../../helpers.js';
-import User from '../../../src/modules/auth/auth.model.js';
-import TopicRule from '../../../src/modules/topic-rules/topic-rules.model.js';
+import bcrypt from 'bcryptjs';
+import { request, setupDB, teardownDB, cleanDB, expectSuccess, expectError } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
 
 let adminToken: string, ruleId: string;
 
 beforeAll(async () => {
   await setupDB();
-  await User.deleteMany({});
-  await TopicRule.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({});
+  await prisma.topicRule.deleteMany({});
 
-  await User.create({ username: 'admin', email: 'admin@test.com', password: 'admin123', role: 'admin' });
+  await prisma.user.create({ data: { username: 'admin', email: 'admin@test.com', passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' } });
   const res = await request.post('/api/v1/auth/login').send({ email: 'admin@test.com', password: 'admin123' });
   adminToken = res.body.data.accessToken;
 });
 
 afterAll(async () => {
-  await User.deleteMany({});
-  await TopicRule.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({});
+  await prisma.topicRule.deleteMany({});
   await teardownDB();
 });
 
@@ -40,7 +42,7 @@ describe('TopicRule CRUD', () => {
     expect(res.status).toBe(201);
     expect(res.body.data.ruleId).toBe('RULE-001');
     expect(res.body.data.topicKeywords).toHaveLength(3);
-    ruleId = res.body.data._id;
+    ruleId = res.body.data._id || res.body.data.id;
   });
 
   it('GET list returns rules', async () => {

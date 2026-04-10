@@ -1,50 +1,46 @@
-import { request, setupDB, teardownDB } from '../../helpers.js';
-import Feed from '../../../src/modules/feed/feed.model.js';
-import Persona from '../../../src/modules/persona/persona.model.js';
-import { ForumCategory, ForumBoard } from '../../../src/modules/forum/forum.model.js';
-import Config from '../../../src/modules/config/config.model.js';
-import User from '../../../src/modules/auth/auth.model.js';
+import { request, setupDB, teardownDB, cleanDB } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
+import bcrypt from 'bcryptjs';
 
 const ADMIN_EMAIL = 'scanner-test@test.local';
 let adminToken: string;
 
 beforeAll(async () => {
   await setupDB();
-  const loginRes = await request.post('/api/v1/auth/login').send({ email: ADMIN_EMAIL, password: 'admin123' });
-  if (loginRes.body.data?.accessToken) {
-    adminToken = loginRes.body.data.accessToken;
-  } else {
-    await User.create({ username: 'scantest', email: ADMIN_EMAIL, password: 'admin123', role: 'admin' });
-    const res = await request.post('/api/v1/auth/login').send({ email: ADMIN_EMAIL, password: 'admin123' });
-    adminToken = res.body.data.accessToken;
-  }
+  const prisma = getPrisma();
+  await cleanDB();
+
+  await prisma.user.create({ data: { username: 'scantest', email: ADMIN_EMAIL, passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' } });
+  const res = await request.post('/api/v1/auth/login').send({ email: ADMIN_EMAIL, password: 'admin123' });
+  adminToken = res.body.data.accessToken;
 
   // Ensure test persona exists
-  await Persona.findOneAndUpdate(
-    { accountId: 'BK001' },
-    { accountId: 'BK001', username: 'testmom', archetype: 'pregnant', primaryToneMode: 'CASUAL', isActive: true, maxPostsPerDay: 10, postsToday: 0 },
-    { upsert: true },
-  );
+  await prisma.persona.create({
+    data: {
+      accountId: 'BK001', username: 'testmom', archetype: 'pregnant',
+      primaryToneMode: 'CASUAL', isActive: true, maxPostsPerDay: 10, postsToday: 0,
+    },
+  });
 
   // Ensure test board exists with scraping enabled
-  let cat = await ForumCategory.findOne({ name: 'Test Category' });
-  if (!cat) cat = await ForumCategory.create({ name: 'Test Category' });
-  await ForumBoard.findOneAndUpdate(
-    { fid: 162 },
-    { fid: 162, name: '自由講場', categoryId: cat._id, enableScraping: true, isActive: true, replyThreshold: { min: 0, max: 40 }, scanInterval: 30 },
-    { upsert: true },
-  );
+  const cat = await prisma.forumCategory.create({ data: { name: 'Test Category', sortOrder: 0 } });
+  await prisma.forumBoard.create({
+    data: {
+      fid: 162, name: '\u81EA\u7531\u8B1B\u5834', categoryId: cat.id,
+      enableScraping: true, isActive: true, replyThresholdMin: 0, replyThresholdMax: 40, scanInterval: 30,
+    },
+  });
 });
 
 afterAll(async () => {
-  await Feed.deleteMany({ source: { $in: ['scanner'] } });
-  await User.findOneAndDelete({ email: ADMIN_EMAIL });
+  await cleanDB();
   await teardownDB();
 });
 
 describe('Scanner API', () => {
   it('POST /scanner/trigger returns error when no boards have scraping enabled', async () => {
-    await ForumBoard.updateMany({}, { enableScraping: false });
+    const prisma = getPrisma();
+    await prisma.forumBoard.updateMany({ data: { enableScraping: false } });
 
     const res = await request
       .post('/api/v1/scanner/trigger')
@@ -53,7 +49,7 @@ describe('Scanner API', () => {
     expect(res.status).toBe(422);
 
     // Restore
-    await ForumBoard.updateMany({ fid: 162 }, { enableScraping: true });
+    await prisma.forumBoard.updateMany({ where: { fid: 162 }, data: { enableScraping: true } });
   });
 
   it('POST /scanner/trigger queues scan jobs for active boards', async () => {
@@ -85,12 +81,11 @@ describe('Scanner service — scanBoard', () => {
   });
 
   afterEach(async () => {
-    await Config.updateOne({ key: 'MAX_PENDING_QUEUE' }, { value: '100' });
-    await Config.updateOne({ key: 'SCANNER_RELEVANCE_THRESHOLD' }, { value: '35' });
-    await Config.updateOne({ key: 'SCANNER_TIMEOUT_MINUTES' }, { value: '5' });
-    await ForumBoard.updateMany({ fid: 162 }, { enableScraping: true });
-    await Persona.updateMany({}, { postsToday: 0 });
-    await Feed.deleteMany({ feedId: { $regex: /^FQ-QFULL-/ } });
+    const prisma = getPrisma();
+    await prisma.config.deleteMany({ where: { key: { in: ['MAX_PENDING_QUEUE', 'SCANNER_RELEVANCE_THRESHOLD', 'SCANNER_TIMEOUT_MINUTES'] } } });
+    await prisma.forumBoard.updateMany({ where: { fid: 162 }, data: { enableScraping: true } });
+    await prisma.persona.updateMany({ data: { postsToday: 0 } });
+    await prisma.feed.deleteMany({ where: { feedId: { startsWith: 'FQ-QFULL-' } } });
   });
 
   it('scans board and creates feeds with mock data', async () => {
@@ -106,13 +101,15 @@ describe('Scanner service — scanBoard', () => {
   });
 
   it('skips when pending queue is full', async () => {
+    const prisma = getPrisma();
     const dummyFeeds = Array.from({ length: 100 }, (_, i) => ({
       feedId: `FQ-QFULL-${String(i).padStart(3, '0')}`,
       type: 'reply', status: 'pending', source: ['custom'],
       threadTid: 9990000 + i, threadFid: 162,
       personaId: 'BK001', draftContent: 'dummy', charCount: 5,
     }));
-    await Feed.insertMany(dummyFeeds);
+    // Prisma doesn't have insertMany — use createMany
+    await prisma.feed.createMany({ data: dummyFeeds });
 
     const stats = await scanBoard(162);
     expect(stats.skipped.queueFull).toBeGreaterThanOrEqual(1);
@@ -120,8 +117,9 @@ describe('Scanner service — scanBoard', () => {
   });
 
   it('returns 0 feeds when persona daily limit reached', async () => {
-    await Persona.updateMany({ accountId: 'BK001' }, { postsToday: 10, maxPostsPerDay: 10 });
-    await Feed.deleteMany({ source: { $in: ['scanner'] } });
+    const prisma = getPrisma();
+    await prisma.persona.updateMany({ where: { accountId: 'BK001' }, data: { postsToday: 10, maxPostsPerDay: 10 } });
+    await prisma.feed.deleteMany({ where: { source: { has: 'scanner' } } });
 
     const stats = await scanBoard(162);
     expect(stats.skipped.noPersona).toBeGreaterThanOrEqual(0);
@@ -129,7 +127,12 @@ describe('Scanner service — scanBoard', () => {
   });
 
   it('interrupts on timeout (SCANNER_TIMEOUT_MINUTES=0)', async () => {
-    await Config.updateOne({ key: 'SCANNER_TIMEOUT_MINUTES' }, { value: '0' });
+    const prisma = getPrisma();
+    await prisma.config.upsert({
+      where: { key: 'SCANNER_TIMEOUT_MINUTES' },
+      update: { value: '0' },
+      create: { key: 'SCANNER_TIMEOUT_MINUTES', value: '0', category: 'scanner' },
+    });
 
     const stats = await scanBoard(162);
     // With mock data, processing may complete before timeout check kicks in

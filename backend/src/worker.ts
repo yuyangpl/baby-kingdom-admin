@@ -4,7 +4,7 @@ import { Worker, Job } from 'bullmq';
 import cron from 'node-cron';
 import { connectDB, disconnectDB } from './shared/database.js';
 import { getRedis, connectRedis, disconnectRedis } from './shared/redis.js';
-import { initQueues, getQueue, recordJob } from './modules/queue/queue.service.js';
+import { initQueues, addToQueue, recordJob } from './modules/queue/queue.service.js';
 import { scanBoard, getActiveBoards, getBoardsDueForScan } from './modules/scanner/scanner.service.js';
 import { pullTrends } from './modules/trends/trends.service.js';
 import { postFeed } from './modules/poster/poster.service.js';
@@ -210,11 +210,9 @@ async function start(): Promise<void> {
 
     // Scanner: check every 5 min which boards are due for scan (based on board.scanInterval)
     intervals.push(setInterval(async () => {
-      const q = getQueue('scanner');
-      if (!q || await q.isPaused()) return;
       const boards = await getBoardsDueForScan();
       for (const board of boards) {
-        await q.add(`cron-scan-${board.fid}`, { fid: board.fid, boardName: board.name, triggeredBy: 'cron' });
+        await addToQueue('scanner', { fid: board.fid, boardName: board.name, triggeredBy: 'cron' });
       }
       if (boards.length > 0) {
         logger.info({ count: boards.length }, 'Cron: scanner jobs queued for due boards');
@@ -225,40 +223,28 @@ async function start(): Promise<void> {
     const trendsIntervalMin = parseInt(await configService.getValue('TREND_PULL_INTERVAL_MIN') || '60', 10);
     const trendsIntervalMs = trendsIntervalMin * 60 * 1000;
     intervals.push(setInterval(async () => {
-      const q = getQueue('trends');
-      if (q && !(await q.isPaused())) {
-        await q.add('cron-trends', { triggeredBy: 'cron' });
-        logger.info('Cron: trends job queued');
-      }
+      await addToQueue('trends', { triggeredBy: 'cron' });
+      logger.info('Cron: trends job queued');
     }, trendsIntervalMs));
 
     // Daily reset: midnight HKT (UTC+8 = 16:00 UTC)
     cronTasks.push(cron.schedule('0 16 * * *', async () => {
-      const q = getQueue('daily-reset');
-      if (q) {
-        await q.add('cron-daily-reset', { triggeredBy: 'cron' });
-        logger.info('Cron: daily-reset job queued');
-      }
+      await addToQueue('daily-reset', { triggeredBy: 'cron' });
+      logger.info('Cron: daily-reset job queued');
     }));
 
     // Stats aggregator: every hour at :05
     cronTasks.push(cron.schedule('5 * * * *', async () => {
-      const q = getQueue('stats-aggregator');
-      if (q) {
-        await q.add('cron-stats', { triggeredBy: 'cron' });
-        logger.info('Cron: stats-aggregator job queued');
-      }
+      await addToQueue('stats-aggregator', { triggeredBy: 'cron' });
+      logger.info('Cron: stats-aggregator job queued');
     }));
 
     // Google Trends: configurable interval (default 30 minutes)
     const gtrendsInterval = parseInt(await configService.getValue('GOOGLE_TRENDS_PULL_INTERVAL') || '30', 10);
     const gtrendsCron = `*/${gtrendsInterval} * * * *`;
     cronTasks.push(cron.schedule(gtrendsCron, async () => {
-      const q = getQueue('google-trends');
-      if (q && !(await q.isPaused())) {
-        await q.add('cron-gtrends', { triggeredBy: 'cron' });
-        logger.info('Cron: google-trends job queued');
-      }
+      await addToQueue('google-trends', { triggeredBy: 'cron' });
+      logger.info('Cron: google-trends job queued');
     }));
 
     // Health monitor: every 5 minutes

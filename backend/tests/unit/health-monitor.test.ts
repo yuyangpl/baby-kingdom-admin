@@ -1,6 +1,6 @@
 import { setupDB, teardownDB } from '../helpers.js';
+import { getPrisma } from '../../src/shared/database.js';
 import { getRedis } from '../../src/shared/redis.js';
-import Config from '../../src/modules/config/config.model.js';
 
 const { checkBkForum, checkMediaLens, checkGemini, checkGoogleTrends } = await import(
   '../../src/shared/health-monitor.js'
@@ -8,15 +8,21 @@ const { checkBkForum, checkMediaLens, checkGemini, checkGoogleTrends } = await i
 
 beforeAll(async () => {
   await setupDB();
+  const prisma = getPrisma();
   // Clean test configs to ensure not_configured states
-  await Config.deleteMany({
-    key: { $in: ['BK_BASE_URL', 'MEDIALENS_JWT_TOKEN', 'GEMINI_API_KEY', 'GOOGLE_TRENDS_BASE_URL', 'GOOGLE_TRENDS_ENABLED'] },
+  await prisma.config.deleteMany({
+    where: {
+      key: { in: ['BK_BASE_URL', 'MEDIALENS_JWT_TOKEN', 'GEMINI_API_KEY', 'GOOGLE_TRENDS_BASE_URL', 'GOOGLE_TRENDS_ENABLED'] },
+    },
   });
 });
 
 afterAll(async () => {
-  await Config.deleteMany({
-    key: { $in: ['BK_BASE_URL', 'MEDIALENS_JWT_TOKEN', 'GEMINI_API_KEY', 'GOOGLE_TRENDS_BASE_URL', 'GOOGLE_TRENDS_ENABLED'] },
+  const prisma = getPrisma();
+  await prisma.config.deleteMany({
+    where: {
+      key: { in: ['BK_BASE_URL', 'MEDIALENS_JWT_TOKEN', 'GEMINI_API_KEY', 'GOOGLE_TRENDS_BASE_URL', 'GOOGLE_TRENDS_ENABLED'] },
+    },
   });
   await teardownDB();
 });
@@ -30,7 +36,8 @@ describe('checkBkForum', () => {
 
 describe('checkMediaLens', () => {
   afterEach(async () => {
-    await Config.deleteMany({ key: { $in: ['MEDIALENS_JWT_TOKEN', 'MEDIALENS_JWT_TOKEN_EXPIRY'] } });
+    const prisma = getPrisma();
+    await prisma.config.deleteMany({ where: { key: { in: ['MEDIALENS_JWT_TOKEN', 'MEDIALENS_JWT_TOKEN_EXPIRY'] } } });
   });
 
   it('returns not_configured when no JWT token', async () => {
@@ -39,23 +46,26 @@ describe('checkMediaLens', () => {
   });
 
   it('returns expired when expiry is in the past', async () => {
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' });
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() - 3600000).toISOString(), category: 'medialens' });
+    const prisma = getPrisma();
+    await prisma.config.create({ data: { key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' } });
+    await prisma.config.create({ data: { key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() - 3600000).toISOString(), category: 'medialens' } });
     const result = await checkMediaLens();
     expect(result.status).toBe('expired');
   });
 
   it('returns expiring_soon when expiry is within 24 hours', async () => {
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' });
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() + 12 * 3600000).toISOString(), category: 'medialens' });
+    const prisma = getPrisma();
+    await prisma.config.create({ data: { key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' } });
+    await prisma.config.create({ data: { key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() + 12 * 3600000).toISOString(), category: 'medialens' } });
     const result = await checkMediaLens();
     expect(result.status).toBe('expiring_soon');
     expect(result.detail).toMatch(/expires in \d+h/);
   });
 
   it('returns valid when expiry is more than 24 hours away', async () => {
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' });
-    await Config.create({ key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() + 5 * 24 * 3600000).toISOString(), category: 'medialens' });
+    const prisma = getPrisma();
+    await prisma.config.create({ data: { key: 'MEDIALENS_JWT_TOKEN', value: 'fake-token', category: 'medialens' } });
+    await prisma.config.create({ data: { key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: new Date(Date.now() + 5 * 24 * 3600000).toISOString(), category: 'medialens' } });
     const result = await checkMediaLens();
     expect(result.status).toBe('valid');
     expect(result.detail).toMatch(/[45]d/);

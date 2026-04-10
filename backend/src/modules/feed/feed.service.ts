@@ -1,26 +1,24 @@
-import Feed from './feed.model.js';
-import Persona from '../persona/persona.model.js';
-import { ForumBoard } from '../forum/forum.model.js';
+import { getPrisma } from '../../shared/database.js';
 import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { checkQuality } from '../gemini/quality-guard.js';
 import * as configService from '../config/config.service.js';
 import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
-import { emitToRoom } from '../../shared/socket.js';
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 import xss from 'xss';
 
 const CLAIM_EXPIRY_MINUTES = 10;
 
-/** Find feed by MongoDB _id or custom feedId field */
+/** Find feed by UUID id or custom feedId field */
 async function findFeed(id: string) {
-  // Try _id first (24-char hex), then fall back to feedId field
-  if (/^[0-9a-fA-F]{24}$/.test(id)) {
-    const feed = await Feed.findById(id);
+  const prisma = getPrisma();
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(id)) {
+    const feed = await prisma.feed.findUnique({ where: { id } });
     if (feed) return feed;
   }
-  return Feed.findOne({ feedId: id });
+  return prisma.feed.findUnique({ where: { feedId: id } });
 }
 
 interface FeedListParams {
@@ -34,25 +32,31 @@ interface FeedListParams {
 }
 
 export async function list({ status, source, threadFid, personaId, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
-  const filter: Record<string, any> = {};
-  if (status) filter.status = status;
-  if (source) filter.source = { $in: [source] };
-  if (threadFid) filter.threadFid = parseInt(String(threadFid), 10);
-  if (personaId) filter.personaId = personaId;
+  const prisma = getPrisma();
+  const where: Record<string, any> = {};
+  if (status) where.status = status;
+  if (source) where.source = { has: source };
+  if (threadFid) where.threadFid = parseInt(String(threadFid), 10);
+  if (personaId) where.personaId = personaId;
 
   limit = Math.min(parseInt(String(limit)) || 20, 200);
   const skip = (page - 1) * limit;
+
+  const desc = sort.startsWith('-');
+  const field = desc ? sort.slice(1) : sort;
+  const orderBy = { [field]: desc ? 'desc' as const : 'asc' as const };
+
   const [data, total] = await Promise.all([
-    Feed.find(filter).sort(sort).skip(skip).limit(limit)
-      .select('-threadContent'), // exclude large field from list
-    Feed.countDocuments(filter),
+    prisma.feed.findMany({ where, orderBy, skip, take: limit }),
+    prisma.feed.count({ where }),
   ]);
 
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
 
 export async function getById(id: string) {
-  const feed = await Feed.findById(id);
+  const prisma = getPrisma();
+  const feed = await prisma.feed.findUnique({ where: { id } });
   if (!feed) throw new NotFoundError('Feed');
   return feed;
 }
@@ -63,34 +67,33 @@ export async function claim(feedId: string, userId: string) {
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only claim pending feeds');
 
-  // Check if already claimed by someone else (not expired)
-  if (feed.claimedBy && feed.claimedBy.toString() !== userId) {
+  if (feed.claimedBy && feed.claimedBy !== userId) {
     const expiresAt = new Date(feed.claimedAt!.getTime() + CLAIM_EXPIRY_MINUTES * 60 * 1000);
     if (expiresAt > new Date()) {
       throw new ConflictError('Feed is claimed by another user');
     }
   }
 
-  feed.claimedBy = userId as any;
-  feed.claimedAt = new Date();
-  await feed.save();
-  emitToRoom('room:feed', 'feed:claimed', { feedId: feed._id, claimedBy: userId });
-  return feed;
+  const prisma = getPrisma();
+  return prisma.feed.update({
+    where: { id: feed.id },
+    data: { claimedBy: userId, claimedAt: new Date() },
+  });
 }
 
 export async function unclaim(feedId: string, userId: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
-  if (feed.claimedBy?.toString() !== userId) {
+  if (feed.claimedBy !== userId) {
     throw new BusinessError('You did not claim this feed');
   }
 
-  feed.claimedBy = null;
-  feed.claimedAt = null as any;
-  await feed.save();
-  emitToRoom('room:feed', 'feed:unclaimed', { feedId: feed._id });
-  return feed;
+  const prisma = getPrisma();
+  return prisma.feed.update({
+    where: { id: feed.id },
+    data: { claimedBy: null, claimedAt: null },
+  });
 }
 
 // --- Approve / Reject ---
@@ -99,41 +102,41 @@ export async function approve(feedId: string, userId: string, ip: string) {
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only approve pending feeds');
 
-  feed.status = 'approved';
-  feed.reviewedBy = userId as any;
-  feed.reviewedAt = new Date();
-  feed.claimedBy = null;
-  feed.claimedAt = null as any;
-  await feed.save();
+  const prisma = getPrisma();
+  const updated = await prisma.feed.update({
+    where: { id: feed.id },
+    data: {
+      status: 'approved',
+      reviewedBy: userId,
+      reviewedAt: new Date(),
+      claimedBy: null,
+      claimedAt: null,
+    },
+  });
 
   await auditService.log({
     operator: userId, eventType: 'FEED_APPROVED', module: 'feed',
-    feedId: feed.feedId, targetId: feed._id.toString(), ip,
+    feedId: feed.feedId, targetId: feed.id, ip,
     actionDetail: `Approved feed ${feed.feedId}`,
   });
 
-  emitToRoom('room:feed', 'feed:statusChanged', { feedId: feed._id, status: 'approved' });
-
-  // Enqueue to poster queue for posting (auto or manual)
+  // Enqueue to poster queue
   try {
-    const { getQueue } = await import('../queue/queue.service.js');
-    const posterQueue = getQueue('poster');
-    if (posterQueue) {
-      await posterQueue.add(`post-${feed.feedId}`, {
-        feedId: feed._id.toString(),
-        feedIdShort: feed.feedId,
-        personaId: feed.personaId,
-        boardFid: feed.threadFid,
-        postType: feed.postType,
-        triggeredBy: 'approve',
-      });
-      logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Feed enqueued to poster after approval');
-    }
+    const { addToQueue } = await import('../queue/queue.service.js');
+    await addToQueue('poster', {
+      feedId: feed.id,
+      feedIdShort: feed.feedId,
+      personaId: feed.personaId,
+      boardFid: feed.threadFid,
+      postType: feed.postType,
+      triggeredBy: 'approve',
+    });
+    logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Feed enqueued to poster after approval');
   } catch (err) {
     logger.error({ err, feedId: feed.feedId }, 'Failed to enqueue to poster');
   }
 
-  return feed;
+  return updated;
 }
 
 export async function reject(feedId: string, userId: string, notes: string | undefined, ip: string) {
@@ -141,22 +144,26 @@ export async function reject(feedId: string, userId: string, notes: string | und
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
 
-  feed.status = 'rejected';
-  feed.reviewedBy = userId as any;
-  feed.reviewedAt = new Date();
-  feed.adminNotes = notes || '';
-  feed.claimedBy = null;
-  feed.claimedAt = null as any;
-  await feed.save();
+  const prisma = getPrisma();
+  const updated = await prisma.feed.update({
+    where: { id: feed.id },
+    data: {
+      status: 'rejected',
+      reviewedBy: userId,
+      reviewedAt: new Date(),
+      adminNotes: notes || '',
+      claimedBy: null,
+      claimedAt: null,
+    },
+  });
 
   await auditService.log({
     operator: userId, eventType: 'FEED_REJECTED', module: 'feed',
-    feedId: feed.feedId, targetId: feed._id.toString(), ip,
+    feedId: feed.feedId, targetId: feed.id, ip,
     actionDetail: `Rejected feed ${feed.feedId}: ${notes || ''}`,
   });
 
-  emitToRoom('room:feed', 'feed:statusChanged', { feedId: feed._id, status: 'rejected' });
-  return feed;
+  return updated;
 }
 
 // --- Edit content ---
@@ -164,29 +171,33 @@ export async function updateContent(feedId: string, updates: { content: string; 
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
+  const prisma = getPrisma();
   const cleanContent = xss(updates.content);
-  feed.finalContent = cleanContent;
-  feed.adminEdit = true;
-  feed.charCount = cleanContent.length;
-  if (updates.toneMode) feed.toneMode = updates.toneMode;
+  const data: Record<string, any> = {
+    finalContent: cleanContent,
+    adminEdit: true,
+    charCount: cleanContent.length,
+  };
+  if (updates.toneMode) data.toneMode = updates.toneMode;
   if (updates.personaId) {
-    const persona = await Persona.findOne({ accountId: updates.personaId });
+    const persona = await prisma.persona.findFirst({ where: { accountId: updates.personaId } });
     if (persona) {
-      feed.personaId = persona.accountId;
-      feed.bkUsername = persona.username;
-      feed.archetype = persona.archetype;
+      data.personaId = persona.accountId;
+      data.bkUsername = persona.username;
+      data.archetype = persona.archetype;
     }
   }
-  if (updates.adminNotes !== undefined) feed.adminNotes = updates.adminNotes;
-  await feed.save();
+  if (updates.adminNotes !== undefined) data.adminNotes = updates.adminNotes;
+
+  const updated = await prisma.feed.update({ where: { id: feed.id }, data });
 
   await auditService.log({
     operator: userId, eventType: 'FEED_EDITED', module: 'feed',
-    feedId: feed.feedId, targetId: feed._id.toString(), ip,
+    feedId: feed.feedId, targetId: feed.id, ip,
     actionDetail: `Content edited by admin${updates.toneMode ? `, tone: ${updates.toneMode}` : ''}${updates.personaId ? `, persona: ${updates.personaId}` : ''}`,
   });
 
-  return feed;
+  return updated;
 }
 
 // --- Regenerate ---
@@ -194,15 +205,15 @@ export async function regenerate(feedId: string, { toneMode, personaAccountId }:
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
-  const persona = personaAccountId || feed.personaId;
+  const prisma = getPrisma();
+  const personaAcct = personaAccountId || feed.personaId;
   const tone = toneMode || feed.toneMode;
-
   const tier = feed.sensitivityTier ? parseInt(feed.sensitivityTier.match(/\d/)?.[0] || '1', 10) : 1;
 
   const promptResult = await buildPrompt({
-    persona: persona!,
-    toneMode: tone,
-    topic: feed.threadSubject,
+    persona: personaAcct!,
+    toneMode: tone ?? undefined,
+    topic: feed.threadSubject ?? undefined,
     summary: feed.threadContent?.substring(0, 200),
     sensitivityTier: tier,
   });
@@ -210,28 +221,32 @@ export async function regenerate(feedId: string, { toneMode, personaAccountId }:
   const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
   const newContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
 
-  feed.draftContent = newContent;
-  feed.finalContent = null as any;
-  feed.adminEdit = false;
-  feed.charCount = newContent.length;
-  feed.toneMode = promptResult.resolvedToneMode;
+  const data: Record<string, any> = {
+    draftContent: newContent,
+    finalContent: null,
+    adminEdit: false,
+    charCount: newContent.length,
+    toneMode: promptResult.resolvedToneMode,
+  };
+
   if (personaAccountId) {
-    const personaDoc = await Persona.findOne({ accountId: personaAccountId });
+    const personaDoc = await prisma.persona.findFirst({ where: { accountId: personaAccountId } });
     if (personaDoc) {
-      feed.personaId = personaDoc.accountId;
-      feed.bkUsername = personaDoc.username;
-      feed.archetype = personaDoc.archetype;
+      data.personaId = personaDoc.accountId;
+      data.bkUsername = personaDoc.username;
+      data.archetype = personaDoc.archetype;
     }
   }
-  await feed.save();
+
+  const updated = await prisma.feed.update({ where: { id: feed.id }, data });
 
   await auditService.log({
     operator: userId, eventType: 'FEED_GENERATED', module: 'feed',
-    feedId: feed.feedId, targetId: feed._id.toString(), ip,
-    actionDetail: `Regenerated with tone=${promptResult.resolvedToneMode}, persona=${persona}`,
+    feedId: feed.feedId, targetId: feed.id, ip,
+    actionDetail: `Regenerated with tone=${promptResult.resolvedToneMode}, persona=${personaAcct}`,
   });
 
-  return feed;
+  return updated;
 }
 
 // --- Custom Generate ---
@@ -244,9 +259,10 @@ interface CustomGenerateParams {
 }
 
 export async function customGenerate({ topic, personaAccountId, toneMode, postType, targetFid }: CustomGenerateParams, userId: string, ip: string) {
+  const prisma = getPrisma();
   const persona = personaAccountId
-    ? await Persona.findOne({ accountId: personaAccountId })
-    : await Persona.findOne({ isActive: true });
+    ? await prisma.persona.findFirst({ where: { accountId: personaAccountId } })
+    : await prisma.persona.findFirst({ where: { isActive: true } });
 
   if (!persona) throw new BusinessError('No available persona');
 
@@ -263,7 +279,6 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
   const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
   const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
 
-  // Parse subject + content for new posts
   let subject = '';
   let draftContent: string;
   if (postType === 'new-post') {
@@ -282,29 +297,31 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
 
   const quality = checkQuality(draftContent, persona);
 
-  const feedId = generateFeedId();
-  const feed = await Feed.create({
-    feedId,
-    type: postType === 'new-post' ? 'thread' : 'reply',
-    status: 'pending',
-    source: ['custom'],
-    subject,
-    threadSubject: subject || topic,
-    threadFid: targetFid,
-    personaId: persona.accountId,
-    bkUsername: persona.username,
-    archetype: persona.archetype,
-    toneMode: promptResult.resolvedToneMode,
-    sensitivityTier: `Tier ${tier}`,
-    postType: postType || 'reply',
-    draftContent,
-    charCount: draftContent.length,
-    qualityWarnings: quality.warnings,
+  const feedIdStr = generateFeedId();
+  const feed = await prisma.feed.create({
+    data: {
+      feedId: feedIdStr,
+      type: postType === 'new-post' ? 'thread' : 'reply',
+      status: 'pending',
+      source: ['custom'],
+      subject,
+      threadSubject: subject || topic,
+      threadFid: targetFid,
+      personaId: persona.accountId,
+      bkUsername: persona.username,
+      archetype: persona.archetype,
+      toneMode: promptResult.resolvedToneMode,
+      sensitivityTier: `Tier ${tier}`,
+      postType: postType || 'reply',
+      draftContent,
+      charCount: draftContent.length,
+      qualityWarnings: quality.warnings,
+    },
   });
 
   await auditService.log({
     operator: userId, eventType: 'FEED_GENERATED', module: 'feed',
-    feedId, ip, actionDetail: `Custom generated: ${topic}`,
+    feedId: feedIdStr, ip, actionDetail: `Custom generated: ${topic}`,
   });
 
   return feed;
@@ -344,20 +361,14 @@ function generateFeedId(): string {
   return `FQ-${ts}-${rand}`;
 }
 
-// --- Trend → Feed Generation (ported from GAS FeedGenerator.js) ---
+// --- Trend → Feed Generation ---
 
-/**
- * Select the best persona for a trend topic.
- * Priority: rule.priorityAccountIds → random from available.
- * Filters: isActive, postsToday < maxPostsPerDay, topicBlacklist.
- */
 async function selectPersonaForTrend(topicLabel: string, rule: any) {
-  const allPersonas = await Persona.find({ isActive: true });
+  const prisma = getPrisma();
+  const allPersonas = await prisma.persona.findMany({ where: { isActive: true } });
 
   const available = allPersonas.filter((p) => {
-    // Filter personas at daily limit
     if ((p.postsToday ?? 0) >= (p.maxPostsPerDay ?? 3)) return false;
-    // Filter personas with topic in blacklist
     if (p.topicBlacklist?.some((bl: string) =>
       bl && topicLabel.toLowerCase().includes(bl.toLowerCase())
     )) return false;
@@ -366,7 +377,6 @@ async function selectPersonaForTrend(topicLabel: string, rule: any) {
 
   if (available.length === 0) return null;
 
-  // 1. Try rule priority accounts first
   if (rule?.priorityAccountIds?.length) {
     for (const accountId of rule.priorityAccountIds) {
       const match = available.find((p) => p.accountId === accountId.trim());
@@ -374,46 +384,26 @@ async function selectPersonaForTrend(topicLabel: string, rule: any) {
     }
   }
 
-  // 2. Random from available
   const shuffled = available.sort(() => Math.random() - 0.5);
   return shuffled[0];
 }
 
-/**
- * Resolve post type from rule preference.
- * "new-post" | "reply" | "any" (any = 40% new post, 60% reply)
- */
-function resolvePostType(rule: any): string {
-  if (!rule) return 'reply';
-  const pref = rule.postTypePreference || 'any';
-  if (pref === 'new-post') return 'new-post';
-  if (pref === 'reply') return 'reply';
-  return Math.random() < 0.4 ? 'new-post' : 'reply';
-}
-
-/**
- * Generate a Feed draft from a Trend record.
- * Called by pullTrends after storing new trends.
- * Mirrors GAS FeedGenerator._generateFeedForTrend().
- */
 export async function generateFromTrend(trend: any): Promise<{ feedId: string; toneMode: string } | null> {
   try {
+    const prisma = getPrisma();
     const tier = trend.sensitivityTier ?? autoAssignTier(trend.topicLabel);
     const { matchTopicRule } = await import('../gemini/prompt.builder.js');
     const rule = await matchTopicRule(trend.topicLabel);
 
-    // 1. Select persona
     const persona = await selectPersonaForTrend(trend.topicLabel, rule);
     if (!persona) {
       logger.info({ topic: trend.topicLabel }, 'generateFromTrend: no eligible persona');
       return null;
     }
 
-    // 2. Trends always create new threads
     const postType = 'new-post' as const;
     const defaultFid = parseInt(await configService.getValue('DEFAULT_TREND_FID') || '162', 10);
 
-    // 3. Build prompt
     const promptResult = await buildPrompt({
       persona: persona.accountId,
       topic: trend.topicLabel,
@@ -423,12 +413,10 @@ export async function generateFromTrend(trend: any): Promise<{ feedId: string; t
       postType,
     });
 
-    // 4. Call Gemini
     const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
     const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
     if (!rawContent) return null;
 
-    // 4b. Parse subject + content for new thread
     let subject = '';
     let draftContent: string;
     const subjectMatch = rawContent.match(/標題[：:]\s*(.+)/);
@@ -444,37 +432,34 @@ export async function generateFromTrend(trend: any): Promise<{ feedId: string; t
 
     const quality = checkQuality(draftContent, persona);
 
-    // 5. Create Feed
     const feedId = generateFeedId();
-    const feed = await Feed.create({
-      feedId,
-      type: 'thread',
-      status: 'pending',
-      source: ['trends'],
-      threadFid: defaultFid,
-      trendSource: trend.source,
-      trendTopic: trend.topicLabel,
-      trendSummary: trend.summary || '',
-      trendSentiment: trend.sentimentScore,
-      trendEngagement: trend.engagements,
-      pullTime: trend.createdAt || new Date(),
-      personaId: persona.accountId,
-      bkUsername: persona.username,
-      archetype: persona.archetype,
-      toneMode: promptResult.resolvedToneMode,
-      sensitivityTier: `Tier ${tier}`,
-      postType,
-      subject,
-      threadSubject: subject,
-      draftContent,
-      charCount: draftContent.length,
-      qualityWarnings: quality.warnings,
+    await prisma.feed.create({
+      data: {
+        feedId,
+        type: 'thread',
+        status: 'pending',
+        source: ['trends'],
+        threadFid: defaultFid,
+        trendSource: trend.source,
+        trendTopic: trend.topicLabel,
+        trendSummary: trend.summary || '',
+        trendSentiment: trend.sentimentScore,
+        trendEngagement: trend.engagements,
+        pullTime: trend.createdAt || new Date(),
+        personaId: persona.accountId,
+        bkUsername: persona.username,
+        archetype: persona.archetype,
+        toneMode: promptResult.resolvedToneMode,
+        sensitivityTier: `Tier ${tier}`,
+        postType,
+        subject,
+        threadSubject: subject,
+        draftContent,
+        charCount: draftContent.length,
+        qualityWarnings: quality.warnings,
+      },
     });
 
-    // 6. Emit socket event
-    emitToRoom('room:feed', 'feed:new', { feedId, source: ['trends'] });
-
-    // 7. Audit log
     await auditService.log({
       operator: 'system',
       eventType: 'FEED_GENERATED',
@@ -482,7 +467,7 @@ export async function generateFromTrend(trend: any): Promise<{ feedId: string; t
       feedId,
       actionDetail: `Trend → Feed | Tone: ${promptResult.resolvedToneMode} | Tier: ${tier} | Topic: "${trend.topicLabel}"`,
       session: 'worker',
-    } as any);
+    });
 
     logger.info({ feedId, persona: persona.accountId, topic: trend.topicLabel }, 'generateFromTrend: feed created');
     return { feedId, toneMode: promptResult.resolvedToneMode };
@@ -494,7 +479,7 @@ export async function generateFromTrend(trend: any): Promise<{ feedId: string; t
       module: 'feed',
       actionDetail: `Trend: "${trend.topicLabel}" — ${(err as Error).message}`,
       session: 'worker',
-    } as any);
+    });
     return null;
   }
 }

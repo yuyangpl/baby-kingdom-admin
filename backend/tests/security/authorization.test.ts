@@ -1,10 +1,9 @@
 /**
  * Authorization (RBAC) tests — role-based access control enforcement.
  */
+import bcrypt from 'bcryptjs';
 import { request, setupDB, teardownDB, expectSuccess, expectError } from '../helpers.js';
-import User from '../../src/modules/auth/auth.model.js';
-import Feed from '../../src/modules/feed/feed.model.js';
-import Persona from '../../src/modules/persona/persona.model.js';
+import { getPrisma } from '../../src/shared/database.js';
 
 const ADMIN_EMAIL = 'admin-authz@test.com';
 const EDITOR_A_EMAIL = 'editor-a-authz@test.com';
@@ -17,21 +16,31 @@ let testFeedId: string, claimFeedId: string, crossClaimFeedId: string;
 
 beforeAll(async () => {
   await setupDB();
+  const prisma = getPrisma();
 
   // Clean up
-  await User.deleteMany({ email: { $in: [ADMIN_EMAIL, EDITOR_A_EMAIL, EDITOR_B_EMAIL, VIEWER_EMAIL] } });
-  await Persona.findOneAndDelete({ accountId: 'BK-AUTHZ-TEST' });
+  await prisma.feed.deleteMany({ where: { personaId: 'BK-AUTHZ-TEST' } });
+  await prisma.user.deleteMany({ where: { email: { in: [ADMIN_EMAIL, EDITOR_A_EMAIL, EDITOR_B_EMAIL, VIEWER_EMAIL] } } });
+  await prisma.persona.deleteMany({ where: { accountId: 'BK-AUTHZ-TEST' } });
 
   // Create users
-  const admin = await User.create({ username: 'admin-authz', email: ADMIN_EMAIL, password: 'admin123', role: 'admin' });
-  const editorA = await User.create({ username: 'editor-a-authz', email: EDITOR_A_EMAIL, password: 'editor123', role: 'editor' });
-  const editorB = await User.create({ username: 'editor-b-authz', email: EDITOR_B_EMAIL, password: 'editor123', role: 'editor' });
-  const viewer = await User.create({ username: 'viewer-authz', email: VIEWER_EMAIL, password: 'viewer123', role: 'viewer' });
+  const admin = await prisma.user.create({
+    data: { username: 'admin-authz', email: ADMIN_EMAIL, passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' },
+  });
+  const editorA = await prisma.user.create({
+    data: { username: 'editor-a-authz', email: EDITOR_A_EMAIL, passwordHash: await bcrypt.hash('editor123', 12), role: 'editor' },
+  });
+  const editorB = await prisma.user.create({
+    data: { username: 'editor-b-authz', email: EDITOR_B_EMAIL, passwordHash: await bcrypt.hash('editor123', 12), role: 'editor' },
+  });
+  const viewer = await prisma.user.create({
+    data: { username: 'viewer-authz', email: VIEWER_EMAIL, passwordHash: await bcrypt.hash('viewer123', 12), role: 'viewer' },
+  });
 
-  adminUserId = admin._id.toString();
-  editorAId = editorA._id.toString();
-  editorBId = editorB._id.toString();
-  viewerUserId = viewer._id.toString();
+  adminUserId = admin.id;
+  editorAId = editorA.id;
+  editorBId = editorB.id;
+  viewerUserId = viewer.id;
 
   // Login all users
   const [adminLogin, editorALogin, editorBLogin, viewerLogin] = await Promise.all([
@@ -47,39 +56,46 @@ beforeAll(async () => {
   viewerToken = viewerLogin.body.data.accessToken;
 
   // Create test persona (needed for feeds)
-  await Persona.create({
-    accountId: 'BK-AUTHZ-TEST', username: 'authztester', archetype: 'pregnant',
-    primaryToneMode: 'CASUAL', maxPostsPerDay: 10, isActive: true,
+  await prisma.persona.create({
+    data: {
+      accountId: 'BK-AUTHZ-TEST', username: 'authztester', archetype: 'pregnant',
+      primaryToneMode: 'CASUAL', maxPostsPerDay: 10, isActive: true,
+    },
   });
 
   // Create feeds for tests
-  const [testFeed, claimFeed, crossClaimFeed] = await Feed.create([
-    {
+  const testFeed = await prisma.feed.create({
+    data: {
       feedId: 'FQ-AUTHZ-001', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66661, threadFid: 162, personaId: 'BK-AUTHZ-TEST',
       draftContent: 'Test content', charCount: 12,
     },
-    {
+  });
+  const claimFeed = await prisma.feed.create({
+    data: {
       feedId: 'FQ-AUTHZ-002', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66662, threadFid: 162, personaId: 'BK-AUTHZ-TEST',
       draftContent: 'Claim test content', charCount: 18,
     },
-    {
+  });
+  const crossClaimFeed = await prisma.feed.create({
+    data: {
       feedId: 'FQ-AUTHZ-003', type: 'reply', status: 'pending', source: ['scanner'],
       threadTid: 66663, threadFid: 162, personaId: 'BK-AUTHZ-TEST',
       draftContent: 'Cross claim content', charCount: 19,
     },
-  ]);
+  });
 
-  testFeedId = testFeed._id.toString();
-  claimFeedId = claimFeed._id.toString();
-  crossClaimFeedId = crossClaimFeed._id.toString();
+  testFeedId = testFeed.id;
+  claimFeedId = claimFeed.id;
+  crossClaimFeedId = crossClaimFeed.id;
 });
 
 afterAll(async () => {
-  await Feed.deleteMany({ personaId: 'BK-AUTHZ-TEST' });
-  await Persona.findOneAndDelete({ accountId: 'BK-AUTHZ-TEST' });
-  await User.deleteMany({ email: { $in: [ADMIN_EMAIL, EDITOR_A_EMAIL, EDITOR_B_EMAIL, VIEWER_EMAIL] } });
+  const prisma = getPrisma();
+  await prisma.feed.deleteMany({ where: { personaId: 'BK-AUTHZ-TEST' } });
+  await prisma.persona.deleteMany({ where: { accountId: 'BK-AUTHZ-TEST' } });
+  await prisma.user.deleteMany({ where: { email: { in: [ADMIN_EMAIL, EDITOR_A_EMAIL, EDITOR_B_EMAIL, VIEWER_EMAIL] } } });
   await teardownDB();
 });
 
@@ -158,7 +174,7 @@ describe('Cross-user claim protection', () => {
       .post(`/api/v1/feeds/${claimFeedId}/unclaim`)
       .set('Authorization', `Bearer ${editorBToken}`);
 
-    // Service throws BusinessError('You did not claim this feed') → 422
+    // Service throws BusinessError('You did not claim this feed') -> 422
     expect(unclaimRes.status).not.toBe(200);
     expect(unclaimRes.body.success).toBe(false);
   });
@@ -171,9 +187,7 @@ describe('Cross-user claim protection', () => {
 
     expect(claimRes.status).toBe(200);
 
-    // Editor B tries to update content — the claim is advisory in this system,
-    // but the unclaim protection shows cross-claim enforcement exists.
-    // Attempt content edit as Editor B:
+    // Editor B tries to update content
     const editRes = await request
       .put(`/api/v1/feeds/${crossClaimFeedId}/content`)
       .set('Authorization', `Bearer ${editorBToken}`)
@@ -182,14 +196,12 @@ describe('Cross-user claim protection', () => {
     // Content update requires authorize('admin', 'editor'), so role check passes.
     // The service does not block edits by non-claimant (claim is for queue management).
     // This test documents actual behavior: content update succeeds for any editor.
-    // The claim system protects unclaim, not content editing — by design.
     expect([200, 403, 409, 422]).toContain(editRes.status);
   });
 });
 
 describe('Admin self-protection', () => {
   it('admin cannot delete themselves — returns 403', async () => {
-    // The deleteUser endpoint prevents self-deletion
     const res = await request
       .delete(`/api/v1/auth/users/${adminUserId}`)
       .set('Authorization', `Bearer ${adminToken}`);

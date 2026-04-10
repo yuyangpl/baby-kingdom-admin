@@ -1,57 +1,78 @@
 import jwt from 'jsonwebtoken';
-import User from './auth.model.js';
-import type { UserDocument, IUser } from './auth.model.js';
-import { getRedis } from '../../shared/redis.js';
+import bcrypt from 'bcryptjs';
+import { getPrisma } from '../../shared/database.js';
 import { UnauthorizedError, NotFoundError, ConflictError, ForbiddenError } from '../../shared/errors.js';
 
-const REFRESH_BLACKLIST_PREFIX = 'bl:rt:';
+interface TokenUser {
+  id: string;
+  role: string;
+}
 
-function generateAccessToken(user: UserDocument): string {
+function generateAccessToken(user: TokenUser): string {
   return jwt.sign(
-    { id: user._id, role: user.role },
+    { id: user.id, role: user.role },
     process.env.JWT_SECRET!,
     { expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '30m') as any }
   );
 }
 
-function generateRefreshToken(user: UserDocument): string {
+function generateRefreshToken(user: TokenUser): string {
   return jwt.sign(
-    { id: user._id, type: 'refresh' },
+    { id: user.id, type: 'refresh' },
     process.env.JWT_SECRET!,
     { expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any }
   );
 }
 
-export async function login(email: string, password: string) {
-  const user = await User.findOne({ email }).select('+password') as UserDocument | null;
-  if (!user || !(await user.comparePassword(password))) {
-    throw new UnauthorizedError('Invalid email or password');
-  }
+function stripPassword(user: Record<string, any>) {
+  const { passwordHash, ...rest } = user;
+  return rest;
+}
 
-  user.lastLoginAt = new Date();
-  await user.save();
+export async function login(email: string, password: string) {
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user) throw new UnauthorizedError('Invalid email or password');
+
+  const valid = await bcrypt.compare(password, user.passwordHash);
+  if (!valid) throw new UnauthorizedError('Invalid email or password');
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
 
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  return { accessToken, refreshToken, user: user.toJSON() };
+  return { accessToken, refreshToken, user: stripPassword(user) };
 }
 
-export async function register(data: { email: string; username: string; password: string; role?: IUser['role'] }) {
-  const existing = await User.findOne({
-    $or: [{ email: data.email }, { username: data.username }],
-  });
-  if (existing) {
-    throw new ConflictError(
-      existing.email === data.email ? 'Email already exists' : 'Username already exists'
-    );
-  }
+export async function register(data: { email: string; username: string; password: string; role?: string }) {
+  const prisma = getPrisma();
 
-  const user = await User.create(data) as UserDocument;
-  return user.toJSON();
+  // Check for existing email or username
+  const existingEmail = await prisma.user.findUnique({ where: { email: data.email.toLowerCase() } });
+  if (existingEmail) throw new ConflictError('Email already exists');
+
+  const existingUsername = await prisma.user.findUnique({ where: { username: data.username } });
+  if (existingUsername) throw new ConflictError('Username already exists');
+
+  const passwordHash = await bcrypt.hash(data.password, 12);
+  const user = await prisma.user.create({
+    data: {
+      email: data.email.toLowerCase(),
+      username: data.username,
+      passwordHash,
+      role: data.role || 'viewer',
+    },
+  });
+
+  return stripPassword(user);
 }
 
 export async function refreshAccessToken(refreshToken: string) {
+  const prisma = getPrisma();
   let payload: any;
   try {
     payload = jwt.verify(refreshToken, process.env.JWT_SECRET!);
@@ -63,31 +84,32 @@ export async function refreshAccessToken(refreshToken: string) {
     throw new UnauthorizedError('Invalid token type');
   }
 
-  // Check blacklist
-  const redis = getRedis();
-  const isBlacklisted = await redis.get(`${REFRESH_BLACKLIST_PREFIX}${refreshToken}`);
-  if (isBlacklisted) {
+  // Check blacklist (PostgreSQL instead of Redis)
+  const blacklisted = await prisma.tokenBlacklist.findUnique({
+    where: { token: refreshToken },
+  });
+  if (blacklisted) {
     throw new UnauthorizedError('Token has been revoked');
   }
 
-  const user = await User.findById(payload.id) as UserDocument | null;
-  if (!user) {
-    throw new UnauthorizedError('User no longer exists');
-  }
+  const user = await prisma.user.findUnique({ where: { id: payload.id } });
+  if (!user) throw new UnauthorizedError('User no longer exists');
 
   const accessToken = generateAccessToken(user);
-  return { accessToken, user: user.toJSON() };
+  return { accessToken, user: stripPassword(user) };
 }
 
 export async function logout(refreshToken: string | undefined) {
   if (!refreshToken) return;
 
+  const prisma = getPrisma();
   try {
     const payload = jwt.verify(refreshToken, process.env.JWT_SECRET!) as any;
-    const ttl = payload.exp - Math.floor(Date.now() / 1000);
-    if (ttl > 0) {
-      const redis = getRedis();
-      await redis.setex(`${REFRESH_BLACKLIST_PREFIX}${refreshToken}`, ttl, '1');
+    const expiresAt = new Date(payload.exp * 1000);
+    if (expiresAt > new Date()) {
+      await prisma.tokenBlacklist.create({
+        data: { token: refreshToken, expiresAt },
+      });
     }
   } catch {
     // Token already expired or invalid, nothing to blacklist
@@ -95,49 +117,55 @@ export async function logout(refreshToken: string | undefined) {
 }
 
 export async function getMe(userId: string) {
-  const user = await User.findById(userId) as UserDocument | null;
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('User');
-  return user.toJSON();
+  return stripPassword(user);
 }
 
 export async function verifyPassword(userId: string, password: string): Promise<boolean> {
-  const user = await User.findById(userId).select('+password') as UserDocument | null;
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('User');
-  return user.comparePassword(password);
+  return bcrypt.compare(password, user.passwordHash);
 }
 
 export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
-  const user = await User.findById(userId).select('+password') as UserDocument | null;
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('User');
 
-  if (!(await user.comparePassword(currentPassword))) {
-    throw new UnauthorizedError('Current password is incorrect');
-  }
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) throw new UnauthorizedError('Current password is incorrect');
 
-  user.password = newPassword;
-  await user.save();
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
 }
 
 export async function listUsers() {
-  return User.find().sort({ createdAt: -1 });
+  const prisma = getPrisma();
+  const users = await prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+  return users.map(stripPassword);
 }
 
-export async function updateUserRole(userId: string, role: IUser['role'], operatorId: string) {
+export async function updateUserRole(userId: string, role: string, operatorId: string) {
   if (userId === operatorId) {
     throw new ForbiddenError('Cannot change your own role');
   }
 
-  const user = await User.findById(userId) as UserDocument | null;
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('User');
 
-  user.role = role;
-  await user.save();
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { role },
+  });
 
-  // Invalidate all refresh tokens for this user by storing a role-change marker
-  const redis = getRedis();
-  await redis.set(`role_changed:${userId}`, Date.now().toString(), 'EX', 7 * 24 * 3600);
-
-  return user.toJSON();
+  return stripPassword(updated);
 }
 
 export async function deleteUser(userId: string, operatorId: string) {
@@ -145,24 +173,46 @@ export async function deleteUser(userId: string, operatorId: string) {
     throw new ForbiddenError('Cannot delete yourself');
   }
 
-  const user = await User.findById(userId);
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('User');
 
-  await User.findByIdAndDelete(userId);
+  await prisma.user.delete({ where: { id: userId } });
 }
 
 export async function seedAdmin() {
   const { ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
   if (!ADMIN_USERNAME || !ADMIN_EMAIL || !ADMIN_PASSWORD) return;
 
-  // Skip if any admin user already exists
-  const exists = await User.findOne({ $or: [{ email: ADMIN_EMAIL }, { username: ADMIN_USERNAME }, { role: 'admin' }] });
-  if (exists) return;
+  const prisma = getPrisma();
 
-  await User.create({
-    username: ADMIN_USERNAME,
-    email: ADMIN_EMAIL,
-    password: ADMIN_PASSWORD,
-    role: 'admin',
+  // Skip if any admin user already exists
+  const existsByEmail = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
+  if (existsByEmail) return;
+  const existsByUsername = await prisma.user.findUnique({ where: { username: ADMIN_USERNAME } });
+  if (existsByUsername) return;
+  const existsAdmin = await prisma.user.findFirst({ where: { role: 'admin' } });
+  if (existsAdmin) return;
+
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  await prisma.user.create({
+    data: {
+      username: ADMIN_USERNAME,
+      email: ADMIN_EMAIL,
+      passwordHash,
+      role: 'admin',
+    },
   });
+}
+
+/**
+ * Cleanup expired token blacklist entries.
+ * Should be called periodically (e.g., daily via Cloud Scheduler).
+ */
+export async function cleanupExpiredTokens() {
+  const prisma = getPrisma();
+  const result = await prisma.tokenBlacklist.deleteMany({
+    where: { expiresAt: { lt: new Date() } },
+  });
+  return result.count;
 }

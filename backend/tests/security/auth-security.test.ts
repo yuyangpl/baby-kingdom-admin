@@ -2,8 +2,9 @@
  * Auth security tests — JWT attack vectors, token misuse, and input validation.
  */
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { request, setupDB, teardownDB, expectSuccess, expectError } from '../helpers.js';
-import User from '../../src/modules/auth/auth.model.js';
+import { getPrisma } from '../../src/shared/database.js';
 
 const ADMIN_EMAIL = 'admin-authsec@test.com';
 const VIEWER_EMAIL = 'viewer-authsec@test.com';
@@ -13,14 +14,19 @@ let adminCookie: string[];
 
 beforeAll(async () => {
   await setupDB();
+  const prisma = getPrisma();
 
   // Clean up any leftover users from previous runs
-  await User.deleteMany({ email: { $in: [ADMIN_EMAIL, VIEWER_EMAIL] } });
+  await prisma.user.deleteMany({ where: { email: { in: [ADMIN_EMAIL, VIEWER_EMAIL] } } });
 
   // Create admin
-  await User.create({ username: 'admin-authsec', email: ADMIN_EMAIL, password: 'admin123', role: 'admin' });
+  await prisma.user.create({
+    data: { username: 'admin-authsec', email: ADMIN_EMAIL, passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' },
+  });
   // Create viewer
-  await User.create({ username: 'viewer-authsec', email: VIEWER_EMAIL, password: 'viewer123', role: 'viewer' });
+  await prisma.user.create({
+    data: { username: 'viewer-authsec', email: VIEWER_EMAIL, passwordHash: await bcrypt.hash('viewer123', 12), role: 'viewer' },
+  });
 
   // Login to get tokens
   const loginRes = await request.post('/api/v1/auth/login').send({ email: ADMIN_EMAIL, password: 'admin123' });
@@ -29,7 +35,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await User.deleteMany({ email: { $in: [ADMIN_EMAIL, VIEWER_EMAIL] } });
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({ where: { email: { in: [ADMIN_EMAIL, VIEWER_EMAIL] } } });
   await teardownDB();
 });
 
@@ -170,9 +177,7 @@ describe('Refresh token blacklist', () => {
 
 describe('Role change token behavior', () => {
   it('old token remains valid after role change until expiry (documented behavior)', async () => {
-    // This test documents the current behavior: JWT tokens are stateless.
-    // After a role change, old tokens still authenticate until expiry.
-    // The role in the token may differ from DB, but authenticate() only uses token role.
+    const prisma = getPrisma();
 
     // Login as viewer
     const loginRes = await request
@@ -187,32 +192,22 @@ describe('Role change token behavior', () => {
     expect(meRes.status).toBe(200);
     expect(meRes.body.data.role).toBe('viewer');
 
-    // Change role to editor via admin
-    const viewerUser = await User.findOne({ email: VIEWER_EMAIL });
-    viewerUser.role = 'editor';
-    await viewerUser.save();
+    // Change role to editor via direct DB update
+    await prisma.user.update({ where: { email: VIEWER_EMAIL }, data: { role: 'editor' } });
 
     // Old viewer token still works for authenticate() — role in token is still 'viewer'
-    // This is the documented behavior: tokens are not invalidated on role change
     const stillWorksRes = await request
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${viewerToken}`);
-    // /me fetches from DB, so role in response reflects DB (editor)
-    // but the token itself still passes authentication
     expect(stillWorksRes.status).toBe(200);
 
     // Restore role
-    viewerUser.role = 'viewer';
-    await viewerUser.save();
+    await prisma.user.update({ where: { email: VIEWER_EMAIL }, data: { role: 'viewer' } });
   });
 });
 
 describe('Login rate limiting', () => {
   it('rate limiting is disabled in test env — login attempts all succeed or fail with 401 (not 429)', async () => {
-    // NOTE: Rate limiting (loginLimiter) is intentionally disabled in NODE_ENV=test.
-    // This test verifies the expected behavior in test mode.
-    // The actual rate limit behavior is covered in tests/modules/rate-limit.test.js.
-
     const attempts = [];
     for (let i = 0; i < 6; i++) {
       attempts.push(
@@ -222,7 +217,6 @@ describe('Login rate limiting', () => {
 
     const results = await Promise.all(attempts);
     for (const res of results) {
-      // In test mode, rate limit not applied → expect 401 (wrong password), never 429
       expect(res.status).not.toBe(429);
       expect([400, 401]).toContain(res.status);
     }
@@ -231,8 +225,6 @@ describe('Login rate limiting', () => {
 
 describe('Password validation', () => {
   it('weak password (< 6 chars) rejected on user creation', async () => {
-    // The User model has minlength: 6 on password field.
-    // The register endpoint is admin-only, so we test via direct API call.
     const res = await request
       .post('/api/v1/auth/register')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -243,7 +235,6 @@ describe('Password validation', () => {
         role: 'viewer',
       });
 
-    // Mongoose minlength validation or custom validation should reject this
     expect(res.status).not.toBe(201);
     expect(res.body.success).toBe(false);
   });

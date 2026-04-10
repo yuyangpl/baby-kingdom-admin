@@ -1,16 +1,17 @@
-import { request, setupDB, teardownDB } from '../../helpers.js';
-import User from '../../../src/modules/auth/auth.model.js';
-import ToneMode from '../../../src/modules/tone/tone.model.js';
+import bcrypt from 'bcryptjs';
+import { request, setupDB, teardownDB, cleanDB, expectSuccess, expectError } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
 
 let adminToken: string, editorToken: string;
 
 beforeAll(async () => {
   await setupDB();
-  await User.deleteMany({});
-  await ToneMode.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({});
+  await prisma.toneMode.deleteMany({});
 
-  await User.create({ username: 'admin', email: 'admin@test.com', password: 'admin123', role: 'admin' });
-  await User.create({ username: 'editor', email: 'editor@test.com', password: 'editor123', role: 'editor' });
+  await prisma.user.create({ data: { username: 'admin', email: 'admin@test.com', passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' } });
+  await prisma.user.create({ data: { username: 'editor', email: 'editor@test.com', passwordHash: await bcrypt.hash('editor123', 12), role: 'editor' } });
 
   const adminRes = await request.post('/api/v1/auth/login').send({ email: 'admin@test.com', password: 'admin123' });
   adminToken = adminRes.body.data.accessToken;
@@ -20,8 +21,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await User.deleteMany({});
-  await ToneMode.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({});
+  await prisma.toneMode.deleteMany({});
   await teardownDB();
 });
 
@@ -48,7 +50,7 @@ describe('ToneMode CRUD', () => {
     expect(res.status).toBe(201);
     expect(res.body.data.toneId).toBe('EMPATHISE');
     expect(res.body.data.displayName).toBe('同理共感');
-    toneId = res.body.data._id;
+    toneId = res.body.data._id || res.body.data.id;
   });
 
   it('POST editor cannot create', async () => {

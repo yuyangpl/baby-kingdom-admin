@@ -1,4 +1,4 @@
-import Trend from './trends.model.js';
+import { getPrisma } from '../../shared/database.js';
 import * as configService from '../config/config.service.js';
 import { autoAssignTier } from '../gemini/prompt.builder.js';
 import * as auditService from '../audit/audit.service.js';
@@ -61,11 +61,11 @@ export async function pullTrends(): Promise<{ trends: any[]; feedsGenerated: num
   let feedsGenerated = 0;
   if (allTrends.length > 0) {
     const { generateFromTrend } = await import('../feed/feed.service.js');
-    const { default: Feed } = await import('../feed/feed.model.js');
+    const prisma = getPrisma();
 
     const maxFeeds = parseInt(await configService.getValue('FEEDS_PER_TREND_PULL') || '5', 10);
     const maxPending = parseInt(await configService.getValue('MAX_PENDING_QUEUE') || '100', 10);
-    const pendingCount = await Feed.countDocuments({ status: 'pending' });
+    const pendingCount = await prisma.feed.count({ where: { status: 'pending' } });
 
     for (const trend of allTrends) {
       if (feedsGenerated >= maxFeeds) break;
@@ -76,7 +76,7 @@ export async function pullTrends(): Promise<{ trends: any[]; feedsGenerated: num
 
       const result = await generateFromTrend(trend);
       if (result) {
-        await markUsed(trend._id.toString(), result.feedId);
+        await markUsed(trend.id, result.feedId);
         feedsGenerated++;
       }
     }
@@ -124,6 +124,7 @@ async function fetchFromSource(baseUrl: string, token: string, source: string, c
 }
 
 async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string) {
+  const prisma = getPrisma();
   const saved: any[] = [];
 
   for (let i = 0; i < rawTrends.length; i++) {
@@ -132,24 +133,26 @@ async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string)
     if (!topicLabel) continue;
 
     // Skip if already exists (unique index on source + topicLabel)
-    const exists = await Trend.findOne({ source, topicLabel });
+    const exists = await prisma.trend.findFirst({ where: { source, topicLabel } });
     if (exists) continue;
 
     const sentimentScore = raw.sentiment_score ?? raw.sentiment ?? null;
     const tier = autoAssignTier(topicLabel);
 
-    const trend = await Trend.create({
-      pullId,
-      source,
-      rank: i + 1,
-      topicLabel,
-      summary: raw.summary || raw.description || '',
-      engagements: raw.engagements || raw.engagement || 0,
-      postCount: raw.post_count || raw.posts || 0,
-      sensitivityTier: tier,
-      sentimentScore,
-      sentimentLabel: sentimentScore != null && sentimentScore > 55 ? 'positive' : sentimentScore != null && sentimentScore < 45 ? 'negative' : 'neutral',
-      rawData: raw,
+    const trend = await prisma.trend.create({
+      data: {
+        pullId,
+        source,
+        rank: i + 1,
+        topicLabel,
+        summary: raw.summary || raw.description || '',
+        engagements: raw.engagements || raw.engagement || 0,
+        postCount: raw.post_count || raw.posts || 0,
+        sensitivityTier: tier,
+        sentimentScore,
+        sentimentLabel: sentimentScore != null && sentimentScore > 55 ? 'positive' : sentimentScore != null && sentimentScore < 45 ? 'negative' : 'neutral',
+        rawData: raw,
+      },
     });
 
     saved.push(trend);
@@ -159,21 +162,33 @@ async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string)
 }
 
 export async function list({ source, page = 1, limit = 20, sort = '-createdAt' }: { source?: string; page?: number; limit?: number; sort?: string }) {
-  const filter: Record<string, string> = {};
-  if (source) filter.source = source;
+  const prisma = getPrisma();
+  const where: Record<string, string> = {};
+  if (source) where.source = source;
 
   const skip = (page - 1) * limit;
+
+  // Convert Mongoose-style sort string (e.g. "-createdAt") to Prisma orderBy
+  const desc = sort.startsWith('-');
+  const field = desc ? sort.slice(1) : sort;
+  const orderBy = { [field]: desc ? 'desc' as const : 'asc' as const };
+
   const [data, total] = await Promise.all([
-    Trend.find(filter).sort(sort).skip(skip).limit(limit),
-    Trend.countDocuments(filter),
+    prisma.trend.findMany({ where, orderBy, skip, take: limit }),
+    prisma.trend.count({ where }),
   ]);
 
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
 
 export async function markUsed(trendId: string, feedId: string): Promise<void> {
-  await Trend.findByIdAndUpdate(trendId, {
-    $push: { feedIds: feedId },
+  const prisma = getPrisma();
+  const trend = await prisma.trend.findUnique({ where: { id: trendId } });
+  if (!trend) return;
+
+  await prisma.trend.update({
+    where: { id: trendId },
+    data: { feedIds: [...(trend.feedIds || []), feedId] },
   });
 }
 

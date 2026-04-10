@@ -1,51 +1,61 @@
 import { setupDB, teardownDB } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
 import { callGemini } from '../../../src/modules/gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier, resolveToneMode, matchTopicRule } from '../../../src/modules/gemini/prompt.builder.js';
 import { findBestMatch, normalizeText } from '../../../src/modules/gemini/google-trends.service.js';
 import { checkQuality, checkSimilarity } from '../../../src/modules/gemini/quality-guard.js';
-import Persona from '../../../src/modules/persona/persona.model.js';
-import ToneMode from '../../../src/modules/tone/tone.model.js';
-import TopicRule from '../../../src/modules/topic-rules/topic-rules.model.js';
-import Config from '../../../src/modules/config/config.model.js';
 
 beforeAll(async () => {
   await setupDB();
-  await Persona.deleteMany({});
-  await ToneMode.deleteMany({});
-  await TopicRule.deleteMany({});
-  await Config.deleteMany({});
+  const prisma = getPrisma();
+
+  await prisma.feed.deleteMany({});
+  await prisma.persona.deleteMany({});
+  await prisma.toneMode.deleteMany({});
+  await prisma.topicRule.deleteMany({});
+  await prisma.config.deleteMany({});
 
   // Seed test data
-  await ToneMode.create({
-    toneId: 'EMPATHISE', displayName: '同理共感',
-    openingStyle: '先表達理解', sentenceStructure: '短句',
-    whatToAvoid: '不要說教', suitableForTier3: true, overridePriority: 1,
+  await prisma.toneMode.create({
+    data: {
+      toneId: 'EMPATHISE', displayName: '同理共感',
+      openingStyle: '先表達理解', sentenceStructure: '短句',
+      whatToAvoid: '不要說教', suitableForTier3: true, overridePriority: 1,
+    },
   });
-  await ToneMode.create({
-    toneId: 'CASUAL', displayName: '輕鬆閒聊',
-    openingStyle: '隨意開頭', suitableForTier3: false, overridePriority: 3,
+  await prisma.toneMode.create({
+    data: {
+      toneId: 'CASUAL', displayName: '輕鬆閒聊',
+      openingStyle: '隨意開頭', suitableForTier3: false, overridePriority: 3,
+    },
   });
-  await Persona.create({
-    accountId: 'BK001', username: 'testmom', archetype: 'pregnant',
-    primaryToneMode: 'CASUAL', voiceCues: ['句首常用「唉」'],
-    catchphrases: ['有冇人同我一樣？'], tier3Script: '沉默支持為主。',
-    maxPostsPerDay: 3,
+  await prisma.persona.create({
+    data: {
+      accountId: 'BK001', username: 'testmom', archetype: 'pregnant',
+      primaryToneMode: 'CASUAL', voiceCues: ['句首常用「唉」'],
+      catchphrases: ['有冇人同我一樣？'], tier3Script: '沉默支持為主。',
+      maxPostsPerDay: 3,
+    },
   });
-  await TopicRule.create({
-    ruleId: 'RULE-001', topicKeywords: ['IVF', '試管嬰兒'],
-    sensitivityTier: 1, sentimentTrigger: 'any',
-    priorityAccountIds: ['BK001'], assignToneMode: 'SHARE_EXP',
-    geminiPromptHint: '強調過程而非結果',
+  await prisma.topicRule.create({
+    data: {
+      ruleId: 'RULE-001', topicKeywords: ['IVF', '試管嬰兒'],
+      sensitivityTier: 1, sentimentTrigger: 'any',
+      priorityAccountIds: ['BK001'], assignToneMode: 'SHARE_EXP',
+      geminiPromptHint: '強調過程而非結果',
+    },
   });
-  await Config.create({ key: 'SENTIMENT_NEGATIVE_THRESHOLD', value: '45', category: 'gemini' });
-  await Config.create({ key: 'TONE_OVERRIDE_ON_TIER3', value: 'EMPATHISE', category: 'gemini' });
+  await prisma.config.create({ data: { key: 'SENTIMENT_NEGATIVE_THRESHOLD', value: '45', category: 'gemini' } });
+  await prisma.config.create({ data: { key: 'TONE_OVERRIDE_ON_TIER3', value: 'EMPATHISE', category: 'gemini' } });
 });
 
 afterAll(async () => {
-  await Persona.deleteMany({});
-  await ToneMode.deleteMany({});
-  await TopicRule.deleteMany({});
-  await Config.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.feed.deleteMany({});
+  await prisma.persona.deleteMany({});
+  await prisma.toneMode.deleteMany({});
+  await prisma.topicRule.deleteMany({});
+  await prisma.config.deleteMany({});
   await teardownDB();
 });
 
@@ -144,7 +154,8 @@ describe('resolveToneMode', () => {
   });
 
   it('falls back to persona primary mode', async () => {
-    const persona = await Persona.findOne({ accountId: 'BK001' });
+    const prisma = getPrisma();
+    const persona = await prisma.persona.findFirst({ where: { accountId: 'BK001' } });
     const tone = await resolveToneMode(persona, 'auto', 80, 1);
     expect(tone).toBe('CASUAL');
   });
@@ -212,7 +223,7 @@ describe('Quality Guard', () => {
   });
 
   it('fails on AI patterns', () => {
-    const result = checkQuality('作為一個AI，我建議你…', null);
+    const result = checkQuality('作為一個AI，我建議你...', null);
     expect(result.passed).toBe(false);
     expect(result.warnings[0]).toContain('AI pattern');
   });

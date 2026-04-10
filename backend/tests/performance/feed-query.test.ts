@@ -6,9 +6,9 @@
  */
 
 import { jest } from '@jest/globals';
+import bcrypt from 'bcryptjs';
 import { request, setupDB, teardownDB } from '../helpers.js';
-import User from '../../src/modules/auth/auth.model.js';
-import Feed from '../../src/modules/feed/feed.model.js';
+import { getPrisma } from '../../src/shared/database.js';
 
 jest.setTimeout(120000);
 
@@ -22,14 +22,17 @@ beforeAll(async () => {
   if (!process.env.RUN_PERF_TESTS) return;
 
   await setupDB();
+  const prisma = getPrisma();
 
   // Create admin user
-  await User.findOneAndDelete({ email: ADMIN_EMAIL });
-  await User.create({
-    username: 'admin-perf-fq',
-    email: ADMIN_EMAIL,
-    password: 'admin123',
-    role: 'admin',
+  await prisma.user.deleteMany({ where: { email: ADMIN_EMAIL } });
+  await prisma.user.create({
+    data: {
+      username: 'admin-perf-fq',
+      email: ADMIN_EMAIL,
+      passwordHash: await bcrypt.hash('admin123', 12),
+      role: 'admin',
+    },
   });
 
   const loginRes = await request
@@ -37,8 +40,8 @@ beforeAll(async () => {
     .send({ email: ADMIN_EMAIL, password: 'admin123' });
   adminToken = loginRes.body.data.accessToken;
 
-  // Seed feeds in batches for speed
-  console.log(`[perf] Seeding ${SEED_COUNT} feeds…`);
+  // Seed feeds in batches for speed using createMany
+  console.log(`[perf] Seeding ${SEED_COUNT} feeds...`);
   const seedStart = Date.now();
 
   const BATCH = 500;
@@ -58,7 +61,7 @@ beforeAll(async () => {
         charCount: 30 + (j % 20),
       });
     }
-    await Feed.insertMany(docs, { ordered: false });
+    await prisma.feed.createMany({ data: docs, skipDuplicates: true });
   }
 
   console.log(`[perf] Seeding done in ${Date.now() - seedStart}ms`);
@@ -66,8 +69,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (!process.env.RUN_PERF_TESTS) return;
-  await Feed.deleteMany({ feedId: new RegExp(`^${PERF_PREFIX}`) });
-  await User.findOneAndDelete({ email: ADMIN_EMAIL });
+  const prisma = getPrisma();
+  await prisma.feed.deleteMany({ where: { feedId: { startsWith: PERF_PREFIX } } });
+  await prisma.user.deleteMany({ where: { email: ADMIN_EMAIL } });
   await teardownDB();
 });
 

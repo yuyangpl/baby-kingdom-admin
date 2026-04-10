@@ -1,18 +1,20 @@
-import mongoose from 'mongoose';
-import { request, setupDB, teardownDB, expectSuccess, expectError } from '../../helpers.js';
-import User from '../../../src/modules/auth/auth.model.js';
+import bcrypt from 'bcryptjs';
+import { request, setupDB, teardownDB, cleanDB, expectSuccess, expectError } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
 
 let adminToken: string;
 let adminCookie: string[];
 
 beforeAll(async () => {
   await setupDB();
+  const prisma = getPrisma();
   // Clean users collection
-  await User.deleteMany({});
+  await prisma.user.deleteMany({});
 });
 
 afterAll(async () => {
-  await User.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({});
   await teardownDB();
 });
 
@@ -29,15 +31,18 @@ describe('Auth Flow', () => {
   });
 
   it('seed admin user directly for testing', async () => {
-    await User.create({
-      username: 'admin',
-      email: 'admin@test.com',
-      password: 'admin123',
-      role: 'admin',
+    const prisma = getPrisma();
+    await prisma.user.create({
+      data: {
+        username: 'admin',
+        email: 'admin@test.com',
+        passwordHash: await bcrypt.hash('admin123', 12),
+        role: 'admin',
+      },
     });
-    const user = await User.findOne({ email: 'admin@test.com' });
+    const user = await prisma.user.findFirst({ where: { email: 'admin@test.com' } });
     expect(user).toBeTruthy();
-    expect(user.role).toBe('admin');
+    expect(user!.role).toBe('admin');
   });
 
   // --- Login ---
@@ -128,10 +133,11 @@ describe('Auth Flow', () => {
 
   // --- Update Role ---
   it('PUT /api/v1/auth/users/:id/role updates role', async () => {
-    const editor = await User.findOne({ email: 'editor@test.com' });
+    const prisma = getPrisma();
+    const editor = await prisma.user.findFirst({ where: { email: 'editor@test.com' } });
 
     const res = await request
-      .put(`/api/v1/auth/users/${editor._id}/role`)
+      .put(`/api/v1/auth/users/${editor!.id}/role`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ role: 'viewer' });
 
@@ -140,10 +146,11 @@ describe('Auth Flow', () => {
   });
 
   it('PUT /api/v1/auth/users/:id/role cannot change own role', async () => {
-    const admin = await User.findOne({ email: 'admin@test.com' });
+    const prisma = getPrisma();
+    const admin = await prisma.user.findFirst({ where: { email: 'admin@test.com' } });
 
     const res = await request
-      .put(`/api/v1/auth/users/${admin._id}/role`)
+      .put(`/api/v1/auth/users/${admin!.id}/role`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ role: 'viewer' });
 
@@ -222,23 +229,25 @@ describe('Auth Flow', () => {
     });
     adminToken = loginRes.body.data.accessToken;
 
-    const editor = await User.findOne({ email: 'editor@test.com' });
+    const prisma = getPrisma();
+    const editor = await prisma.user.findFirst({ where: { email: 'editor@test.com' } });
 
     const res = await request
-      .delete(`/api/v1/auth/users/${editor._id}`)
+      .delete(`/api/v1/auth/users/${editor!.id}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     expectSuccess(res);
 
-    const deleted = await User.findById(editor._id);
+    const deleted = await prisma.user.findUnique({ where: { id: editor!.id } });
     expect(deleted).toBeNull();
   });
 
   it('DELETE /api/v1/auth/users/:id cannot delete self', async () => {
-    const admin = await User.findOne({ email: 'admin@test.com' });
+    const prisma = getPrisma();
+    const admin = await prisma.user.findFirst({ where: { email: 'admin@test.com' } });
 
     const res = await request
-      .delete(`/api/v1/auth/users/${admin._id}`)
+      .delete(`/api/v1/auth/users/${admin!.id}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     expectError(res, 403, 'FORBIDDEN');

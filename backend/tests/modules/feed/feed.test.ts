@@ -1,72 +1,62 @@
-import { request, setupDB, teardownDB } from '../../helpers.js';
-import User from '../../../src/modules/auth/auth.model.js';
-import Feed from '../../../src/modules/feed/feed.model.js';
-import Persona from '../../../src/modules/persona/persona.model.js';
-import ToneMode from '../../../src/modules/tone/tone.model.js';
-import Config from '../../../src/modules/config/config.model.js';
+import { request, setupDB, teardownDB, cleanDB, expectSuccess, expectError } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
+import bcrypt from 'bcryptjs';
+import { encrypt } from '../../../src/shared/encryption.js';
 
 let adminToken: string, editorToken: string, viewerToken: string, adminId: string, editorId: string, feedId: string, feedObjectId: string;
 
 beforeAll(async () => {
   await setupDB();
-  await Feed.deleteMany({});
+  const prisma = getPrisma();
+  await cleanDB();
 
-  const email1 = 'admin-feed@test.com';
-  const email2 = 'editor-feed@test.com';
-  const email3 = 'viewer-feed@test.com';
-  await User.findOneAndDelete({ email: email1 });
-  await User.findOneAndDelete({ email: email2 });
-  await User.findOneAndDelete({ email: email3 });
+  const admin = await prisma.user.create({ data: { username: 'admin-feed', email: 'admin-feed@test.com', passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' } });
+  const editor = await prisma.user.create({ data: { username: 'editor-feed', email: 'editor-feed@test.com', passwordHash: await bcrypt.hash('editor123', 12), role: 'editor' } });
+  await prisma.user.create({ data: { username: 'viewer-feed', email: 'viewer-feed@test.com', passwordHash: await bcrypt.hash('viewer123', 12), role: 'viewer' } });
+  adminId = admin.id;
+  editorId = editor.id;
 
-  const admin = await User.create({ username: 'admin-feed', email: email1, password: 'admin123', role: 'admin' });
-  const editor = await User.create({ username: 'editor-feed', email: email2, password: 'editor123', role: 'editor' });
-  await User.create({ username: 'viewer-feed', email: email3, password: 'viewer123', role: 'viewer' });
-  adminId = admin._id.toString();
-  editorId = editor._id.toString();
-
-  const r1 = await request.post('/api/v1/auth/login').send({ email: email1, password: 'admin123' });
+  const r1 = await request.post('/api/v1/auth/login').send({ email: 'admin-feed@test.com', password: 'admin123' });
   adminToken = r1.body.data.accessToken;
 
-  const r2 = await request.post('/api/v1/auth/login').send({ email: email2, password: 'editor123' });
+  const r2 = await request.post('/api/v1/auth/login').send({ email: 'editor-feed@test.com', password: 'editor123' });
   editorToken = r2.body.data.accessToken;
 
-  const r3 = await request.post('/api/v1/auth/login').send({ email: email3, password: 'viewer123' });
+  const r3 = await request.post('/api/v1/auth/login').send({ email: 'viewer-feed@test.com', password: 'viewer123' });
   viewerToken = r3.body.data.accessToken;
 
   // Ensure persona and tone exist
-  await Persona.findOneAndDelete({ accountId: 'BK-FEED-TEST' });
-  await Persona.create({
-    accountId: 'BK-FEED-TEST', username: 'feedtester', archetype: 'pregnant',
-    primaryToneMode: 'CASUAL', maxPostsPerDay: 10, isActive: true,
-    catchphrases: ['test phrase'],
+  await prisma.persona.create({
+    data: {
+      accountId: 'BK-FEED-TEST', username: 'feedtester', archetype: 'pregnant',
+      primaryToneMode: 'CASUAL', maxPostsPerDay: 10, isActive: true,
+      catchphrases: ['test phrase'],
+    },
   });
 
-  if (!(await ToneMode.findOne({ toneId: 'CASUAL' }))) {
-    await ToneMode.create({ toneId: 'CASUAL', displayName: '輕鬆閒聊' });
+  const existingTone = await prisma.toneMode.findFirst({ where: { toneId: 'CASUAL' } });
+  if (!existingTone) {
+    await prisma.toneMode.create({ data: { toneId: 'CASUAL', displayName: '\u8F15\u9B06\u9592\u804A' } });
   }
 
-  await Config.findOneAndDelete({ key: 'SENTIMENT_NEGATIVE_THRESHOLD' });
-  await Config.findOneAndDelete({ key: 'TONE_OVERRIDE_ON_TIER3' });
-  await Config.create({ key: 'SENTIMENT_NEGATIVE_THRESHOLD', value: '45', category: 'gemini' });
-  await Config.create({ key: 'TONE_OVERRIDE_ON_TIER3', value: 'EMPATHISE', category: 'gemini' });
+  await prisma.config.create({ data: { key: 'SENTIMENT_NEGATIVE_THRESHOLD', value: '45', category: 'gemini' } });
+  await prisma.config.create({ data: { key: 'TONE_OVERRIDE_ON_TIER3', value: 'EMPATHISE', category: 'gemini' } });
 
   // Create a test feed
-  const feed = await Feed.create({
-    feedId: 'FQ-TEST-001', type: 'reply', status: 'pending', source: ['scanner'],
-    threadTid: 99999, threadFid: 162, threadSubject: 'Test thread',
-    personaId: 'BK-FEED-TEST', bkUsername: 'feedtester', archetype: 'pregnant',
-    toneMode: 'CASUAL', postType: 'reply',
-    draftContent: '測試回覆內容', charCount: 6,
+  const feed = await prisma.feed.create({
+    data: {
+      feedId: 'FQ-TEST-001', type: 'reply', status: 'pending', source: ['scanner'],
+      threadTid: 99999, threadFid: 162, threadSubject: 'Test thread',
+      personaId: 'BK-FEED-TEST', bkUsername: 'feedtester', archetype: 'pregnant',
+      toneMode: 'CASUAL', postType: 'reply',
+      draftContent: '\u6E2C\u8A66\u56DE\u8986\u5167\u5BB9', charCount: 6,
+    },
   });
-  feedObjectId = feed._id.toString();
+  feedObjectId = feed.id;
 });
 
 afterAll(async () => {
-  await Feed.deleteMany({});
-  await User.findOneAndDelete({ email: 'admin-feed@test.com' });
-  await User.findOneAndDelete({ email: 'editor-feed@test.com' });
-  await User.findOneAndDelete({ email: 'viewer-feed@test.com' });
-  await Persona.findOneAndDelete({ accountId: 'BK-FEED-TEST' });
+  await cleanDB();
   await teardownDB();
 });
 
@@ -109,16 +99,17 @@ describe('Claim', () => {
   });
 
   it('another user can claim after expiry (11 min ago)', async () => {
+    const prisma = getPrisma();
     // Set claimedAt to 11 minutes ago so it appears expired
     const elevenMinAgo = new Date(Date.now() - 11 * 60 * 1000);
-    await Feed.findByIdAndUpdate(feedObjectId, { claimedBy: adminId, claimedAt: elevenMinAgo });
+    await prisma.feed.update({ where: { id: feedObjectId }, data: { claimedBy: adminId, claimedAt: elevenMinAgo } });
 
     const res = await request.post(`/api/v1/feeds/${feedObjectId}/claim`).set('Authorization', `Bearer ${editorToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.claimedBy).toBe(editorId);
 
     // Unclaim so the approve test can proceed normally
-    await Feed.findByIdAndUpdate(feedObjectId, { claimedBy: null, claimedAt: null });
+    await prisma.feed.update({ where: { id: feedObjectId }, data: { claimedBy: null, claimedAt: null } });
   });
 });
 
@@ -149,7 +140,7 @@ describe('Custom Generate', () => {
       .post('/api/v1/feeds/custom-generate')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        topic: '幼稚園面試心得',
+        topic: '\u5E7C\u7A1A\u5712\u9762\u8A66\u5FC3\u5F97',
         personaAccountId: 'BK-FEED-TEST',
         toneMode: 'CASUAL',
         postType: 'reply',
@@ -166,23 +157,26 @@ describe('Edit & Regenerate', () => {
   let editFeedId: string;
 
   beforeAll(async () => {
-    const feed = await Feed.create({
-      feedId: 'FQ-TEST-EDIT', type: 'reply', status: 'pending', source: ['scanner'],
-      threadTid: 88888, threadFid: 162, threadSubject: 'Edit test',
-      personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
-      draftContent: '原始內容', charCount: 4,
+    const prisma = getPrisma();
+    const feed = await prisma.feed.create({
+      data: {
+        feedId: 'FQ-TEST-EDIT', type: 'reply', status: 'pending', source: ['scanner'],
+        threadTid: 88888, threadFid: 162, threadSubject: 'Edit test',
+        personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
+        draftContent: '\u539F\u59CB\u5167\u5BB9', charCount: 4,
+      },
     });
-    editFeedId = feed._id.toString();
+    editFeedId = feed.id;
   });
 
   it('PUT /feeds/:id/content edits content', async () => {
     const res = await request
       .put(`/api/v1/feeds/${editFeedId}/content`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ content: '管理員修改後嘅內容' });
+      .send({ content: '\u7BA1\u7406\u54E1\u4FEE\u6539\u5F8C\u5605\u5167\u5BB9' });
 
     expect(res.status).toBe(200);
-    expect(res.body.data.finalContent).toBe('管理員修改後嘅內容');
+    expect(res.body.data.finalContent).toBe('\u7BA1\u7406\u54E1\u4FEE\u6539\u5F8C\u5605\u5167\u5BB9');
     expect(res.body.data.adminEdit).toBe(true);
   });
 
@@ -203,11 +197,12 @@ describe('Batch', () => {
   let batchIds: string[];
 
   beforeAll(async () => {
+    const prisma = getPrisma();
     const feeds = await Promise.all([
-      Feed.create({ feedId: 'FQ-BATCH-1', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 77771, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch1', charCount: 6 }),
-      Feed.create({ feedId: 'FQ-BATCH-2', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 77772, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch2', charCount: 6 }),
+      prisma.feed.create({ data: { feedId: 'FQ-BATCH-1', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 77771, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch1', charCount: 6 } }),
+      prisma.feed.create({ data: { feedId: 'FQ-BATCH-2', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 77772, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'batch2', charCount: 6 } }),
     ]);
-    batchIds = feeds.map(f => f._id.toString());
+    batchIds = feeds.map(f => f.id);
   });
 
   it('POST /feeds/batch/approve approves multiple', async () => {
@@ -236,38 +231,43 @@ describe('Reject', () => {
   let batchRejectIds: string[];
 
   beforeAll(async () => {
-    const feed1 = await Feed.create({
-      feedId: 'FQ-REJECT-1', type: 'reply', status: 'pending', source: ['scanner'],
-      threadTid: 66661, threadFid: 162, threadSubject: 'Reject test 1',
-      personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
-      draftContent: '待拒絕內容', charCount: 5,
+    const prisma = getPrisma();
+    const feed1 = await prisma.feed.create({
+      data: {
+        feedId: 'FQ-REJECT-1', type: 'reply', status: 'pending', source: ['scanner'],
+        threadTid: 66661, threadFid: 162, threadSubject: 'Reject test 1',
+        personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
+        draftContent: '\u5F85\u62D2\u7D55\u5167\u5BB9', charCount: 5,
+      },
     });
-    rejectFeedId = feed1._id.toString();
+    rejectFeedId = feed1.id;
 
-    const feed2 = await Feed.create({
-      feedId: 'FQ-REJECT-2', type: 'reply', status: 'pending', source: ['scanner'],
-      threadTid: 66662, threadFid: 162, threadSubject: 'Reject test 2',
-      personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
-      draftContent: '待拒絕內容2', charCount: 6,
+    const feed2 = await prisma.feed.create({
+      data: {
+        feedId: 'FQ-REJECT-2', type: 'reply', status: 'pending', source: ['scanner'],
+        threadTid: 66662, threadFid: 162, threadSubject: 'Reject test 2',
+        personaId: 'BK-FEED-TEST', toneMode: 'CASUAL', postType: 'reply',
+        draftContent: '\u5F85\u62D2\u7D55\u5167\u5BB92', charCount: 6,
+      },
     });
-    rejectFeedId2 = feed2._id.toString();
+    rejectFeedId2 = feed2.id;
 
     const feeds = await Promise.all([
-      Feed.create({ feedId: 'FQ-BREJECT-1', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 66671, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject1', charCount: 8 }),
-      Feed.create({ feedId: 'FQ-BREJECT-2', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 66672, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject2', charCount: 8 }),
+      prisma.feed.create({ data: { feedId: 'FQ-BREJECT-1', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 66671, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject1', charCount: 8 } }),
+      prisma.feed.create({ data: { feedId: 'FQ-BREJECT-2', type: 'reply', status: 'pending', source: ['scanner'], threadTid: 66672, threadFid: 162, personaId: 'BK-FEED-TEST', draftContent: 'breject2', charCount: 8 } }),
     ]);
-    batchRejectIds = feeds.map(f => f._id.toString());
+    batchRejectIds = feeds.map(f => f.id);
   });
 
   it('POST /feeds/:id/reject rejects a pending feed with notes', async () => {
     const res = await request
       .post(`/api/v1/feeds/${rejectFeedId}/reject`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ notes: '內容不合適' });
+      .send({ notes: '\u5167\u5BB9\u4E0D\u5408\u9069' });
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('rejected');
-    expect(res.body.data.adminNotes).toBe('內容不合適');
+    expect(res.body.data.adminNotes).toBe('\u5167\u5BB9\u4E0D\u5408\u9069');
   });
 
   it('POST /feeds/:id/reject returns 422 for non-pending feed', async () => {
@@ -275,7 +275,7 @@ describe('Reject', () => {
     const res = await request
       .post(`/api/v1/feeds/${rejectFeedId}/reject`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ notes: '再次嘗試' });
+      .send({ notes: '\u518D\u6B21\u5617\u8A66' });
 
     expect(res.status).toBe(422);
   });
@@ -284,7 +284,7 @@ describe('Reject', () => {
     const res = await request
       .post('/api/v1/feeds/batch/reject')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ feedIds: batchRejectIds, notes: '批量拒絕' });
+      .send({ feedIds: batchRejectIds, notes: '\u6279\u91CF\u62D2\u7D55' });
 
     expect(res.status).toBe(200);
     expect(res.body.data.succeeded).toHaveLength(2);
@@ -315,46 +315,48 @@ describe('Permission', () => {
 
 describe('Auto-post after approval', () => {
   beforeAll(async () => {
-    // Dynamically import ForumBoard and ForumCategory
-    const { ForumBoard, ForumCategory } = await import('../../../src/modules/forum/forum.model.js');
+    const prisma = getPrisma();
 
     // Ensure a category exists for the boards
-    let cat = await ForumCategory.findOne({ name: 'Auto-Test Category' });
+    let cat = await prisma.forumCategory.findFirst({ where: { name: 'Auto-Test Category' } });
     if (!cat) {
-      cat = await ForumCategory.create({ name: 'Auto-Test Category', sortOrder: 99 });
+      cat = await prisma.forumCategory.create({ data: { name: 'Auto-Test Category', sortOrder: 99 } });
     }
-    const categoryId = cat._id;
+    const categoryId = cat.id;
 
     // Create board with enableAutoReply=true
-    await ForumBoard.findOneAndUpdate(
-      { fid: 88162 },
-      { fid: 88162, name: 'Auto-Reply Board', categoryId, enableScraping: false, enableAutoReply: true, isActive: true },
-      { upsert: true, runValidators: true },
-    );
+    await prisma.forumBoard.upsert({
+      where: { fid: 88162 },
+      update: { name: 'Auto-Reply Board', categoryId, enableScraping: false, enableAutoReply: true, isActive: true },
+      create: { fid: 88162, name: 'Auto-Reply Board', categoryId, enableScraping: false, enableAutoReply: true, isActive: true },
+    });
     // Create board with enableAutoReply=false
-    await ForumBoard.findOneAndUpdate(
-      { fid: 88163 },
-      { fid: 88163, name: 'Manual Board', categoryId, enableScraping: false, enableAutoReply: false, isActive: true },
-      { upsert: true, runValidators: true },
-    );
+    await prisma.forumBoard.upsert({
+      where: { fid: 88163 },
+      update: { name: 'Manual Board', categoryId, enableScraping: false, enableAutoReply: false, isActive: true },
+      create: { fid: 88163, name: 'Manual Board', categoryId, enableScraping: false, enableAutoReply: false, isActive: true },
+    });
   });
 
   afterAll(async () => {
-    const { ForumBoard, ForumCategory } = await import('../../../src/modules/forum/forum.model.js');
-    await ForumBoard.deleteMany({ fid: { $in: [88162, 88163] } });
-    await ForumCategory.deleteMany({ name: 'Auto-Test Category' });
-    await Feed.deleteMany({ feedId: { $in: ['FQ-AUTO-001', 'FQ-AUTO-002'] } });
+    const prisma = getPrisma();
+    await prisma.feed.deleteMany({ where: { feedId: { in: ['FQ-AUTO-001', 'FQ-AUTO-002'] } } });
+    await prisma.forumBoard.deleteMany({ where: { fid: { in: [88162, 88163] } } });
+    await prisma.forumCategory.deleteMany({ where: { name: 'Auto-Test Category' } });
   });
 
   it('auto-queues poster job when board.enableAutoReply is true', async () => {
-    const feed = await Feed.create({
-      feedId: 'FQ-AUTO-001', type: 'reply', status: 'pending', source: ['scanner'],
-      threadTid: 88801, threadFid: 88162, personaId: 'BK-FEED-TEST',
-      draftContent: '自動發帖測試', charCount: 6,
+    const prisma = getPrisma();
+    const feed = await prisma.feed.create({
+      data: {
+        feedId: 'FQ-AUTO-001', type: 'reply', status: 'pending', source: ['scanner'],
+        threadTid: 88801, threadFid: 88162, personaId: 'BK-FEED-TEST',
+        draftContent: '\u81EA\u52D5\u767C\u5E16\u6E2C\u8A66', charCount: 6,
+      },
     });
 
     const res = await request
-      .post(`/api/v1/feeds/${feed._id}/approve`)
+      .post(`/api/v1/feeds/${feed.id}/approve`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(res.status).toBe(200);
@@ -363,14 +365,17 @@ describe('Auto-post after approval', () => {
   });
 
   it('does NOT auto-queue when board.enableAutoReply is false', async () => {
-    const feed = await Feed.create({
-      feedId: 'FQ-AUTO-002', type: 'reply', status: 'pending', source: ['scanner'],
-      threadTid: 88802, threadFid: 88163, personaId: 'BK-FEED-TEST',
-      draftContent: '手動發帖測試', charCount: 6,
+    const prisma = getPrisma();
+    const feed = await prisma.feed.create({
+      data: {
+        feedId: 'FQ-AUTO-002', type: 'reply', status: 'pending', source: ['scanner'],
+        threadTid: 88802, threadFid: 88163, personaId: 'BK-FEED-TEST',
+        draftContent: '\u624B\u52D5\u767C\u5E16\u6E2C\u8A66', charCount: 6,
+      },
     });
 
     const res = await request
-      .post(`/api/v1/feeds/${feed._id}/approve`)
+      .post(`/api/v1/feeds/${feed.id}/approve`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(res.status).toBe(200);

@@ -1,16 +1,13 @@
 /**
- * Import existing data from GAS Google Sheets into MongoDB.
+ * Import existing data from GAS Google Sheets into PostgreSQL via Prisma.
  * Run once: npx tsx src/seeds/import-data.ts
  *
  * Data source: BK Seeding Operations.xlsx (all sheets)
  * Last synced: 2026-04-09
  */
 import 'dotenv/config';
-import { connectDB, disconnectDB } from '../shared/database.js';
-import ToneMode from '../modules/tone/tone.model.js';
-import Persona from '../modules/persona/persona.model.js';
-import TopicRule from '../modules/topic-rules/topic-rules.model.js';
-import { ForumCategory, ForumBoard } from '../modules/forum/forum.model.js';
+import { connectDB, disconnectDB, getPrisma } from '../shared/database.js';
+import { encrypt } from '../shared/encryption.js';
 
 // --- Archetype mapping ---
 const ARCHETYPE_MAP: Record<string, string> = {
@@ -649,14 +646,17 @@ function mapPostType(pref: string): string {
 
 async function run() {
   await connectDB();
-  console.log('Connected to MongoDB');
+  const prisma = getPrisma();
+  console.log('Connected to PostgreSQL via Prisma');
 
   // Seed Tone Modes
   let toneCount = 0;
   for (const t of TONES) {
-    const exists = await ToneMode.findOne({ toneId: t.toneId });
+    const exists = await prisma.toneMode.findFirst({ where: { toneId: t.toneId } });
     if (!exists) {
-      await ToneMode.create({ ...t, isActive: true });
+      await prisma.toneMode.create({
+        data: { ...t, isActive: true },
+      });
       toneCount++;
     }
   }
@@ -665,22 +665,25 @@ async function run() {
   // Seed Personas
   let personaCount = 0;
   for (const p of PERSONAS) {
-    const exists = await Persona.findOne({ accountId: p.accountId });
+    const exists = await prisma.persona.findFirst({ where: { accountId: p.accountId } });
     if (!exists) {
-      await Persona.create({
-        accountId: p.accountId,
-        username: p.username,
-        archetype: ARCHETYPE_MAP[p.archetype] || p.archetype,
-        primaryToneMode: p.primaryToneMode,
-        secondaryToneMode: p.secondaryToneMode || '',
-        avoidedToneMode: p.avoidedToneMode || '',
-        voiceCues: p.voiceCues ? p.voiceCues.split('；').map((s: string) => s.trim()).filter(Boolean) : [],
-        catchphrases: p.catchphrases ? p.catchphrases.split('；').map((s: string) => s.trim()).filter(Boolean) : [],
-        tier3Script: p.tier3Script || '',
-        topicBlacklist: p.topicBlacklist ? p.topicBlacklist.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
-        maxPostsPerDay: p.maxPostsPerDay || 3,
-        bkPassword: p.bkPassword || '',
-        isActive: true,
+      const encryptedPassword = p.bkPassword ? encrypt(p.bkPassword) : '';
+      await prisma.persona.create({
+        data: {
+          accountId: p.accountId,
+          username: p.username,
+          archetype: ARCHETYPE_MAP[p.archetype] || p.archetype,
+          primaryToneMode: p.primaryToneMode,
+          secondaryToneMode: p.secondaryToneMode || '',
+          avoidedToneMode: p.avoidedToneMode || '',
+          voiceCues: p.voiceCues ? p.voiceCues.split('；').map((s: string) => s.trim()).filter(Boolean) : [],
+          catchphrases: p.catchphrases ? p.catchphrases.split('；').map((s: string) => s.trim()).filter(Boolean) : [],
+          tier3Script: p.tier3Script || '',
+          topicBlacklist: p.topicBlacklist ? p.topicBlacklist.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+          maxPostsPerDay: p.maxPostsPerDay || 3,
+          bkPassword: encryptedPassword,
+          isActive: true,
+        },
       });
       personaCount++;
     }
@@ -690,19 +693,21 @@ async function run() {
   // Seed Topic Rules
   let ruleCount = 0;
   for (const r of RULES) {
-    const exists = await TopicRule.findOne({ ruleId: r.ruleId });
+    const exists = await prisma.topicRule.findFirst({ where: { ruleId: r.ruleId } });
     if (!exists) {
-      await TopicRule.create({
-        ruleId: r.ruleId,
-        topicKeywords: r.topicKeywords.split(',').map((s: string) => s.trim()).filter(Boolean),
-        sensitivityTier: r.sensitivityTier,
-        sentimentTrigger: r.sentimentTrigger?.toLowerCase() || 'any',
-        priorityAccountIds: r.priorityAccountIds ? r.priorityAccountIds.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
-        assignToneMode: r.assignToneMode || 'auto',
-        postTypePreference: mapPostType(r.postTypePreference),
-        geminiPromptHint: r.geminiPromptHint || '',
-        avoidIf: r.avoidIf || '',
-        isActive: true,
+      await prisma.topicRule.create({
+        data: {
+          ruleId: r.ruleId,
+          topicKeywords: r.topicKeywords.split(',').map((s: string) => s.trim()).filter(Boolean),
+          sensitivityTier: r.sensitivityTier,
+          sentimentTrigger: r.sentimentTrigger?.toLowerCase() || 'any',
+          priorityAccountIds: r.priorityAccountIds ? r.priorityAccountIds.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+          assignToneMode: r.assignToneMode || 'auto',
+          postTypePreference: mapPostType(r.postTypePreference),
+          geminiPromptHint: r.geminiPromptHint || '',
+          avoidIf: r.avoidIf || '',
+          isActive: true,
+        },
       });
       ruleCount++;
     }
@@ -713,26 +718,30 @@ async function run() {
   let catCount = 0, boardCount = 0;
   for (let i = 0; i < FORUM_DATA.length; i++) {
     const { category, boards } = FORUM_DATA[i];
-    let cat = await ForumCategory.findOne({ name: category });
+    let cat = await prisma.forumCategory.findFirst({ where: { name: category } });
     if (!cat) {
-      cat = await ForumCategory.create({ name: category, sortOrder: i + 1 });
+      cat = await prisma.forumCategory.create({
+        data: { name: category, sortOrder: i + 1 },
+      });
       catCount++;
     }
     for (const b of boards) {
-      const exists = await ForumBoard.findOne({ fid: b.fid });
+      const exists = await prisma.forumBoard.findFirst({ where: { fid: b.fid } });
       if (!exists) {
-        await ForumBoard.create({
-          categoryId: cat._id,
-          name: b.name,
-          fid: b.fid,
-          enableScraping: b.enableScraping ?? false,
-          enableAutoReply: b.enableAutoReply ?? false,
-          scanInterval: b.scanInterval ?? 30,
-          replyThreshold: { min: 0, max: 40 },
-          defaultRuleIds: b.defaultRuleIds ?? [],
-          excludeRuleIds: [],
-          personaBindings: [],
-          isActive: true,
+        await prisma.forumBoard.create({
+          data: {
+            categoryId: cat.id,
+            name: b.name,
+            fid: b.fid,
+            enableScraping: b.enableScraping ?? false,
+            enableAutoReply: b.enableAutoReply ?? false,
+            scanInterval: b.scanInterval ?? 30,
+            replyThresholdMin: 0,
+            replyThresholdMax: 40,
+            defaultRuleIds: b.defaultRuleIds ?? [],
+            excludeRuleIds: [],
+            isActive: true,
+          },
         });
         boardCount++;
       }

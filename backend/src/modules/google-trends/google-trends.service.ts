@@ -1,4 +1,5 @@
-import GoogleTrend from './google-trends.model.js';
+import { Prisma } from '../../generated/prisma/client.js';
+import { getPrisma } from '../../shared/database.js';
 import { fetchGoogleTrends, analyzeTrendsWithGemini } from '../gemini/google-trends.service.js';
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
@@ -9,6 +10,7 @@ import crypto from 'crypto';
  * Called by worker cron every 30 minutes.
  */
 export async function pullAndStore(): Promise<{ pullId: string; count: number }> {
+  const prisma = getPrisma();
   const pullId = `GP-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 
   // 1. Fetch from Google Trends API (Summary + Detail for news)
@@ -27,23 +29,23 @@ export async function pullAndStore(): Promise<{ pullId: string; count: number }>
     }
   }
 
-  // 3. Clear old data and store new
-  await GoogleTrend.deleteMany({});
+  // 3. Clear old data and store new (delete children first due to FK)
+  await prisma.googleTrendNews.deleteMany({});
+  await prisma.googleTrend.deleteMany({});
   const now = new Date();
   let saved = 0;
   for (const t of trends) {
     const geminiAnalysis = analyzedMap.get(t.query) || null;
     try {
-      await GoogleTrend.findOneAndUpdate(
-        { query: t.query },
-        {
+      const trend = await prisma.googleTrend.upsert({
+        where: { query: t.query },
+        create: {
           query: t.query,
           score: t.score,
           peakVolume: t.peakVolume,
           durationHours: t.durationHours,
           categories: t.categories,
           trendBreakdown: t.trendBreakdown,
-          news: t.news,
           analysis: geminiAnalysis
             ? {
                 summary: geminiAnalysis.summary,
@@ -51,12 +53,37 @@ export async function pullAndStore(): Promise<{ pullId: string; count: number }>
                 suggestedAngle: geminiAnalysis.suggestedAngle,
                 safeToMention: geminiAnalysis.safeToMention,
               }
-            : null,
+            : Prisma.DbNull,
           pullId,
           pulledAt: now,
         },
-        { upsert: true, new: true },
-      );
+        update: {
+          score: t.score,
+          peakVolume: t.peakVolume,
+          durationHours: t.durationHours,
+          categories: t.categories,
+          trendBreakdown: t.trendBreakdown,
+          analysis: geminiAnalysis
+            ? {
+                summary: geminiAnalysis.summary,
+                parentingRelevance: geminiAnalysis.parentingRelevance,
+                suggestedAngle: geminiAnalysis.suggestedAngle,
+                safeToMention: geminiAnalysis.safeToMention,
+              }
+            : Prisma.DbNull,
+          pullId,
+          pulledAt: now,
+        },
+      });
+
+      // Delete old news for this trend, then create new
+      await prisma.googleTrendNews.deleteMany({ where: { trendId: trend.id } });
+      for (const n of t.news) {
+        await prisma.googleTrendNews.create({
+          data: { trendId: trend.id, headline: n.headline, url: n.url },
+        });
+      }
+
       saved++;
     } catch (err) {
       logger.warn({ err, query: t.query }, 'google-trends: failed to save trend');
@@ -92,19 +119,26 @@ export async function list({
   relevance?: string;
   safeOnly?: string;
 }) {
-  const filter: Record<string, unknown> = {};
+  const prisma = getPrisma();
+  const where: any = {};
 
   if (relevance && relevance !== 'all') {
-    filter['analysis.parentingRelevance'] = relevance;
+    where.analysis = { path: ['parentingRelevance'], equals: relevance };
   }
   if (safeOnly === 'true') {
-    filter['analysis.safeToMention'] = true;
+    where.analysis = { ...(where.analysis || {}), path: ['safeToMention'], equals: true };
   }
 
   const skip = (page - 1) * limit;
   const [data, total] = await Promise.all([
-    GoogleTrend.find(filter).sort({ pulledAt: -1, score: -1 }).skip(skip).limit(limit),
-    GoogleTrend.countDocuments(filter),
+    prisma.googleTrend.findMany({
+      where,
+      orderBy: [{ pulledAt: 'desc' }, { score: 'desc' }],
+      skip,
+      take: limit,
+      include: { news: true },
+    }),
+    prisma.googleTrend.count({ where }),
   ]);
 
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
@@ -114,8 +148,11 @@ export async function list({
  * Get the latest pull's trends (for matching by scanner).
  */
 export async function getLatestTrends() {
+  const prisma = getPrisma();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  return GoogleTrend.find({ pulledAt: { $gte: oneHourAgo } })
-    .sort({ score: -1 })
-    .lean();
+  return prisma.googleTrend.findMany({
+    where: { pulledAt: { gte: oneHourAgo } },
+    orderBy: { score: 'desc' },
+    include: { news: true },
+  });
 }

@@ -4,50 +4,55 @@
  * 1. Batch approve with 51 feedIds returns 422
  * 2. Persona update cannot set internal field (postsToday) via API
  */
+import bcrypt from 'bcryptjs';
 import { request, setupDB, teardownDB } from '../helpers.js';
-import User from '../../src/modules/auth/auth.model.js';
-import Persona from '../../src/modules/persona/persona.model.js';
-import Feed from '../../src/modules/feed/feed.model.js';
+import { getPrisma } from '../../src/shared/database.js';
 
 let adminToken: string, personaId: string;
 
 beforeAll(async () => {
   await setupDB();
+  const prisma = getPrisma();
 
   const email = 'admin-whitelist@test.com';
-  await User.findOneAndDelete({ email });
-  await User.create({ username: 'admin-whitelist', email, password: 'admin123', role: 'admin' });
+  await prisma.user.deleteMany({ where: { email } });
+  await prisma.user.create({
+    data: { username: 'admin-whitelist', email, passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' },
+  });
   const res = await request.post('/api/v1/auth/login').send({ email, password: 'admin123' });
   adminToken = res.body.data.accessToken;
 
   // Create a test persona with postsToday = 0
-  await Persona.findOneAndDelete({ accountId: 'BK-WHITELIST-TEST' });
-  const persona = await Persona.create({
-    accountId: 'BK-WHITELIST-TEST',
-    username: 'whitelist-tester',
-    archetype: 'pregnant',
-    primaryToneMode: 'CASUAL',
-    maxPostsPerDay: 3,
-    postsToday: 0,
-    isActive: true,
+  await prisma.persona.deleteMany({ where: { accountId: 'BK-WHITELIST-TEST' } });
+  const persona = await prisma.persona.create({
+    data: {
+      accountId: 'BK-WHITELIST-TEST',
+      username: 'whitelist-tester',
+      archetype: 'pregnant',
+      primaryToneMode: 'CASUAL',
+      maxPostsPerDay: 3,
+      postsToday: 0,
+      isActive: true,
+    },
   });
-  personaId = persona._id.toString();
+  personaId = persona.id;
 
-  await Feed.deleteMany({ feedId: /^WHITELIST-BATCH-/ });
+  await prisma.feed.deleteMany({ where: { feedId: { startsWith: 'WHITELIST-BATCH-' } } });
 });
 
 afterAll(async () => {
-  await User.findOneAndDelete({ email: 'admin-whitelist@test.com' });
-  await Persona.findOneAndDelete({ accountId: 'BK-WHITELIST-TEST' });
-  await Feed.deleteMany({ feedId: /^WHITELIST-BATCH-/ });
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({ where: { email: 'admin-whitelist@test.com' } });
+  await prisma.feed.deleteMany({ where: { feedId: { startsWith: 'WHITELIST-BATCH-' } } });
+  await prisma.persona.deleteMany({ where: { accountId: 'BK-WHITELIST-TEST' } });
   await teardownDB();
 });
 
 describe('Batch size limit', () => {
   it('returns 422 when batchApprove receives 51 feedIds', async () => {
-    // Generate 51 fake (non-existent) ObjectId-like strings — we just need the length check
+    // Generate 51 fake UUID-like strings — we just need the length check
     const feedIds = Array.from({ length: 51 }, (_, i) =>
-      `00000000000000000000000${String(i).padStart(1, '0')}`.slice(-24),
+      `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`,
     );
 
     const res = await request

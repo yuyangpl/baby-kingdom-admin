@@ -6,9 +6,9 @@
  */
 
 import { jest } from '@jest/globals';
+import bcrypt from 'bcryptjs';
 import { request, setupDB, teardownDB } from '../helpers.js';
-import User from '../../src/modules/auth/auth.model.js';
-import Feed from '../../src/modules/feed/feed.model.js';
+import { getPrisma } from '../../src/shared/database.js';
 import { checkSimilarity } from '../../src/modules/gemini/quality-guard.js';
 
 jest.setTimeout(120000);
@@ -24,14 +24,17 @@ beforeAll(async () => {
   if (!process.env.RUN_PERF_TESTS) return;
 
   await setupDB();
+  const prisma = getPrisma();
 
   // Create admin user
-  await User.findOneAndDelete({ email: ADMIN_EMAIL });
-  await User.create({
-    username: 'admin-perf-bo',
-    email: ADMIN_EMAIL,
-    password: 'admin123',
-    role: 'admin',
+  await prisma.user.deleteMany({ where: { email: ADMIN_EMAIL } });
+  await prisma.user.create({
+    data: {
+      username: 'admin-perf-bo',
+      email: ADMIN_EMAIL,
+      passwordHash: await bcrypt.hash('admin123', 12),
+      role: 'admin',
+    },
   });
 
   const loginRes = await request
@@ -40,29 +43,32 @@ beforeAll(async () => {
   adminToken = loginRes.body.data.accessToken;
 
   // Seed 50 pending feeds for batch approve test
-  const docs = Array.from({ length: BATCH_SIZE }, (_, i) => {
+  const feedPromises = Array.from({ length: BATCH_SIZE }, (_, i) => {
     const idx = String(i + 1).padStart(5, '0');
-    return {
-      feedId: `${PERF_PREFIX}${idx}`,
-      type: 'reply',
-      status: 'pending',
-      source: ['scanner'],
-      threadTid: 800000 + i,
-      threadFid: 162,
-      personaId: 'BK-PERF-TEST',
-      draftContent: `batch performance test content ${idx}`,
-      charCount: 30 + i,
-    };
+    return prisma.feed.create({
+      data: {
+        feedId: `${PERF_PREFIX}${idx}`,
+        type: 'reply',
+        status: 'pending',
+        source: ['scanner'],
+        threadTid: 800000 + i,
+        threadFid: 162,
+        personaId: 'BK-PERF-TEST',
+        draftContent: `batch performance test content ${idx}`,
+        charCount: 30 + i,
+      },
+    });
   });
 
-  const inserted = await Feed.insertMany(docs, { ordered: false });
-  batchFeedIds = inserted.map((d) => d._id.toString());
+  const inserted = await Promise.all(feedPromises);
+  batchFeedIds = inserted.map((d) => d.id);
 });
 
 afterAll(async () => {
   if (!process.env.RUN_PERF_TESTS) return;
-  await Feed.deleteMany({ feedId: new RegExp(`^${PERF_PREFIX}`) });
-  await User.findOneAndDelete({ email: ADMIN_EMAIL });
+  const prisma = getPrisma();
+  await prisma.feed.deleteMany({ where: { feedId: { startsWith: PERF_PREFIX } } });
+  await prisma.user.deleteMany({ where: { email: ADMIN_EMAIL } });
   await teardownDB();
 });
 

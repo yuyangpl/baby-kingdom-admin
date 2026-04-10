@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../../shared/middleware/auth.js';
 import { buildCrud } from '../../shared/crud.js';
-import ToneMode from './tone.model.js';
 
 const router = Router();
-const ctrl = buildCrud(ToneMode, 'tone', {
+const ctrl = buildCrud('toneMode', 'tone', {
   lookupField: 'toneId',
   allowedFields: [
     'toneId', 'displayName', 'whenToUse', 'emotionalRegister', 'openingStyle',

@@ -1,5 +1,6 @@
-import { request, setupDB, teardownDB } from '../../helpers.js';
-import User from '../../../src/modules/auth/auth.model.js';
+import bcrypt from 'bcryptjs';
+import { request, setupDB, teardownDB, cleanDB, expectSuccess, expectError } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
 import { initQueues } from '../../../src/modules/queue/queue.service.js';
 
 let adminToken: string;
@@ -8,15 +9,19 @@ beforeAll(async () => {
   await setupDB();
   initQueues();
 
+  const prisma = getPrisma();
   const email = 'admin-queue@test.com';
-  await User.findOneAndDelete({ email });
-  await User.create({ username: 'admin-queue', email, password: 'admin123', role: 'admin' });
+  await prisma.user.deleteMany({ where: { email } });
+  await prisma.user.create({
+    data: { username: 'admin-queue', email, passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' },
+  });
   const res = await request.post('/api/v1/auth/login').send({ email, password: 'admin123' });
   adminToken = res.body.data.accessToken;
 });
 
 afterAll(async () => {
-  await User.findOneAndDelete({ email: 'admin-queue@test.com' });
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({ where: { email: 'admin-queue@test.com' } });
   await teardownDB();
 });
 

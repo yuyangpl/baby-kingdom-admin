@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../../shared/middleware/auth.js';
 import { buildCrud } from '../../shared/crud.js';
-import TopicRule from './topic-rules.model.js';
 
 const router = Router();
-const ctrl = buildCrud(TopicRule, 'topic-rules', {
+const ctrl = buildCrud('topicRule', 'topic-rules', {
   lookupField: 'ruleId',
   allowedFields: [
     'ruleId', 'topicKeywords', 'sensitivityTier', 'sentimentTrigger',

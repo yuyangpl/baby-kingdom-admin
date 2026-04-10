@@ -1,19 +1,18 @@
 import { Request, Response } from 'express';
 import * as posterService from './poster.service.js';
-import { getQueue } from '../queue/queue.service.js';
+import { addToQueue } from '../queue/queue.service.js';
+import { getPrisma } from '../../shared/database.js';
 import { success } from '../../shared/response.js';
 import { BusinessError } from '../../shared/errors.js';
 
 export async function postFeed(req: Request, res: Response): Promise<void> {
-  const q = getQueue('poster');
-  if (!q) throw new BusinessError('Poster queue not initialized');
-  const Feed = (await import('../feed/feed.model.js')).default;
-  const feed = await Feed.findById(req.params.id);
+  const prisma = getPrisma();
+  const feed = await prisma.feed.findUnique({ where: { id: req.params.id as string } });
   if (!feed) throw new BusinessError('Feed not found');
   if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
 
-  await q.add(`manual-post-${feed.feedId}`, {
-    feedId: feed._id.toString(),
+  await addToQueue('poster', {
+    feedId: feed.id,
     feedIdShort: feed.feedId,
     personaId: feed.personaId,
     boardFid: feed.threadFid,

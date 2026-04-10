@@ -1,23 +1,27 @@
-import { request, setupDB, teardownDB } from '../../helpers.js';
-import User from '../../../src/modules/auth/auth.model.js';
-import DailyStats from '../../../src/modules/dashboard/dashboard.model.js';
+import bcrypt from 'bcryptjs';
+import { request, setupDB, teardownDB, cleanDB, expectSuccess, expectError } from '../../helpers.js';
+import { getPrisma } from '../../../src/shared/database.js';
 
 let adminToken: string;
 
 beforeAll(async () => {
   await setupDB();
-  await DailyStats.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.dailyStats.deleteMany({});
 
   const email = 'admin-dashboard@test.com';
-  await User.findOneAndDelete({ email });
-  await User.create({ username: 'admin-dash', email, password: 'admin123', role: 'admin' });
+  await prisma.user.deleteMany({ where: { email } });
+  await prisma.user.create({
+    data: { username: 'admin-dash', email, passwordHash: await bcrypt.hash('admin123', 12), role: 'admin' },
+  });
   const res = await request.post('/api/v1/auth/login').send({ email, password: 'admin123' });
   adminToken = res.body.data.accessToken;
 });
 
 afterAll(async () => {
-  await User.findOneAndDelete({ email: 'admin-dashboard@test.com' });
-  await DailyStats.deleteMany({});
+  const prisma = getPrisma();
+  await prisma.user.deleteMany({ where: { email: 'admin-dashboard@test.com' } });
+  await prisma.dailyStats.deleteMany({});
   await teardownDB();
 });
 
@@ -43,10 +47,13 @@ describe('Dashboard', () => {
 
   it('GET /dashboard/weekly returns 7-day stats', async () => {
     // Seed some daily stats
+    const prisma = getPrisma();
     const today = new Date().toISOString().slice(0, 10);
-    await DailyStats.create({
-      date: today,
-      feeds: { generated: 10, approved: 8, rejected: 2, posted: 7, failed: 1 },
+    await prisma.dailyStats.create({
+      data: {
+        date: today,
+        feeds: { generated: 10, approved: 8, rejected: 2, posted: 7, failed: 1 },
+      },
     });
 
     const res = await request.get('/api/v1/dashboard/weekly').set('Authorization', `Bearer ${adminToken}`);

@@ -1,5 +1,4 @@
-import Feed from '../feed/feed.model.js';
-import Persona from '../persona/persona.model.js';
+import { getPrisma } from '../../shared/database.js';
 import * as configService from '../config/config.service.js';
 import * as auditService from '../audit/audit.service.js';
 import { NotFoundError, BusinessError } from '../../shared/errors.js';
@@ -42,14 +41,16 @@ interface ThreadItem {
  * Matches original GAS BKForumPoster.js logic exactly.
  */
 export async function postFeed(feedId: string, userId?: string, ip?: string) {
-  const feed = await Feed.findById(feedId);
+  const prisma = getPrisma();
+
+  const feed = await prisma.feed.findUnique({ where: { id: feedId } });
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
 
   const content = feed.finalContent || feed.draftContent;
   if (!content) throw new BusinessError('Feed has no content to post');
 
-  const persona = await Persona.findOne({ accountId: feed.personaId });
+  const persona = await prisma.persona.findFirst({ where: { accountId: feed.personaId ?? undefined } });
   if (!persona) throw new BusinessError('Persona not found');
 
   const baseUrl = await configService.getValue('BK_BASE_URL');
@@ -85,16 +86,24 @@ export async function postFeed(feedId: string, userId?: string, ip?: string) {
     if (!result.success) throw new Error(result.error);
 
     // 5. Record success
-    feed.status = 'posted';
-    feed.postedAt = new Date();
-    feed.postId = result.postId;
-    feed.postUrl = result.postUrl || '';
-    await feed.save();
+    const updatedFeed = await prisma.feed.update({
+      where: { id: feed.id },
+      data: {
+        status: 'posted',
+        postedAt: new Date(),
+        postId: result.postId,
+        postUrl: result.postUrl || '',
+      },
+    });
 
-    persona.postsToday = (persona.postsToday || 0) + 1;
-    persona.lastPostAt = new Date();
-    persona.cooldownUntil = new Date(Date.now() + rateLimitSec * 1000);
-    await persona.save();
+    await prisma.persona.update({
+      where: { id: persona.id },
+      data: {
+        postsToday: (persona.postsToday || 0) + 1,
+        lastPostAt: new Date(),
+        cooldownUntil: new Date(Date.now() + rateLimitSec * 1000),
+      },
+    });
 
     await auditService.log({
       operator: userId || 'system', eventType: 'FEED_POSTED', module: 'poster',
@@ -103,11 +112,15 @@ export async function postFeed(feedId: string, userId?: string, ip?: string) {
       session: userId ? 'admin' : 'worker',
     });
 
-    return feed;
+    return updatedFeed;
   } catch (err: any) {
-    feed.status = 'failed';
-    feed.failReason = err.message;
-    await feed.save();
+    await prisma.feed.update({
+      where: { id: feed.id },
+      data: {
+        status: 'failed',
+        failReason: err.message,
+      },
+    });
 
     await auditService.log({
       operator: userId || 'system', eventType: 'BK_POST_FAILED', module: 'poster',
@@ -123,6 +136,8 @@ export async function postFeed(feedId: string, userId?: string, ip?: string) {
 // --- BK Account Auth (matches GAS _ensureBkLogin) ---
 
 async function ensureBkLogin(persona: any, baseUrl: string, bkApp: string, bkVer: string): Promise<string> {
+  const prisma = getPrisma();
+
   // Check in-memory cache first
   if (_bkTokens[persona.accountId]) return _bkTokens[persona.accountId];
 
@@ -166,11 +181,15 @@ async function ensureBkLogin(persona: any, baseUrl: string, bkApp: string, bkVer
 
   _bkTokens[persona.accountId] = token;
 
-  persona.bkToken = token;
-  persona.bkUid = uid;
-  persona.bkTokenExpiry = new Date(Date.now() + 24 * 3600 * 1000);
-  persona.tokenStatus = 'active';
-  await persona.save();
+  await prisma.persona.update({
+    where: { id: persona.id },
+    data: {
+      bkToken: token,
+      bkUid: uid,
+      bkTokenExpiry: new Date(Date.now() + 24 * 3600 * 1000),
+      tokenStatus: 'active',
+    },
+  });
 
   await auditService.log({
     operator: 'system', eventType: 'BK_POST_SUCCESS', module: 'poster',
@@ -304,6 +323,8 @@ async function enforceRateLimit(persona: any, rateLimitSec: number): Promise<voi
 // --- Forum index sync (fetch from BK API and update DB) ---
 
 export async function syncForumIndex() {
+  const prisma = getPrisma();
+
   const baseUrl = await configService.getValue('BK_BASE_URL');
   if (!baseUrl) return { success: false as const, error: 'BK_BASE_URL not configured' };
 
@@ -320,7 +341,6 @@ export async function syncForumIndex() {
 
     if (body.status !== 1) return { success: false as const, error: body.message };
 
-    const { ForumCategory, ForumBoard } = await import('../forum/forum.model.js');
     const groups = body.data?.lists || [];
     let updated = 0;
     let created = 0;
@@ -328,9 +348,9 @@ export async function syncForumIndex() {
     for (const group of groups) {
       const categoryName = group.name || '';
       // Upsert category
-      let category = await ForumCategory.findOne({ name: categoryName });
+      let category = await prisma.forumCategory.findFirst({ where: { name: categoryName } });
       if (!category) {
-        category = await ForumCategory.create({ name: categoryName });
+        category = await prisma.forumCategory.create({ data: { name: categoryName } });
       }
 
       const subforums = group.subforums || [];
@@ -340,31 +360,35 @@ export async function syncForumIndex() {
         if (!fid || !name) continue;
 
         // Try match by name first (fix wrong FID), then by fid
-        const existingByName = await ForumBoard.findOne({ name });
+        const existingByName = await prisma.forumBoard.findFirst({ where: { name } });
         if (existingByName) {
           if (existingByName.fid !== fid) {
             // Remove conflicting board with same fid (if any) before updating
-            await ForumBoard.deleteOne({ fid, _id: { $ne: existingByName._id } });
+            await prisma.forumBoard.deleteMany({ where: { fid, id: { not: existingByName.id } } });
             logger.info({ name, oldFid: existingByName.fid, newFid: fid }, 'syncForumIndex: updating FID');
-            existingByName.fid = fid;
-            existingByName.categoryId = category._id;
-            await existingByName.save();
+            await prisma.forumBoard.update({
+              where: { id: existingByName.id },
+              data: { fid, categoryId: category.id },
+            });
             updated++;
           }
         } else {
-          const existingByFid = await ForumBoard.findOne({ fid });
+          const existingByFid = await prisma.forumBoard.findFirst({ where: { fid } });
           if (existingByFid) {
-            existingByFid.name = name;
-            existingByFid.categoryId = category._id;
-            await existingByFid.save();
+            await prisma.forumBoard.update({
+              where: { id: existingByFid.id },
+              data: { name, categoryId: category.id },
+            });
             updated++;
           } else {
-            await ForumBoard.create({
-              categoryId: category._id,
-              name,
-              fid,
-              isActive: true,
-              enableScraping: false,
+            await prisma.forumBoard.create({
+              data: {
+                categoryId: category.id,
+                name,
+                fid,
+                isActive: true,
+                enableScraping: false,
+              },
             });
             created++;
           }
@@ -475,15 +499,26 @@ function mockThreadList(): ThreadItem[] {
 }
 
 async function mockPost(feed: any, persona: any, userId: string | undefined, ip: string | undefined) {
-  logger.info({ feedId: feed.feedId }, 'Mock posting feed (BK_BASE_URL not configured)');
-  feed.status = 'posted';
-  feed.postedAt = new Date();
-  feed.postId = `mock-${Date.now()}`;
-  await feed.save();
+  const prisma = getPrisma();
 
-  persona.postsToday = (persona.postsToday || 0) + 1;
-  persona.lastPostAt = new Date();
-  await persona.save();
+  logger.info({ feedId: feed.feedId }, 'Mock posting feed (BK_BASE_URL not configured)');
+
+  const updatedFeed = await prisma.feed.update({
+    where: { id: feed.id },
+    data: {
+      status: 'posted',
+      postedAt: new Date(),
+      postId: `mock-${Date.now()}`,
+    },
+  });
+
+  await prisma.persona.update({
+    where: { id: persona.id },
+    data: {
+      postsToday: (persona.postsToday || 0) + 1,
+      lastPostAt: new Date(),
+    },
+  });
 
   await auditService.log({
     operator: userId || 'system', eventType: 'FEED_POSTED', module: 'poster',
@@ -491,18 +526,35 @@ async function mockPost(feed: any, persona: any, userId: string | undefined, ip:
     actionDetail: `Posted feed ${feed.feedId} (mock)`, session: userId ? 'admin' : 'worker',
   });
 
-  return feed;
+  return updatedFeed;
 }
 
 // --- Poster history ---
 
 export async function getHistory({ page = 1, limit = 20 }: { page?: number; limit?: number }) {
+  const prisma = getPrisma();
+
   const skip = (page - 1) * limit;
-  const filter = { status: { $in: ['posted', 'failed'] } };
+  const where = { status: { in: ['posted', 'failed'] } };
   const [data, total] = await Promise.all([
-    Feed.find(filter).sort('-postedAt').skip(skip).limit(limit)
-      .select('feedId threadSubject personaId bkUsername status postedAt failReason postId'),
-    Feed.countDocuments(filter),
+    prisma.feed.findMany({
+      where,
+      orderBy: { postedAt: 'desc' },
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        feedId: true,
+        threadSubject: true,
+        personaId: true,
+        bkUsername: true,
+        status: true,
+        postedAt: true,
+        failReason: true,
+        postId: true,
+      },
+    }),
+    prisma.feed.count({ where }),
   ]);
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
