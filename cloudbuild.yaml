@@ -20,18 +20,6 @@ steps:
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:latest'
       - './backend'
 
-  # Build worker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker:${SHORT_SHA}'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker:latest'
-      - '-f'
-      - './backend/Dockerfile.worker'
-      - './backend'
-
   # Build frontend
   - name: 'node:20-alpine'
     entrypoint: 'sh'
@@ -44,13 +32,11 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend']
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker']
-
   # ===== Database Migration =====
 
   # Run Prisma migrate deploy (uses Cloud SQL Proxy)
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'db-migrate'
     args:
       - 'run'
       - '--rm'
@@ -67,7 +53,9 @@ steps:
   # ===== Deploy Backend to Cloud Run =====
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-backend'
     entrypoint: 'gcloud'
+    waitFor: ['db-migrate']
     args:
       - 'run'
       - 'deploy'
@@ -78,26 +66,32 @@ steps:
       - '${_REGION}'
       - '--platform'
       - 'managed'
-
-  # ===== Deploy Worker to Cloud Run =====
-
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'gcloud'
-    args:
-      - 'run'
-      - 'deploy'
-      - 'bk-worker'
-      - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker:${SHORT_SHA}'
-      - '--region'
-      - '${_REGION}'
-      - '--platform'
-      - 'managed'
+      - '--timeout'
+      - '300s'
+      - '--set-secrets'
+      - 'DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ENCRYPTION_KEY=ENCRYPTION_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest'
 
   # ===== Deploy Frontend to Cloud Storage =====
 
   - name: 'gcr.io/cloud-builders/gsutil'
     args: ['-m', 'rsync', '-r', '-d', 'frontend/dist/', 'gs://${PROJECT_ID}-frontend/']
+
+  # ===== Print URLs =====
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'print-urls'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        BACKEND_URL=$(gcloud run services describe bk-backend --region=${_REGION} --format='value(status.url)')
+        echo "========================================"
+        echo "  Deploy complete!"
+        echo "  Backend:  $${BACKEND_URL}"
+        echo "========================================"
+        echo ""
+        echo "  Next step: run Cloud Scheduler setup"
+        echo "  ./scripts/setup-scheduler.sh ${PROJECT_ID} $${BACKEND_URL}"
 
 availableSecrets:
   secretManager:
@@ -106,7 +100,6 @@ availableSecrets:
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/worker:${SHORT_SHA}'
 
 options:
   logging: CLOUD_LOGGING_ONLY

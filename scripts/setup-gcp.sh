@@ -97,21 +97,17 @@ create_sa() {
 }
 
 create_sa "bk-backend-sa" "BK Backend API"
-create_sa "bk-worker-sa" "BK Worker Service"
 create_sa "bk-scheduler-sa" "BK Cloud Scheduler"
 
 BACKEND_SA="bk-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com"
-WORKER_SA="bk-worker-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 SCHEDULER_SA="bk-scheduler-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Grant permissions
 echo "=== Granting IAM roles ==="
-for SA in "${BACKEND_SA}" "${WORKER_SA}"; do
-  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-    --member="serviceAccount:${SA}" --role="roles/cloudsql.client" --quiet
-  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-    --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor" --quiet
-done
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${BACKEND_SA}" --role="roles/cloudsql.client" --quiet
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${BACKEND_SA}" --role="roles/secretmanager.secretAccessor" --quiet
 
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${BACKEND_SA}" --role="roles/cloudtasks.enqueuer" --quiet
