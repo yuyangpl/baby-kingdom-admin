@@ -1,0 +1,26 @@
+# Local development: PostgreSQL only
+# Usage: docker compose -f docker-compose.dev.yml up -d
+# Then: cd backend && npm run dev  (API on :3000)
+#        cd backend && npm run worker  (Worker on :3001)
+#        cd frontend && npm run dev  (Vite on :5173)
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: baby_kingdom
+      POSTGRES_USER: bkadmin
+      POSTGRES_PASSWORD: bkdev123
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bkadmin -d baby_kingdom"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pg-data:
