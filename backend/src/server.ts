@@ -9,6 +9,7 @@ import { cleanupOldLogs } from './modules/audit/audit.service.js';
 import { aggregateDailyStats } from './modules/dashboard/dashboard.service.js';
 import { runHealthCheck } from './shared/health-monitor.js';
 import { CONFIG_PRESETS } from './seeds/config.seeds.js';
+import { seedData } from './seeds/import-data.js';
 import logger from './shared/logger.js';
 
 const PORT: string | number = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ async function start(): Promise<void> {
   await connectDB();
   await seedAdmin();
   await seedConfigs(CONFIG_PRESETS);
+  await seedData();
 
   // Initialize queue service
   initQueues();

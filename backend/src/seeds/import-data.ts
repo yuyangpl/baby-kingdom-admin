@@ -644,10 +644,9 @@ function mapPostType(pref: string): string {
   return 'any'; // "New Post or Reply" or anything else
 }
 
-async function run() {
-  await connectDB();
+export async function seedData() {
   const prisma = getPrisma();
-  console.log('Connected to PostgreSQL via Prisma');
+  console.log('Seeding data (tones, personas, rules, forums)...');
 
   // Seed Tone Modes
   let toneCount = 0;
@@ -749,8 +748,14 @@ async function run() {
   }
   console.log(`Forum: ${catCount} categories, ${boardCount} boards created`);
 
-  await disconnectDB();
-  console.log('Done!');
+  console.log('Seed data complete!');
 }
 
-run().catch((err: Error) => { console.error(err); process.exit(1); });
+// CLI entry point: npx tsx src/seeds/import-data.ts
+if (process.argv[1]?.includes('import-data')) {
+  (async () => {
+    await connectDB();
+    await seedData();
+    await disconnectDB();
+  })().catch((err: Error) => { console.error(err); process.exit(1); });
+}
