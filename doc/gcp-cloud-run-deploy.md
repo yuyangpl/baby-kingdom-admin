@@ -140,6 +140,17 @@ BACKEND_URL=$(gcloud run services describe babykingdom-backend --region=asia-eas
 
 ---
 
+## Secret Manager 密钥
+
+| Secret | 用途 |
+|--------|------|
+| **DATABASE_URL** | PostgreSQL 连接地址，Backend 连数据库用 |
+| **JWT_SECRET** | JWT 签名密钥，用户登录/认证的 token 加密 |
+| **ENCRYPTION_KEY** | AES 加密密钥，加密存储敏感配置（如 BK 论坛账号密码） |
+| **GEMINI_API_KEY** | Google Gemini AI 的 API 密钥，AI 生成回复内容用 |
+
+这些密钥存放在 Secret Manager 中，Cloud Run 启动时自动注入为环境变量。
+
 ## 关键文件
 
 | 文件 | 用途 |

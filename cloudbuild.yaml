@@ -6,7 +6,7 @@
 #   - babykingdom-frontend: Nginx 反代 + Vue SPA（同域名访问，无 CORS）
 
 substitutions:
-  _REGION: asia-east1
+  _REGION: us-central1
   _AR_REPO: babykingdom
   _CLOUD_SQL_INSTANCE: ''  # 必填: PROJECT_ID:REGION:INSTANCE_NAME
   _BACKEND_SA: babykingdom-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com
