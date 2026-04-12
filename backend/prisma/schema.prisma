@@ -341,31 +341,7 @@ model Trend {
 }
 
 // ============================================
-// 11. QueueJob (← queue.model.ts)
-// ============================================
-model QueueJob {
-  id              String    @id @default(uuid()) @db.Uuid
-  queueName       String    @map("queue_name") @db.VarChar(30)
-  // queueName CHECK: scanner | trends | poster | daily-reset | stats-aggregator | google-trends
-  jobId           String?   @map("job_id") @db.VarChar(100)
-  status          String    @default("waiting") @db.VarChar(10)
-  // status CHECK: waiting | active | completed | failed
-  startedAt       DateTime? @map("started_at") @db.Timestamptz()
-  completedAt     DateTime? @map("completed_at") @db.Timestamptz()
-  duration        Int?      // milliseconds
-  result          Json?
-  error           String?   @db.Text
-  triggeredBy     String    @default("cron") @map("triggered_by") @db.VarChar(10)
-  // triggeredBy CHECK: cron | manual
-  triggeredByUser String?   @map("triggered_by_user") @db.VarChar(100)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
-
-  @@index([queueName, status, createdAt(sort: Desc)])
-  @@map("queue_jobs")
-}
-
-// ============================================
-// 12. DailyStats (← dashboard.model.ts)
+// 11. DailyStats (← dashboard.model.ts)
 // Uses JSONB for nested stats — structure changes frequently
 // ============================================
 model DailyStats {

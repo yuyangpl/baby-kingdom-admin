@@ -12,7 +12,6 @@ import Trend from '../modules/trends/trends.model.js';
 import GoogleTrend from '../modules/google-trends/google-trends.model.js';
 import AuditLog from '../modules/audit/audit.model.js';
 import DailyStats from '../modules/dashboard/dashboard.model.js';
-import QueueJob from '../modules/queue/queue.model.js';
 import User from '../modules/auth/auth.model.js';
 
 // ---------------------------------------------------------------------------
@@ -463,54 +462,7 @@ async function seedDailyStats(): Promise<void> {
 // Seed: Queue Jobs
 // ---------------------------------------------------------------------------
 
-async function seedQueueJobs(): Promise<void> {
-  if ((await QueueJob.countDocuments()) > 0) {
-    console.log('QueueJobs: already has data, skipping');
-    return;
-  }
-
-  const queues: Array<'scanner' | 'trends' | 'poster' | 'daily-reset' | 'stats-aggregator'> = [
-    'scanner', 'scanner', 'scanner', 'scanner', 'scanner',
-    'trends', 'trends', 'trends',
-    'poster', 'poster', 'poster', 'poster', 'poster', 'poster',
-    'daily-reset', 'daily-reset',
-    'stats-aggregator', 'stats-aggregator', 'stats-aggregator', 'stats-aggregator',
-  ];
-
-  const jobs: Record<string, unknown>[] = [];
-
-  for (let i = 0; i < 20; i++) {
-    const queueName = queues[i];
-    const isFailed = i === 4 || i === 12; // 2 failed jobs
-    const startedAt = hoursAgo(randInt(1, 168));
-    const duration = queueName === 'poster' ? randInt(35000, 70000) : randInt(2000, 30000);
-    const completedAt = new Date(startedAt.getTime() + duration);
-
-    const resultMap: Record<string, unknown> = {
-      scanner: { threadsScanned: randInt(20, 80), hits: randInt(3, 15), feedsCreated: randInt(2, 10) },
-      trends: { trendsPulled: randInt(5, 20), newTopics: randInt(1, 8) },
-      poster: { feedId: `FQ-mock-post-${i}`, threadTid: randInt(10000000, 19999999), success: !isFailed },
-      'daily-reset': { personasReset: 30 },
-      'stats-aggregator': { date: formatDate(startedAt), aggregated: true },
-    };
-
-    jobs.push({
-      queueName,
-      jobId: `job-${Date.now() - i * 100000}-${randInt(100, 999)}`,
-      status: isFailed ? 'failed' : 'completed',
-      startedAt,
-      completedAt,
-      duration,
-      result: isFailed ? undefined : resultMap[queueName],
-      error: isFailed ? 'Connection timeout to BK API' : undefined,
-      triggeredBy: queueName === 'poster' ? pick(['cron', 'manual'] as const) : 'cron',
-      createdAt: startedAt,
-    });
-  }
-
-  await QueueJob.insertMany(jobs);
-  console.log(`QueueJobs: created ${jobs.length}`);
-}
+// Queue jobs seeding removed — queue module has been removed
 
 // ---------------------------------------------------------------------------
 // Main
@@ -531,8 +483,6 @@ async function seed() {
   await seedGoogleTrends();
   await seedAuditLogs(adminId);
   await seedDailyStats();
-  await seedQueueJobs();
-
   // Print summary
   console.log('\n--- Collection Counts ---');
   const counts = await Promise.all([
@@ -541,9 +491,8 @@ async function seed() {
     GoogleTrend.countDocuments(),
     AuditLog.countDocuments(),
     DailyStats.countDocuments(),
-    QueueJob.countDocuments(),
   ]);
-  const names = ['feeds', 'trends', 'googletrends', 'auditlogs', 'dailystats', 'queuejobs'];
+  const names = ['feeds', 'trends', 'googletrends', 'auditlogs', 'dailystats'];
   names.forEach((name, i) => console.log(`  ${name}: ${counts[i]}`));
 
   await disconnectDB();
