@@ -285,10 +285,17 @@ const loadQueue = async () => {
 }
 
 const loadMetrics = async () => {
-  // Queue module removed — metrics from feed counts
-  metrics.waiting = 0
-  metrics.success = 0
-  metrics.failed = 0
+  try {
+    const res: any = await api.get('/v1/task-logs/poster', { params: { limit: 100 } })
+    const logs = res.data ?? []
+    metrics.success = logs.filter((l: any) => l.status === 'completed').length
+    metrics.failed = logs.filter((l: any) => l.status === 'failed').length
+    metrics.waiting = 0
+  } catch {
+    metrics.waiting = 0
+    metrics.success = 0
+    metrics.failed = 0
+  }
 }
 
 const resumeQueue = async () => {

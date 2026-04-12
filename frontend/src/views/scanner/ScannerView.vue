@@ -261,15 +261,28 @@ const loadBoards = async () => {
 const loadRecords = async () => {
   loading.value = true
   try {
-    // Queue module removed — scanner records no longer available
-    records.value = []
+    const res: any = await api.get('/v1/task-logs/scanner', {
+      params: { page: pagination.page, limit: pagination.limit }
+    })
+    const payload = res.data ?? res
+    records.value = Array.isArray(payload) ? payload : (payload.data ?? [])
+    if (res.pagination) Object.assign(pagination, res.pagination)
+    if (records.value.length > 0 && records.value[0].createdAt) {
+      lastScanTime.value = new Date(records.value[0].createdAt).toLocaleString()
+    }
   } finally {
     loading.value = false
   }
 }
 
 const loadStatus = async () => {
-  scanStatus.value = 'idle'
+  try {
+    const res: any = await api.get('/v1/task-logs/scanner/latest')
+    const data = res.data ?? res
+    scanStatus.value = data?.status === 'running' ? 'running' : 'idle'
+  } catch {
+    scanStatus.value = 'idle'
+  }
   queuePaused.value = false
 }
 
