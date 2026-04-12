@@ -145,7 +145,8 @@ grant_role "${BACKEND_SA}" "roles/cloudsql.client"
 grant_role "${BACKEND_SA}" "roles/secretmanager.secretAccessor"
 
 # Cloud Build SA: 部署 Cloud Run + 使用 Service Account
-CLOUDBUILD_SA="${PROJECT_ID}@cloudbuild.gserviceaccount.com"
+PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')
+CLOUDBUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 grant_role "${CLOUDBUILD_SA}" "roles/run.admin"
 grant_role "${CLOUDBUILD_SA}" "roles/iam.serviceAccountUser"
 grant_role "${CLOUDBUILD_SA}" "roles/secretmanager.secretAccessor"
