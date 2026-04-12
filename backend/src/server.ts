@@ -19,6 +19,8 @@ async function start(): Promise<void> {
   // Run Prisma migrations on startup (safe: only applies pending migrations)
   try {
     logger.info('Running Prisma migrate deploy...');
+    // Resolve any previously failed migrations
+    try { execSync('npx prisma migrate resolve --rolled-back 20260412_init 2>/dev/null', { stdio: 'pipe' }); } catch {}
     execSync('npx prisma migrate deploy', { stdio: 'inherit' });
     logger.info('Prisma migrate deploy completed');
   } catch (err) {
