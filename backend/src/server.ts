@@ -10,11 +10,21 @@ import { aggregateDailyStats } from './modules/dashboard/dashboard.service.js';
 import { runHealthCheck } from './shared/health-monitor.js';
 import { CONFIG_PRESETS } from './seeds/config.seeds.js';
 import { seedData } from './seeds/import-data.js';
+import { execSync } from 'child_process';
 import logger from './shared/logger.js';
 
 const PORT: string | number = process.env.PORT || 3000;
 
 async function start(): Promise<void> {
+  // Run Prisma migrations on startup (safe: only applies pending migrations)
+  try {
+    logger.info('Running Prisma migrate deploy...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    logger.info('Prisma migrate deploy completed');
+  } catch (err) {
+    logger.warn({ err }, 'Prisma migrate deploy failed (may be first run without migrations)');
+  }
+
   await connectDB();
   await seedAdmin();
   await seedConfigs(CONFIG_PRESETS);
