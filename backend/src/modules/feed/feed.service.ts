@@ -120,21 +120,14 @@ export async function approve(feedId: string, userId: string, ip: string) {
     actionDetail: `Approved feed ${feed.feedId}`,
   });
 
-  // Enqueue to poster queue
-  try {
-    const { addToQueue } = await import('../queue/queue.service.js');
-    await addToQueue('poster', {
-      feedId: feed.id,
-      feedIdShort: feed.feedId,
-      personaId: feed.personaId,
-      boardFid: feed.threadFid,
-      postType: feed.postType,
-      triggeredBy: 'approve',
-    });
-    logger.info({ feedId: feed.feedId, fid: feed.threadFid }, 'Feed enqueued to poster after approval');
-  } catch (err) {
-    logger.error({ err, feedId: feed.feedId }, 'Failed to enqueue to poster');
-  }
+  // Dispatch to poster task endpoint
+  const port = process.env.PORT || 8080;
+  fetch(`http://localhost:${port}/tasks/poster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedId: feed.id, triggeredBy: 'approve' }),
+    signal: AbortSignal.timeout(30000),
+  }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
 
   return updated;
 }

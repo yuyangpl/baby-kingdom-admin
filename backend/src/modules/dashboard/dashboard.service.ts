@@ -1,14 +1,10 @@
 import { getPrisma } from '../../shared/database.js';
-import * as queueService from '../queue/queue.service.js';
 
 export async function getRealtime() {
   const prisma = getPrisma();
-  const [pendingCount, queueStatus] = await Promise.all([
-    prisma.feed.count({ where: { status: 'pending' } }),
-    queueService.getAllStatus(),
-  ]);
+  const pendingCount = await prisma.feed.count({ where: { status: 'pending' } });
 
-  return { pendingFeeds: pendingCount, queues: queueStatus };
+  return { pendingFeeds: pendingCount };
 }
 
 export async function getToday() {
@@ -18,16 +14,7 @@ export async function getToday() {
   const endOfDay = new Date(today + 'T23:59:59.999Z');
   const dayFilter = { createdAt: { gte: startOfDay, lte: endOfDay } };
 
-  // Scanner stats from today's jobs
-  const scannerJobs = await prisma.queueJob.findMany({
-    where: { queueName: 'scanner', createdAt: { gte: startOfDay, lte: endOfDay }, status: 'completed' },
-    select: { result: true },
-  });
-  let totalScanned = 0, totalHit = 0;
-  for (const job of scannerJobs) {
-    const r = job.result as any;
-    if (r) { totalScanned += r.scanned || 0; totalHit += r.hits || 0; }
-  }
+  const totalScanned = 0, totalHit = 0;
 
   const [generated, approved, rejected, posted, failed, trendsPulled, trendsWithFeeds, threads, replies] = await Promise.all([
     prisma.feed.count({ where: dayFilter }),
@@ -54,20 +41,13 @@ export async function getToday() {
 
 export async function getRecent() {
   const prisma = getPrisma();
-  const [recentFeeds, recentJobs] = await Promise.all([
-    prisma.feed.findMany({
-      orderBy: { updatedAt: 'desc' },
-      take: 20,
-      select: { feedId: true, status: true, source: true, threadSubject: true, personaId: true, updatedAt: true, postedAt: true },
-    }),
-    prisma.queueJob.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: { queueName: true, status: true, duration: true, triggeredBy: true, createdAt: true },
-    }),
-  ]);
+  const recentFeeds = await prisma.feed.findMany({
+    orderBy: { updatedAt: 'desc' },
+    take: 20,
+    select: { feedId: true, status: true, source: true, threadSubject: true, personaId: true, updatedAt: true, postedAt: true },
+  });
 
-  return { feeds: recentFeeds, jobs: recentJobs };
+  return { feeds: recentFeeds };
 }
 
 export async function getWeekly() {
@@ -93,26 +73,9 @@ export async function aggregateDailyStats(): Promise<void> {
   const startOfDay = new Date(today + 'T00:00:00.000Z');
   const endOfDay = new Date(today + 'T23:59:59.999Z');
 
-  // Scanner stats from QueueJob records
-  const scannerJobs = await prisma.queueJob.findMany({
-    where: {
-      queueName: 'scanner',
-      createdAt: { gte: startOfDay, lte: endOfDay },
-      status: 'completed',
-    },
-    select: { result: true },
-  });
-
-  let totalScanned = 0;
-  let totalHit = 0;
-  for (const job of scannerJobs) {
-    const r = job.result as any;
-    if (r) {
-      totalScanned += r.scanned || 0;
-      totalHit += r.hits || 0;
-    }
-  }
-  const hitRate = totalScanned > 0 ? totalHit / totalScanned : 0;
+  const totalScanned = 0;
+  const totalHit = 0;
+  const hitRate = 0;
 
   const [
     generatedCount,

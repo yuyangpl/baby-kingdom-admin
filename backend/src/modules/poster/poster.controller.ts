@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import * as posterService from './poster.service.js';
-import { addToQueue } from '../queue/queue.service.js';
 import { getPrisma } from '../../shared/database.js';
 import { success } from '../../shared/response.js';
 import { BusinessError } from '../../shared/errors.js';
+import logger from '../../shared/logger.js';
 
 export async function postFeed(req: Request, res: Response): Promise<void> {
   const prisma = getPrisma();
@@ -11,14 +11,14 @@ export async function postFeed(req: Request, res: Response): Promise<void> {
   if (!feed) throw new BusinessError('Feed not found');
   if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
 
-  await addToQueue('poster', {
-    feedId: feed.id,
-    feedIdShort: feed.feedId,
-    personaId: feed.personaId,
-    boardFid: feed.threadFid,
-    postType: feed.postType,
-    triggeredBy: 'manual',
-  });
+  const port = process.env.PORT || 8080;
+  const feedId = feed.id;
+  fetch(`http://localhost:${port}/tasks/poster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedId, triggeredBy: 'manual' }),
+    signal: AbortSignal.timeout(30000),
+  }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
 
   success(res, { queued: true, feedId: feed.feedId });
 }

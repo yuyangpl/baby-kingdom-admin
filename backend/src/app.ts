@@ -20,7 +20,6 @@ import scannerRoutes from './modules/scanner/scanner.routes.js';
 import trendsRoutes from './modules/trends/trends.routes.js';
 import feedRoutes from './modules/feed/feed.routes.js';
 import posterRoutes from './modules/poster/poster.routes.js';
-import queueRoutes from './modules/queue/queue.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import googleTrendsRoutes from './modules/google-trends/google-trends.routes.js';
 import tasksRoutes from './modules/tasks/tasks.routes.js';
@@ -59,7 +58,6 @@ app.use('/api/v1/scanner', scannerRoutes);
 app.use('/api/v1/trends', trendsRoutes);
 app.use('/api/v1/feeds', feedRoutes);
 app.use('/api/v1/poster', posterRoutes);
-app.use('/api/v1/queues', queueRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/google-trends', googleTrendsRoutes);
 
