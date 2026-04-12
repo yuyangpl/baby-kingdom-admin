@@ -14,7 +14,19 @@ export async function getToday() {
   const endOfDay = new Date(today + 'T23:59:59.999Z');
   const dayFilter = { createdAt: { gte: startOfDay, lte: endOfDay } };
 
-  const totalScanned = 0, totalHit = 0;
+  // 从 TaskLog 汇总今日 scanner 扫描统计
+  const scannerLogs = await prisma.taskLog.findMany({
+    where: { taskName: 'scanner', createdAt: { gte: startOfDay, lte: endOfDay } },
+    select: { result: true },
+  });
+  let totalScanned = 0, totalHit = 0;
+  for (const log of scannerLogs) {
+    const r = log.result as any;
+    if (r && typeof r === 'object') {
+      totalScanned += r.scanned || 0;
+      totalHit += r.hits || 0;
+    }
+  }
 
   const [generated, approved, rejected, posted, failed, trendsPulled, trendsWithFeeds, threads, replies] = await Promise.all([
     prisma.feed.count({ where: dayFilter }),
@@ -73,9 +85,20 @@ export async function aggregateDailyStats(): Promise<void> {
   const startOfDay = new Date(today + 'T00:00:00.000Z');
   const endOfDay = new Date(today + 'T23:59:59.999Z');
 
-  const totalScanned = 0;
-  const totalHit = 0;
-  const hitRate = 0;
+  // 从 TaskLog 汇总今日 scanner 扫描统计
+  const scannerLogs = await prisma.taskLog.findMany({
+    where: { taskName: 'scanner', createdAt: { gte: startOfDay, lte: endOfDay } },
+    select: { result: true },
+  });
+  let totalScanned = 0, totalHit = 0;
+  for (const log of scannerLogs) {
+    const r = log.result as any;
+    if (r && typeof r === 'object') {
+      totalScanned += r.scanned || 0;
+      totalHit += r.hits || 0;
+    }
+  }
+  const hitRate = totalScanned > 0 ? totalHit / totalScanned : 0;
 
   const [
     generatedCount,

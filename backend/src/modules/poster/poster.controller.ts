@@ -23,6 +23,11 @@ export async function postFeed(req: Request, res: Response): Promise<void> {
   success(res, { queued: true, feedId: feed.feedId });
 }
 
+export async function pending(_req: Request, res: Response): Promise<void> {
+  const data = await posterService.getPending();
+  success(res, data);
+}
+
 export async function history(req: Request, res: Response): Promise<void> {
   const { page, limit } = req.query;
   const result = await posterService.getHistory({

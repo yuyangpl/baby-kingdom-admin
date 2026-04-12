@@ -280,8 +280,26 @@ const loadHistory = async () => {
 
 const loadQueue = async () => {
   loadingQueue.value = true
-  pendingQueue.value = []
-  loadingQueue.value = false
+  try {
+    const res: any = await api.get('/v1/poster/pending')
+    const list = res.data ?? res
+    pendingQueue.value = (Array.isArray(list) ? list : []).map((f: any) => ({
+      data: {
+        feedId: f.id,
+        feedIdShort: f.feedId,
+        personaId: f.personaId,
+        boardFid: f.threadFid,
+        postType: f.type === 'thread' ? 'new-post' : 'reply',
+      },
+      addedAt: f.reviewedAt,
+      status: 'waiting',
+    }))
+    metrics.waiting = pendingQueue.value.length
+  } catch {
+    pendingQueue.value = []
+  } finally {
+    loadingQueue.value = false
+  }
 }
 
 const loadMetrics = async () => {

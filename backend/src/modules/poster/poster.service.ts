@@ -558,3 +558,26 @@ export async function getHistory({ page = 1, limit = 20 }: { page?: number; limi
   ]);
   return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 }
+
+/**
+ * Get approved feeds waiting to be posted (pending queue).
+ */
+export async function getPending() {
+  const prisma = getPrisma();
+  const data = await prisma.feed.findMany({
+    where: { status: 'approved', postId: null },
+    orderBy: { reviewedAt: 'asc' },
+    select: {
+      id: true,
+      feedId: true,
+      threadSubject: true,
+      threadFid: true,
+      personaId: true,
+      bkUsername: true,
+      type: true,
+      status: true,
+      reviewedAt: true,
+    },
+  });
+  return data;
+}

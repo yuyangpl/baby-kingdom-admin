@@ -6,6 +6,7 @@ const router = Router();
 const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
   (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
+router.get('/pending', authenticate, wrap(ctrl.pending));
 router.get('/history', authenticate, wrap(ctrl.history));
 router.post('/:id/post', authenticate, authorize('admin', 'editor'), wrap(ctrl.postFeed));
 
