@@ -17,25 +17,33 @@ export async function scannerTask(req: Request, res: Response): Promise<void> {
   }
 
   const { fid, triggeredBy = 'cron' } = req.body || {};
-  const startedAt = Date.now();
 
   try {
-    if (fid) {
-      const stats = await scanBoard(fid);
-      await logTask('scanner', { status: 'completed', duration: Date.now() - startedAt, result: stats, triggeredBy });
-      res.json({ success: true, stats });
-    } else {
-      const boards = await getBoardsDueForScan();
-      const results = [];
-      for (const board of boards) {
-        const stats = await scanBoard(board.fid);
-        results.push(stats);
+    const boardsToScan = fid
+      ? [{ fid, name: '' }]
+      : await getBoardsDueForScan();
+
+    const results = [];
+    for (const board of boardsToScan) {
+      const start = Date.now();
+      const stats = await scanBoard(board.fid);
+      const duration = Date.now() - start;
+
+      // 只记录有命中的扫描（hits > 0 或 feeds > 0）
+      if (stats.hits > 0 || stats.feeds > 0) {
+        await logTask('scanner', {
+          status: stats.status === 'interrupted' ? 'failed' : 'completed',
+          duration,
+          result: stats,
+          triggeredBy,
+        });
       }
-      await logTask('scanner', { status: 'completed', duration: Date.now() - startedAt, result: { boards: results.length, results }, triggeredBy });
-      res.json({ success: true, boards: results.length, results });
+      results.push(stats);
     }
+
+    res.json({ success: true, boards: results.length, results });
   } catch (err: any) {
-    await logTask('scanner', { status: 'failed', duration: Date.now() - startedAt, error: err.message, triggeredBy });
+    await logTask('scanner', { status: 'failed', error: err.message, triggeredBy });
     logger.error({ err }, 'Scanner task failed');
     res.status(500).json({ error: err.message });
   }

@@ -64,36 +64,33 @@
         </el-table-column>
         <el-table-column :label="$t('feed.board')" min-width="130">
           <template #default="{ row }">
-            <template v-if="row.result?.boardName">
-              <el-tag size="small" type="info" effect="plain">{{ row.result.boardName }}</el-tag>
-            </template>
-            <template v-else-if="row.result?.boards !== undefined">
-              {{ row.result.boards }} 個版塊
-            </template>
+            <el-tag v-if="row.result?.boardName" size="small" type="info" effect="plain">
+              {{ row.result.boardName }}
+            </el-tag>
             <span v-else>--</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.scanned')" min-width="90" align="center">
           <template #default="{ row }">
-            {{ row.result?.scanned ?? getScanTotal(row, 'scanned') }}
+            {{ row.result?.scanned ?? 0 }}
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.hits')" min-width="80" align="center">
           <template #default="{ row }">
-            <span class="text-success">{{ row.result?.hits ?? getScanTotal(row, 'hits') }}</span>
+            <span class="text-success">{{ row.result?.hits ?? 0 }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.feedsCreated')" min-width="110" align="center">
           <template #default="{ row }">
             <el-button
-              v-if="(row.result?.feeds ?? getScanTotal(row, 'feeds')) > 0"
+              v-if="row.result?.feeds > 0"
               link
               type="primary"
               @click.stop="openFeedDialog(row)"
             >
-              {{ row.result?.feeds ?? getScanTotal(row, 'feeds') }}
+              {{ row.result.feeds }}
             </el-button>
-            <span v-else>{{ row.result?.feeds ?? getScanTotal(row, 'feeds') }}</span>
+            <span v-else>{{ row.result?.feeds ?? 0 }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.triggeredBy')" min-width="100" align="center">
@@ -305,12 +302,6 @@ const triggerScan = async () => {
       loadRecords()
     }, 15000)
   }
-}
-
-// 批量扫描时从 results 数组汇总统计
-const getScanTotal = (row: any, field: string): number => {
-  if (!row.result?.results) return 0
-  return row.result.results.reduce((sum: number, r: any) => sum + (r[field] ?? 0), 0)
 }
 
 const openFeedDialog = async (row: any) => {
