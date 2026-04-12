@@ -9,7 +9,20 @@ let isConnected = false;
 
 export function getPrisma(): PrismaClient {
   if (!prisma) {
-    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+    const dbUrl = process.env.DATABASE_URL || '';
+    // Cloud SQL Unix socket: extract host param from query string for pg Pool
+    const url = new URL(dbUrl);
+    const socketPath = url.searchParams.get('host');
+    const poolConfig: pg.PoolConfig = socketPath
+      ? {
+          user: url.username,
+          password: decodeURIComponent(url.password),
+          database: url.pathname.slice(1),
+          host: socketPath,
+        }
+      : { connectionString: dbUrl };
+
+    pool = new pg.Pool(poolConfig);
     const adapter = new PrismaPg(pool);
     prisma = new PrismaClient({ adapter } as any);
   }
