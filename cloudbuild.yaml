@@ -47,18 +47,18 @@ steps:
     waitFor: ['build-frontend']
 
   # ===== 3. Database Migration =====
+  # 使用 node 镜像直接运行迁移，secretEnv 只在 Cloud Build 步骤中生效
 
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: 'node:20'
     id: 'db-migrate'
+    entrypoint: 'bash'
     args:
-      - 'run'
-      - '--rm'
-      - '--network=cloudbuild'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}'
-      - 'npx'
-      - 'prisma'
-      - 'migrate'
-      - 'deploy'
+      - '-c'
+      - |
+        cd backend
+        npm ci
+        npx prisma generate
+        npx prisma migrate deploy
     secretEnv: ['DATABASE_URL']
     waitFor: ['push-backend']
 
