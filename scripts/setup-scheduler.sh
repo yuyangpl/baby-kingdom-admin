@@ -45,24 +45,24 @@ create_job() {
 }
 
 # Scanner: every 5 minutes
-create_job "scanner-cron" "*/5 * * * *" "/tasks/scanner"
+create_job "babykingdom-scanner-cron" "*/5 * * * *" "/tasks/scanner"
 
 # Trends (MediaLens): every 60 minutes
-create_job "trends-cron" "0 * * * *" "/tasks/trends"
+create_job "babykingdom-trends-cron" "0 * * * *" "/tasks/trends"
 
 # Google Trends: every 30 minutes
-create_job "gtrends-cron" "*/30 * * * *" "/tasks/gtrends"
+create_job "babykingdom-gtrends-cron" "*/30 * * * *" "/tasks/gtrends"
 
 # Poster: every 2 minutes (checks for approved feeds to post)
 # Created but PAUSED by default — enable when ready for auto-posting
-create_job "poster-cron" "*/2 * * * *" "/tasks/poster"
-echo "  Pausing poster-cron (enable manually when ready)..."
-gcloud scheduler jobs pause "poster-cron" --location="${REGION}" --quiet 2>/dev/null || true
+create_job "babykingdom-poster-cron" "*/2 * * * *" "/tasks/poster"
+echo "  Pausing babykingdom-poster-cron (enable manually when ready)..."
+gcloud scheduler jobs pause "babykingdom-poster-cron" --location="${REGION}" --quiet 2>/dev/null || true
 
 # Pause all jobs by default — enable manually when ready
 echo ""
 echo "=== Pausing all jobs (enable manually when ready) ==="
-for JOB in scanner-cron trends-cron gtrends-cron; do
+for JOB in babykingdom-scanner-cron babykingdom-trends-cron babykingdom-gtrends-cron; do
   gcloud scheduler jobs pause "${JOB}" --location="${REGION}" --quiet 2>/dev/null || true
   echo "  Paused: ${JOB}"
 done
