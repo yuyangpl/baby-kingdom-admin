@@ -1,7 +1,7 @@
 import * as configService from '../config/config.service.js';
 import { callGemini } from './gemini.service.js';
 import logger from '../../shared/logger.js';
-import GoogleTrend from '../google-trends/google-trends.model.js';
+import { getPrisma } from '../../shared/database.js';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -270,10 +270,12 @@ export async function matchGoogleTrends(topic: string): Promise<TrendMatch | nul
 
   try {
     // Read from DB instead of calling API
+    const prisma = getPrisma();
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentTrends = await GoogleTrend.find({ pulledAt: { $gte: oneHourAgo } })
-      .sort({ score: -1 })
-      .lean();
+    const recentTrends = await prisma.googleTrend.findMany({
+      where: { pulledAt: { gte: oneHourAgo } },
+      orderBy: { score: 'desc' },
+    });
 
     if (!recentTrends || recentTrends.length === 0) {
       logger.debug('matchGoogleTrends: no recent trends in DB');

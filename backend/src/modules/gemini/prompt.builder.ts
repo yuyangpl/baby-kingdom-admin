@@ -1,12 +1,27 @@
 import * as configService from '../config/config.service.js';
-import ToneMode from '../tone/tone.model.js';
-import Persona from '../persona/persona.model.js';
-import TopicRule from '../topic-rules/topic-rules.model.js';
-import type { PersonaDocument } from '../persona/persona.model.js';
-import type { IGoogleTrends } from '../feed/feed.model.js';
+import { getPrisma } from '../../shared/database.js';
+
+interface PersonaDoc {
+  accountId: string;
+  username: string;
+  archetype: string;
+  primaryToneMode: string | null;
+  secondaryToneMode: string | null;
+  avoidedToneMode: string | null;
+  voiceCues: string[];
+  catchphrases: string[];
+  tier3Script: string | null;
+  topicBlacklist: string[];
+}
+
+interface IGoogleTrends {
+  matched?: boolean;
+  trendTitle?: string;
+  trendTraffic?: string;
+}
 
 interface BuildPromptParams {
-  persona: string | PersonaDocument;
+  persona: string | PersonaDoc;
   toneMode?: string;
   topic?: string;
   summary?: string;
@@ -28,14 +43,16 @@ export async function buildPrompt({ persona, toneMode, topic, summary, sentiment
   const taskTemplate = await configService.getValue('GEMINI_TASK_TEMPLATE') ||
     '請用以上角色嘅口吻，寫一篇回覆（最多{max_chars}字）。只輸出帖文內容，唔好有前言或解釋。';
 
+  const prisma = getPrisma();
+
   // Resolve persona data
   const personaDoc = typeof persona === 'string'
-    ? await Persona.findOne({ accountId: persona })
+    ? await prisma.persona.findFirst({ where: { accountId: persona } })
     : persona;
 
   // Resolve tone mode
   const resolvedToneMode = await resolveToneMode(personaDoc, toneMode, sentimentScore, sensitivityTier);
-  const toneDoc = await ToneMode.findOne({ toneId: resolvedToneMode });
+  const toneDoc = await prisma.toneMode.findFirst({ where: { toneId: resolvedToneMode } });
 
   // Match topic rules (with board context)
   const rule = await matchTopicRule(topic, { defaultRuleIds, excludeRuleIds });
@@ -112,7 +129,7 @@ ${sensitivityTier ? `敏感度：Tier ${sensitivityTier}` : ''}`);
  * Resolve tone mode using the priority chain:
  * Tier 3 forced -> negative sentiment -> rule specified -> persona primary -> default
  */
-async function resolveToneMode(persona: PersonaDocument | null, requestedToneMode: string | undefined, sentimentScore: number | undefined, sensitivityTier: number | undefined): Promise<string> {
+async function resolveToneMode(persona: PersonaDoc | null, requestedToneMode: string | undefined, sentimentScore: number | undefined, sensitivityTier: number | undefined): Promise<string> {
   const tier3Override = await configService.getValue('TONE_OVERRIDE_ON_TIER3') || 'EMPATHISE';
   const negativeThreshold = parseInt(await configService.getValue('SENTIMENT_NEGATIVE_THRESHOLD') || '45', 10);
 
@@ -141,7 +158,8 @@ interface MatchRuleOptions {
 }
 
 async function matchTopicRule(topic: string | undefined, options?: MatchRuleOptions) {
-  const allRules = await TopicRule.find({ isActive: true });
+  const prisma = getPrisma();
+  const allRules = await prisma.topicRule.findMany({ where: { isActive: true } });
   const excludeSet = new Set(options?.excludeRuleIds || []);
 
   // Filter out excluded rules
