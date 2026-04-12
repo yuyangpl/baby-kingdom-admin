@@ -54,34 +54,71 @@ export async function trendsTask(req: Request, res: Response): Promise<void> {
 }
 
 export async function posterTask(req: Request, res: Response): Promise<void> {
-  const { feedId, triggeredBy = 'manual' } = req.body || {};
-  if (!feedId) {
-    res.status(400).json({ error: 'feedId is required' });
+  const paused = await configService.getValue('POSTER_PAUSED');
+  if (paused === 'true') {
+    res.json({ skipped: true, reason: 'paused' });
     return;
   }
 
+  const { feedId, triggeredBy = 'cron' } = req.body || {};
   const prisma = getPrisma();
-  const feed = await prisma.feed.findUnique({ where: { id: feedId } });
-  if (!feed || feed.postId) {
-    res.json({ skipped: true, reason: feed ? 'already posted' : 'not found' });
+
+  // 单条模式：指定 feedId 发布
+  if (feedId) {
+    const feed = await prisma.feed.findUnique({ where: { id: feedId } });
+    if (!feed || feed.postId) {
+      res.json({ skipped: true, reason: feed ? 'already posted' : 'not found' });
+      return;
+    }
+
+    if (triggeredBy === 'approve') {
+      const board = feed.threadFid ? await prisma.forumBoard.findFirst({ where: { fid: feed.threadFid } }) : null;
+      if (!board?.enableAutoReply) {
+        res.json({ skipped: true, reason: 'auto-reply disabled' });
+        return;
+      }
+    }
+
+    try {
+      await postFeed(feedId, undefined, '');
+      res.json({ success: true, posted: true });
+    } catch (err: any) {
+      logger.error({ err, feedId }, 'Poster task failed');
+      res.status(500).json({ error: err.message });
+    }
     return;
   }
 
-  if (triggeredBy === 'approve') {
-    const board = feed.threadFid ? await prisma.forumBoard.findFirst({ where: { fid: feed.threadFid } }) : null;
-    if (!board?.enableAutoReply) {
-      res.json({ skipped: true, reason: 'auto-reply disabled' });
-      return;
+  // 批量模式（定时任务）：查找所有 approved 的 feed，逐个发布
+  const intervalSec = parseInt(await configService.getValue('BK_POST_INTERVAL_SEC') || '35', 10);
+  const approvedFeeds = await prisma.feed.findMany({
+    where: { status: 'approved', postId: null },
+    orderBy: { createdAt: 'asc' },
+    take: 5, // 每次最多处理 5 条，避免超时
+  });
+
+  if (approvedFeeds.length === 0) {
+    res.json({ success: true, posted: 0, reason: 'no approved feeds' });
+    return;
+  }
+
+  let posted = 0;
+  const errors: string[] = [];
+  for (const feed of approvedFeeds) {
+    try {
+      await postFeed(feed.id, undefined, '');
+      posted++;
+      // 遵守 BK 论坛限频
+      if (posted < approvedFeeds.length) {
+        await new Promise(r => setTimeout(r, intervalSec * 1000));
+      }
+    } catch (err: any) {
+      logger.error({ err, feedId: feed.id }, 'Poster batch: single feed failed');
+      errors.push(`${feed.feedId}: ${err.message}`);
     }
   }
 
-  try {
-    await postFeed(feedId, undefined, '');
-    res.json({ success: true, posted: true });
-  } catch (err: any) {
-    logger.error({ err, feedId }, 'Poster task failed');
-    res.status(500).json({ error: err.message });
-  }
+  res.json({ success: true, posted, total: approvedFeeds.length, errors: errors.length > 0 ? errors : undefined });
 }
 
 export async function gtrendsTask(req: Request, res: Response): Promise<void> {

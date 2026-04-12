@@ -53,11 +53,27 @@ create_job "trends-cron" "0 * * * *" "/tasks/trends"
 # Google Trends: every 30 minutes
 create_job "gtrends-cron" "*/30 * * * *" "/tasks/gtrends"
 
+# Poster: every 2 minutes (checks for approved feeds to post)
+# Created but PAUSED by default — enable when ready for auto-posting
+create_job "poster-cron" "*/2 * * * *" "/tasks/poster"
+echo "  Pausing poster-cron (enable manually when ready)..."
+gcloud scheduler jobs pause "poster-cron" --location="${REGION}" --quiet 2>/dev/null || true
+
+# Pause all jobs by default — enable manually when ready
+echo ""
+echo "=== Pausing all jobs (enable manually when ready) ==="
+for JOB in scanner-cron trends-cron gtrends-cron; do
+  gcloud scheduler jobs pause "${JOB}" --location="${REGION}" --quiet 2>/dev/null || true
+  echo "  Paused: ${JOB}"
+done
+
 echo ""
 echo "=== Cloud Scheduler setup complete ==="
-echo "  3 jobs created targeting: ${BACKEND_URL}"
+echo "  4 jobs created targeting: ${BACKEND_URL}"
+echo "  All jobs are PAUSED. Enable with:"
+echo "    gcloud scheduler jobs resume <job-name> --location=${REGION}"
 echo ""
-echo "  已砍掉的 job（由 Backend 进程内 cron 替代）:"
-echo "  - daily-reset-cron → server.ts node-cron (0:00 HKT)"
-echo "  - stats-cron → server.ts node-cron (:05)"
-echo "  - health-cron → server.ts node-cron (5m)"
+echo "  进程内 cron（Backend 启动时自动运行）:"
+echo "  - daily-reset → server.ts node-cron (0:00 HKT)"
+echo "  - stats-aggregator → server.ts node-cron (:05)"
+echo "  - health-monitor → server.ts node-cron (5m)"
