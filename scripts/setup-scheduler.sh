@@ -9,7 +9,7 @@ set -euo pipefail
 
 PROJECT_ID="${1:?用法: $0 <PROJECT_ID> <BACKEND_URL>}"
 BACKEND_URL="${2:?用法: $0 <PROJECT_ID> <BACKEND_URL>}"
-REGION="asia-east1"
+REGION="us-central1"
 SCHEDULER_SA="babykingdom-scheduler-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "=== Setting project: ${PROJECT_ID} ==="
