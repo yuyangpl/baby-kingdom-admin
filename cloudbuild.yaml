@@ -2,14 +2,14 @@
 # 一键部署: gcloud builds submit --config=cloudbuild.yaml --substitutions=_CLOUD_SQL_INSTANCE=PROJECT:REGION:INSTANCE
 #
 # 架构: 2 个 Cloud Run 服务
-#   - bk-backend: API + Tasks + Cron
-#   - bk-frontend: Nginx 反代 + Vue SPA（同域名访问，无 CORS）
+#   - babykingdom-backend: API + Tasks + Cron
+#   - babykingdom-frontend: Nginx 反代 + Vue SPA（同域名访问，无 CORS）
 
 substitutions:
   _REGION: asia-east1
-  _AR_REPO: bk-admin
+  _AR_REPO: babykingdom
   _CLOUD_SQL_INSTANCE: ''  # 必填: PROJECT_ID:REGION:INSTANCE_NAME
-  _BACKEND_SA: bk-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com
+  _BACKEND_SA: babykingdom-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com
 
 steps:
   # ===== 1. Build Images (并行) =====
@@ -70,7 +70,7 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'bk-backend'
+      - 'babykingdom-backend'
       - '--image'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/backend:${SHORT_SHA}'
       - '--region'
@@ -110,8 +110,8 @@ steps:
     args:
       - '-c'
       - |
-        BACKEND_URL=$$(gcloud run services describe bk-backend --region=${_REGION} --format='value(status.url)')
-        gcloud run deploy bk-frontend \
+        BACKEND_URL=$$(gcloud run services describe babykingdom-backend --region=${_REGION} --format='value(status.url)')
+        gcloud run deploy babykingdom-frontend \
           --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/frontend:${SHORT_SHA} \
           --region=${_REGION} \
           --platform=managed \
@@ -137,8 +137,8 @@ steps:
         echo "============================================"
         echo "  Deployment Complete!"
         echo "============================================"
-        BACKEND_URL=$$(gcloud run services describe bk-backend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
-        FRONTEND_URL=$$(gcloud run services describe bk-frontend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
+        BACKEND_URL=$$(gcloud run services describe babykingdom-backend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
+        FRONTEND_URL=$$(gcloud run services describe babykingdom-frontend --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "pending")
         echo "  Backend:  $${BACKEND_URL}"
         echo "  Frontend: $${FRONTEND_URL}"
         echo ""

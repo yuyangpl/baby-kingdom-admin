@@ -2,7 +2,7 @@
 # ==============================================================================
 # Cloud Scheduler Setup — Baby Kingdom Admin
 # Creates 3 cron jobs that trigger the Backend HTTP service.
-# Run after deploying bk-backend to Cloud Run.
+# Run after deploying babykingdom-backend to Cloud Run.
 # Usage: ./scripts/setup-scheduler.sh <PROJECT_ID> <BACKEND_URL>
 # ==============================================================================
 set -euo pipefail
@@ -10,14 +10,14 @@ set -euo pipefail
 PROJECT_ID="${1:?用法: $0 <PROJECT_ID> <BACKEND_URL>}"
 BACKEND_URL="${2:?用法: $0 <PROJECT_ID> <BACKEND_URL>}"
 REGION="asia-east1"
-SCHEDULER_SA="bk-scheduler-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+SCHEDULER_SA="babykingdom-scheduler-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 
 echo "=== Setting project: ${PROJECT_ID} ==="
 gcloud config set project "${PROJECT_ID}"
 
 # Grant scheduler SA permission to invoke backend Cloud Run
 echo "=== Granting invoker role to scheduler SA ==="
-gcloud run services add-iam-policy-binding bk-backend \
+gcloud run services add-iam-policy-binding babykingdom-backend \
   --member="serviceAccount:${SCHEDULER_SA}" \
   --role="roles/run.invoker" \
   --region="${REGION}" \

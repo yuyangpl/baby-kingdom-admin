@@ -11,32 +11,32 @@
 用户浏览器
     |
     v
-Cloud Run: bk-frontend (Nginx)        <-- Vue SPA + 反向代理
+Cloud Run: babykingdom-frontend (Nginx)        <-- Vue SPA + 反向代理
     |
     |-- 静态文件 --> 直接返回 HTML/JS/CSS
-    |-- /api/*   --> 反代到 bk-backend
-    |-- /tasks/* --> 反代到 bk-backend
+    |-- /api/*   --> 反代到 babykingdom-backend
+    |-- /tasks/* --> 反代到 babykingdom-backend
                         |
                         v
-              Cloud Run: bk-backend (Node.js)
+              Cloud Run: babykingdom-backend (Node.js)
                         |
                         |-- 65+ API 端点 (/api/v1/*)
                         |-- 4 个 task 端点 (/tasks/*)
                         |-- 3 个内置 cron (node-cron)
                         |-- Cloud SQL (PostgreSQL)
 
-Cloud Scheduler (3 jobs) --> bk-backend /tasks/*
+Cloud Scheduler (3 jobs) --> babykingdom-backend /tasks/*
 ```
 
-- 用户只需访问 bk-frontend 的 URL，一个入口搞定一切，无 CORS 问题
+- 用户只需访问 babykingdom-frontend 的 URL，一个入口搞定一切，无 CORS 问题
 - 无独立 Worker 服务 -- task 端点合并在 Backend 中
 
 ## Cloud Run 服务
 
 | 服务 | 镜像 | 内存 | 端口 | 费用 |
 |------|------|------|------|------|
-| bk-backend | Node.js Express | 512Mi | 3000 | ~$3-5/月 |
-| bk-frontend | Nginx + Vue SPA | 256Mi | 8080 | ~$0-1/月 |
+| babykingdom-backend | Node.js Express | 512Mi | 3000 | ~$3-5/月 |
+| babykingdom-frontend | Nginx + Vue SPA | 256Mi | 8080 | ~$0-1/月 |
 
 ## 定时任务
 
@@ -94,10 +94,10 @@ server.ts 启动流程:
 | # | 内容 |
 |---|------|
 | 1 | 启用 API (Cloud Run, Cloud SQL, Cloud Build, Artifact Registry, Cloud Scheduler, Secret Manager) |
-| 2 | 创建 Artifact Registry 镜像仓库 (bk-admin) |
+| 2 | 创建 Artifact Registry 镜像仓库 (babykingdom) |
 | 3 | 在已有 Cloud SQL 上创建数据库 (baby_kingdom) + 用户 (bkadmin) |
 | 4 | 创建 Secret Manager 密钥 (DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY) |
-| 5 | 创建 Service Account (bk-backend-sa, bk-scheduler-sa) + IAM 授权 |
+| 5 | 创建 Service Account (babykingdom-backend-sa, bk-scheduler-sa) + IAM 授权 |
 | 6 | 验证所有资源 |
 
 脚本结束时会输出数据库密码和后续命令，请记录。
@@ -123,8 +123,8 @@ Cloud Build 自动完成：
 | 2 | build-frontend | 构建 Frontend Docker 镜像 (Nginx + Vue SPA) |
 | 3 | push | 推送镜像到 Artifact Registry |
 | 4 | db-migrate | 运行 Prisma 数据库迁移 |
-| 5 | deploy-backend | 部署 bk-backend 到 Cloud Run |
-| 6 | deploy-frontend | 部署 bk-frontend 到 Cloud Run（自动注入 BACKEND_URL） |
+| 5 | deploy-backend | 部署 babykingdom-backend 到 Cloud Run |
+| 6 | deploy-frontend | 部署 babykingdom-frontend 到 Cloud Run（自动注入 BACKEND_URL） |
 | 7 | print-urls | 输出 Backend + Frontend URL |
 
 Backend 和 Frontend 构建并行执行，Frontend 部署会自动获取 Backend URL 并注入为环境变量。
@@ -132,7 +132,7 @@ Backend 和 Frontend 构建并行执行，Frontend 部署会自动获取 Backend
 ### 第 3 步：创建定时任务（一次性）
 
 ```bash
-BACKEND_URL=$(gcloud run services describe bk-backend --region=asia-east1 --format='value(status.url)')
+BACKEND_URL=$(gcloud run services describe babykingdom-backend --region=asia-east1 --format='value(status.url)')
 ./scripts/setup-scheduler.sh <PROJECT_ID> $BACKEND_URL
 ```
 

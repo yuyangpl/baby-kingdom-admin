@@ -16,7 +16,7 @@ DB_INSTANCE="${2:?用法: $0 <PROJECT_ID> <CLOUD_SQL_INSTANCE_NAME>}"
 REGION="asia-east1"
 DB_NAME="baby_kingdom"
 DB_USER="bkadmin"
-AR_REPO="bk-admin"
+AR_REPO="babykingdom"
 
 echo ""
 echo "============================================"
@@ -127,10 +127,10 @@ create_sa() {
     2>/dev/null && echo "  创建: ${name}" || echo "  已存在: ${name}"
 }
 
-create_sa "bk-backend-sa" "BK Backend API"
-create_sa "bk-scheduler-sa" "BK Cloud Scheduler"
+create_sa "babykingdom-backend-sa" "BK Backend API"
+create_sa "babykingdom-scheduler-sa" "BK Cloud Scheduler"
 
-BACKEND_SA="bk-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+BACKEND_SA="babykingdom-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 
 grant_role() {
   local sa=$1
@@ -172,7 +172,7 @@ check "Secret: DATABASE_URL" "gcloud secrets describe DATABASE_URL"
 check "Secret: JWT_SECRET" "gcloud secrets describe JWT_SECRET"
 check "Secret: ENCRYPTION_KEY" "gcloud secrets describe ENCRYPTION_KEY"
 check "Secret: GEMINI_API_KEY" "gcloud secrets describe GEMINI_API_KEY"
-check "SA: bk-backend-sa" "gcloud iam service-accounts describe ${BACKEND_SA}"
+check "SA: babykingdom-backend-sa" "gcloud iam service-accounts describe ${BACKEND_SA}"
 
 # ==============================================================================
 # 完成
@@ -195,7 +195,7 @@ echo "    --substitutions=_CLOUD_SQL_INSTANCE=${CLOUD_SQL_CONNECTION}"
 echo ""
 echo "  部署完成后 — 创建定时任务:"
 echo ""
-echo "  BACKEND_URL=\$(gcloud run services describe bk-backend --region=${REGION} --format='value(status.url)')"
+echo "  BACKEND_URL=\$(gcloud run services describe babykingdom-backend --region=${REGION} --format='value(status.url)')"
 echo "  ./scripts/setup-scheduler.sh ${PROJECT_ID} \$BACKEND_URL"
 echo ""
 echo "============================================"
