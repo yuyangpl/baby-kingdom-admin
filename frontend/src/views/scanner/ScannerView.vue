@@ -52,9 +52,9 @@
         style="width: 100%"
         highlight-current-row
       >
-        <el-table-column prop="startedAt" :label="$t('common.time')" min-width="170">
+        <el-table-column prop="createdAt" :label="$t('common.time')" min-width="170">
           <template #default="{ row }">
-            {{ row.startedAt ? new Date(row.startedAt).toLocaleString() : '--' }}
+            {{ row.createdAt ? new Date(row.createdAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
         <el-table-column prop="duration" :label="$t('scanner.duration')" min-width="100">
@@ -64,33 +64,36 @@
         </el-table-column>
         <el-table-column :label="$t('feed.board')" min-width="130">
           <template #default="{ row }">
-            <el-tag v-if="row.result?.boardName" size="small" type="info" effect="plain">
-              {{ row.result.boardName }}
-            </el-tag>
+            <template v-if="row.result?.boardName">
+              <el-tag size="small" type="info" effect="plain">{{ row.result.boardName }}</el-tag>
+            </template>
+            <template v-else-if="row.result?.boards !== undefined">
+              {{ row.result.boards }} 個版塊
+            </template>
             <span v-else>--</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.scanned')" min-width="90" align="center">
           <template #default="{ row }">
-            {{ row.result?.scanned ?? '--' }}
+            {{ row.result?.scanned ?? getScanTotal(row, 'scanned') }}
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.hits')" min-width="80" align="center">
           <template #default="{ row }">
-            <span class="text-success">{{ row.result?.hits ?? 0 }}</span>
+            <span class="text-success">{{ row.result?.hits ?? getScanTotal(row, 'hits') }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.feedsCreated')" min-width="110" align="center">
           <template #default="{ row }">
             <el-button
-              v-if="row.result?.feeds > 0"
+              v-if="(row.result?.feeds ?? getScanTotal(row, 'feeds')) > 0"
               link
               type="primary"
               @click.stop="openFeedDialog(row)"
             >
-              {{ row.result.feeds }}
+              {{ row.result?.feeds ?? getScanTotal(row, 'feeds') }}
             </el-button>
-            <span v-else>{{ row.result?.feeds ?? 0 }}</span>
+            <span v-else>{{ row.result?.feeds ?? getScanTotal(row, 'feeds') }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('scanner.triggeredBy')" min-width="100" align="center">
@@ -304,13 +307,19 @@ const triggerScan = async () => {
   }
 }
 
+// 批量扫描时从 results 数组汇总统计
+const getScanTotal = (row: any, field: string): number => {
+  if (!row.result?.results) return 0
+  return row.result.results.reduce((sum: number, r: any) => sum + (r[field] ?? 0), 0)
+}
+
 const openFeedDialog = async (row: any) => {
   showFeedDialog.value = true
   dialogLoading.value = true
   try {
-    // Load feeds created around the scan time
-    const from = row.startedAt
-    const to = row.completedAt || new Date().toISOString()
+    const from = row.createdAt
+    const duration = row.duration || 60000
+    const to = new Date(new Date(from).getTime() + duration).toISOString()
     const res: any = await api.get('/v1/scanner/history', { params: { from, to, limit: 50 } })
     const payload = res.data ?? res
     dialogFeeds.value = Array.isArray(payload) ? payload : (payload.data ?? [])
