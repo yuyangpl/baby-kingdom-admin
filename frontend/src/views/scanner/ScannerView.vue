@@ -291,8 +291,11 @@ const triggerScan = async () => {
   scanStatus.value = 'running'
   try {
     await api.post('/v1/scanner/trigger')
-    ElMessage.success(t('scanner.scanQueued'))
-    setTimeout(() => loadRecords(), 5000)
+    ElMessage.success(t('scanner.scanStarted') || '掃描已啟動')
+    setTimeout(() => {
+      loadRecords()
+      loadStatus()
+    }, 10000)
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
   } finally {
@@ -300,7 +303,7 @@ const triggerScan = async () => {
     setTimeout(() => {
       scanStatus.value = 'idle'
       loadRecords()
-    }, 15000)
+    }, 30000)
   }
 }
 
