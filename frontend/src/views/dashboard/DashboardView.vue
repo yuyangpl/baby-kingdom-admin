@@ -3,34 +3,14 @@
     <h1 class="page-title">{{ $t('dashboard.title') }}</h1>
 
     <!-- Section 1: Real-time Status -->
-    <div class="grid grid--5 section-gap-sm">
+    <div class="grid grid--1 section-gap-sm">
       <template v-if="loadingRealtime">
-        <div v-for="i in 5" :key="'skel-rt-' + i" class="dash-card">
+        <div v-for="i in 1" :key="'skel-rt-' + i" class="dash-card">
           <div class="skeleton skel--label" />
           <div class="skeleton skel--value" />
         </div>
       </template>
       <template v-else>
-        <div v-for="q in queues" :key="q.name" class="dash-card">
-          <span class="dash-card__label">{{ q.name }}</span>
-          <div class="dash-card__row">
-            <el-tag
-              :type="q.status === 'running' ? 'success' : q.status === 'paused' ? 'warning' : 'info'"
-              size="small"
-            >
-              {{ q.status }}
-            </el-tag>
-            <span
-              class="status-dot"
-              :class="{
-                'status-dot--running': q.status === 'running',
-                'status-dot--paused': q.status === 'paused',
-                'status-dot--idle': q.status === 'idle',
-                'status-dot--pulse': q.status === 'running',
-              }"
-            />
-          </div>
-        </div>
         <div class="dash-card card--warning">
           <span class="dash-card__label">{{ $t('dashboard.pendingFeeds') }}</span>
           <span class="dash-card__pending-value">{{ pendingFeeds }}</span>
@@ -196,11 +176,6 @@ import api from '../../api';
 
 const { t } = useI18n();
 
-interface QueueStatus {
-  name: string;
-  status: string;
-}
-
 interface TodayStat {
   label: string;
   value: string | number;
@@ -229,7 +204,6 @@ interface ServiceHealth {
   checkedAt?: string;
 }
 
-const queues = ref<QueueStatus[]>([]);
 const pendingFeeds = ref<number>(0);
 const todayStats = ref<TodayStat[]>([]);
 const recentFeeds = ref<RecentFeed[]>([]);
@@ -314,7 +288,6 @@ function getTimelineColor(status: string): string {
 onMounted(async () => {
   // Fetch realtime
   api.get('/v1/dashboard/realtime').then((res) => {
-    queues.value = res.data?.queues || [];
     pendingFeeds.value = res.data?.pendingFeeds || 0;
   }).catch(() => {}).finally(() => { loadingRealtime.value = false; });
 
@@ -369,6 +342,11 @@ onMounted(async () => {
 .grid {
   display: grid;
   gap: 16px;
+}
+
+.grid--1 {
+  grid-template-columns: 1fr;
+  max-width: 320px;
 }
 
 .grid--5 {

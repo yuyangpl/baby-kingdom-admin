@@ -66,11 +66,7 @@
             <el-icon class="nav-item__icon"><Setting /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.config') }}</span>
           </router-link>
-          <router-link to="/queues" class="nav-item" :class="{ 'nav-item--active': $route.name === 'queues' }">
-            <el-icon class="nav-item__icon"><Operation /></el-icon>
-            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.queueMonitor') }}</span>
-          </router-link>
-          <router-link v-if="auth.isAdmin" to="/audit" class="nav-item" :class="{ 'nav-item--active': $route.name === 'audit' }">
+<router-link v-if="auth.isAdmin" to="/audit" class="nav-item" :class="{ 'nav-item--active': $route.name === 'audit' }">
             <el-icon class="nav-item__icon"><Notebook /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.auditLog') }}</span>
           </router-link>
