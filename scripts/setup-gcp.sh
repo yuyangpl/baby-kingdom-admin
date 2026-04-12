@@ -87,7 +87,9 @@ echo "=== [4/6] 创建 Secret Manager 密钥 ==="
 
 JWT_SECRET=$(openssl rand -base64 48)
 ENCRYPTION_KEY=$(openssl rand -hex 16)
-DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost/${DB_NAME}?host=/cloudsql/${PROJECT_ID}:${REGION}:${DB_INSTANCE}"
+# URL 编码密码（避免特殊字符如 / 导致解析错误）
+ENCODED_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${DB_PASSWORD}', safe=''))")
+DATABASE_URL="postgresql://${DB_USER}:${ENCODED_PASSWORD}@localhost/${DB_NAME}?host=/cloudsql/${PROJECT_ID}:${REGION}:${DB_INSTANCE}"
 
 create_or_update_secret() {
   local name=$1
