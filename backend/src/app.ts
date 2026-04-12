@@ -23,6 +23,7 @@ import posterRoutes from './modules/poster/poster.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import googleTrendsRoutes from './modules/google-trends/google-trends.routes.js';
 import tasksRoutes from './modules/tasks/tasks.routes.js';
+import taskLogRoutes from './modules/task-log/task-log.routes.js';
 
 const app: Express = express();
 
@@ -60,6 +61,8 @@ app.use('/api/v1/feeds', feedRoutes);
 app.use('/api/v1/poster', posterRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/google-trends', googleTrendsRoutes);
+
+app.use('/api/v1/task-logs', taskLogRoutes);
 
 // Task endpoints (called by Cloud Scheduler, no auth required)
 app.use('/tasks', tasksRoutes);

@@ -6,6 +6,7 @@ import { pullTrends } from '../trends/trends.service.js';
 import { postFeed } from '../poster/poster.service.js';
 import { pullAndStore } from '../google-trends/google-trends.service.js';
 import * as configService from '../config/config.service.js';
+import { logTask } from '../task-log/task-log.service.js';
 import logger from '../../shared/logger.js';
 
 export async function scannerTask(req: Request, res: Response): Promise<void> {
@@ -15,11 +16,13 @@ export async function scannerTask(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const { fid } = req.body || {};
+  const { fid, triggeredBy = 'cron' } = req.body || {};
+  const startedAt = Date.now();
 
   try {
     if (fid) {
       const stats = await scanBoard(fid);
+      await logTask('scanner', { status: 'completed', duration: Date.now() - startedAt, result: stats, triggeredBy });
       res.json({ success: true, stats });
     } else {
       const boards = await getBoardsDueForScan();
@@ -28,9 +31,11 @@ export async function scannerTask(req: Request, res: Response): Promise<void> {
         const stats = await scanBoard(board.fid);
         results.push(stats);
       }
+      await logTask('scanner', { status: 'completed', duration: Date.now() - startedAt, result: { boards: results.length, results }, triggeredBy });
       res.json({ success: true, boards: results.length, results });
     }
   } catch (err: any) {
+    await logTask('scanner', { status: 'failed', duration: Date.now() - startedAt, error: err.message, triggeredBy });
     logger.error({ err }, 'Scanner task failed');
     res.status(500).json({ error: err.message });
   }
@@ -43,11 +48,16 @@ export async function trendsTask(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  const { triggeredBy = 'cron' } = req.body || {};
+  const startedAt = Date.now();
+
   try {
     const result = await pullTrends();
     const pulled = Array.isArray(result.trends) ? result.trends.length : 0;
+    await logTask('trends', { status: 'completed', duration: Date.now() - startedAt, result: { pulled, feedsGenerated: result.feedsGenerated }, triggeredBy });
     res.json({ success: true, pulled, feedsGenerated: result.feedsGenerated });
   } catch (err: any) {
+    await logTask('trends', { status: 'failed', duration: Date.now() - startedAt, error: err.message, triggeredBy });
     logger.error({ err }, 'Trends task failed');
     res.status(500).json({ error: err.message });
   }
@@ -61,6 +71,7 @@ export async function posterTask(req: Request, res: Response): Promise<void> {
   }
 
   const { feedId, triggeredBy = 'cron' } = req.body || {};
+  const startedAt = Date.now();
   const prisma = getPrisma();
 
   // 单条模式：指定 feedId 发布
@@ -81,8 +92,10 @@ export async function posterTask(req: Request, res: Response): Promise<void> {
 
     try {
       await postFeed(feedId, undefined, '');
+      await logTask('poster', { status: 'completed', duration: Date.now() - startedAt, result: { feedId, posted: true }, triggeredBy });
       res.json({ success: true, posted: true });
     } catch (err: any) {
+      await logTask('poster', { status: 'failed', duration: Date.now() - startedAt, error: err.message, triggeredBy });
       logger.error({ err, feedId }, 'Poster task failed');
       res.status(500).json({ error: err.message });
     }
@@ -118,6 +131,7 @@ export async function posterTask(req: Request, res: Response): Promise<void> {
     }
   }
 
+  await logTask('poster', { status: errors.length > 0 ? 'failed' : 'completed', duration: Date.now() - startedAt, result: { posted, total: approvedFeeds.length, errors }, triggeredBy });
   res.json({ success: true, posted, total: approvedFeeds.length, errors: errors.length > 0 ? errors : undefined });
 }
 
@@ -128,10 +142,15 @@ export async function gtrendsTask(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  const { triggeredBy = 'cron' } = req.body || {};
+  const startedAt = Date.now();
+
   try {
     const result = await pullAndStore();
+    await logTask('google-trends', { status: 'completed', duration: Date.now() - startedAt, result: { pullId: result.pullId, count: result.count }, triggeredBy });
     res.json({ success: true, pullId: result.pullId, count: result.count });
   } catch (err: any) {
+    await logTask('google-trends', { status: 'failed', duration: Date.now() - startedAt, error: err.message, triggeredBy });
     logger.error({ err }, 'Google Trends task failed');
     res.status(500).json({ error: err.message });
   }

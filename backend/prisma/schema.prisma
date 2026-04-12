@@ -341,7 +341,26 @@ model Trend {
 }
 
 // ============================================
-// 11. DailyStats (← dashboard.model.ts)
+// 11. TaskLog — 任务执行日志（替代 queue_jobs）
+// ============================================
+model TaskLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  taskName    String    @map("task_name") @db.VarChar(30)
+  // taskName: scanner | trends | poster | google-trends
+  status      String    @default("running") @db.VarChar(10)
+  // status: running | completed | failed | skipped
+  duration    Int?      // milliseconds
+  result      Json?
+  error       String?   @db.Text
+  triggeredBy String    @default("cron") @map("triggered_by") @db.VarChar(10)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([taskName, createdAt(sort: Desc)])
+  @@map("task_logs")
+}
+
+// ============================================
+// 12. DailyStats (← dashboard.model.ts)
 // Uses JSONB for nested stats — structure changes frequently
 // ============================================
 model DailyStats {
@@ -362,7 +381,7 @@ model DailyStats {
 }
 
 // ============================================
-// 13. AuditLog (← audit.model.ts)
+// 14. AuditLog (← audit.model.ts)
 // TTL 90 days: handled by Cloud Scheduler + DELETE query
 // ============================================
 model AuditLog {
@@ -388,7 +407,7 @@ model AuditLog {
 }
 
 // ============================================
-// 14. TokenBlacklist (替代 Redis token blacklist)
+// 15. TokenBlacklist (替代 Redis token blacklist)
 // ============================================
 model TokenBlacklist {
   id        String   @id @default(uuid()) @db.Uuid
