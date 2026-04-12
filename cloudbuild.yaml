@@ -70,6 +70,8 @@ steps:
       - 'DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,ENCRYPTION_KEY=ENCRYPTION_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest'
       - '--set-env-vars'
       - 'NODE_ENV=production'
+      - '--port'
+      - '3000'
       - '--memory'
       - '512Mi'
       - '--cpu'
