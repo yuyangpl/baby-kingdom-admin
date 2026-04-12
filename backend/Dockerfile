@@ -15,5 +15,5 @@ COPY --from=base /app/src/generated ./src/generated
 COPY --from=base /app/prisma ./prisma
 COPY --from=base /app/prisma.config.ts ./prisma.config.ts
 ENV NODE_ENV=production
-EXPOSE 3000
+EXPOSE 8080
 CMD ["node", "dist/server.js"]

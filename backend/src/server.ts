@@ -13,7 +13,7 @@ import { seedData } from './seeds/import-data.js';
 import { execSync } from 'child_process';
 import logger from './shared/logger.js';
 
-const PORT: string | number = process.env.PORT || 3000;
+const PORT: string | number = process.env.PORT || 8080;
 
 async function start(): Promise<void> {
   // Run Prisma migrations on startup (safe: only applies pending migrations)
