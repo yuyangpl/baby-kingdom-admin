@@ -280,46 +280,23 @@ const loadHistory = async () => {
 
 const loadQueue = async () => {
   loadingQueue.value = true
-  try {
-    const res: any = await api.get('/v1/queues/poster/waiting')
-    const payload = res.data ?? res
-    pendingQueue.value = Array.isArray(payload) ? payload : (payload.data ?? [])
-  } catch {
-    // queue endpoint may not exist yet
-  } finally {
-    loadingQueue.value = false
-  }
+  pendingQueue.value = []
+  loadingQueue.value = false
 }
 
 const loadMetrics = async () => {
-  try {
-    const res: any = await api.get('/v1/queues/poster')
-    const data = res.data ?? res
-    const counts = data.counts || data
-    metrics.waiting = (counts.waiting ?? 0) + (counts.paused ?? 0)
-    metrics.success = counts.completed ?? 0
-    metrics.failed = counts.failed ?? 0
-  } catch {
-    // metrics endpoint may not exist yet
-  }
+  // Queue module removed — metrics from feed counts
+  metrics.waiting = 0
+  metrics.success = 0
+  metrics.failed = 0
 }
 
 const resumeQueue = async () => {
-  try {
-    await api.post('/v1/queues/poster/resume')
-    ElMessage.success(t('common.queueResumed'))
-  } catch (err: any) {
-    ElMessage.error(err.message || t('common.resumeFailed'))
-  }
+  ElMessage.info('Queue module removed')
 }
 
 const pauseQueue = async () => {
-  try {
-    await api.post('/v1/queues/poster/pause')
-    ElMessage.success(t('common.queuePaused'))
-  } catch (err: any) {
-    ElMessage.error(err.message || t('common.pauseFailed'))
-  }
+  ElMessage.info('Queue module removed')
 }
 
 const loadExpandData = async (feedId: string) => {
@@ -353,16 +330,8 @@ const manualPost = async (row: any) => {
   }
 }
 
-const cancelJob = async (row: any) => {
-  try {
-    await api.delete(`/v1/queues/poster/jobs/${row.jobId || row.postId || row.id || row._id}`)
-    ElMessage.success(t('common.jobCancelled'))
-    loadHistory()
-    loadQueue()
-    loadMetrics()
-  } catch (err: any) {
-    ElMessage.error(err.message || t('common.cancelFailed'))
-  }
+const cancelJob = async (_row: any) => {
+  ElMessage.info('Queue module removed')
 }
 
 onMounted(() => {

@@ -252,11 +252,7 @@ const loadTokenStatus = async () => {
 }
 
 const loadQueueStatus = async () => {
-  try {
-    const res: any = await api.get('/v1/queues/trends')
-    const data = res.data ?? res
-    queuePaused.value = data.status === 'paused'
-  } catch { /* ignore */ }
+  queuePaused.value = false
 }
 
 const triggerPull = async () => {

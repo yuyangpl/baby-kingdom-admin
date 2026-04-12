@@ -261,27 +261,16 @@ const loadBoards = async () => {
 const loadRecords = async () => {
   loading.value = true
   try {
-    const res: any = await api.get('/v1/queues/scanner/jobs', {
-      params: { page: pagination.page, limit: pagination.limit }
-    })
-    const payload = res.data ?? res
-    records.value = Array.isArray(payload) ? payload : (payload.data ?? [])
-    if (res.pagination) Object.assign(pagination, res.pagination)
-    if (records.value.length > 0 && records.value[0].startedAt) {
-      lastScanTime.value = new Date(records.value[0].startedAt).toLocaleString()
-    }
+    // Queue module removed — scanner records no longer available
+    records.value = []
   } finally {
     loading.value = false
   }
 }
 
 const loadStatus = async () => {
-  try {
-    const res: any = await api.get('/v1/queues/scanner')
-    const data = res.data ?? res
-    scanStatus.value = data.status || 'idle'
-    queuePaused.value = data.status === 'paused'
-  } catch { /* ignore */ }
+  scanStatus.value = 'idle'
+  queuePaused.value = false
 }
 
 const triggerScan = async () => {
