@@ -19,13 +19,14 @@ model User {
   email       String    @unique @db.VarChar(255)
   passwordHash String  @map("password_hash") @db.VarChar(255)
   role        String    @default("viewer") @db.VarChar(10)
-  // role CHECK: admin | editor | viewer
+  // role CHECK: admin | editor | approver | viewer
   lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz()
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
 
   claimedFeeds  Feed[] @relation("ClaimedFeeds")
   reviewedFeeds Feed[] @relation("ReviewedFeeds")
+  assignedFeeds Feed[] @relation("AssignedFeeds")
 
   @@map("users")
 }
@@ -291,6 +292,11 @@ model Feed {
   claimedByUser    User?     @relation("ClaimedFeeds", fields: [claimedBy], references: [id], onDelete: SetNull)
   claimedAt        DateTime? @map("claimed_at") @db.Timestamptz()
 
+  // Assignment (data isolation — determines who can see/approve this feed)
+  assignedTo       String?   @map("assigned_to") @db.Uuid
+  assignedToUser   User?     @relation("AssignedFeeds", fields: [assignedTo], references: [id], onDelete: SetNull)
+  assignedAt       DateTime? @map("assigned_at") @db.Timestamptz()
+
   // Review
   reviewedBy       String?   @map("reviewed_by") @db.Uuid
   reviewedByUser   User?     @relation("ReviewedFeeds", fields: [reviewedBy], references: [id], onDelete: SetNull)
@@ -308,6 +314,7 @@ model Feed {
   @@index([personaId, status])
   @@index([threadFid, status])
   @@index([claimedBy, claimedAt])
+  @@index([assignedTo, status])
   @@index([source], type: Gin)
   @@unique([threadTid, personaId])
   @@map("feeds")

@@ -15,8 +15,8 @@ const wrap = (fn: Function) => (req: any, res: any, next: any) => fn(req, res, n
 
 router.get('/', authenticate, wrap(ctrl.list));
 router.get('/:id', authenticate, wrap(ctrl.getById));
-router.post('/', authenticate, authorize('admin'), wrap(ctrl.create));
-router.put('/:id', authenticate, authorize('admin'), wrap(ctrl.update));
-router.delete('/:id', authenticate, authorize('admin'), wrap(ctrl.remove));
+router.post('/', authenticate, authorize('admin', 'editor'), wrap(ctrl.create));
+router.put('/:id', authenticate, authorize('admin', 'editor'), wrap(ctrl.update));
+router.delete('/:id', authenticate, authorize('admin', 'editor'), wrap(ctrl.remove));
 
 export default router;

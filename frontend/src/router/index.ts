@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('../components/AppLayout.vue'),
     children: [
-      { path: '', name: 'dashboard', component: () => import('../views/dashboard/DashboardView.vue') },
+      { path: '', name: 'dashboard', component: () => import('../views/dashboard/DashboardView.vue'), meta: { role: 'admin' } },
       { path: 'feeds', name: 'feeds', component: () => import('../views/feed/FeedView.vue') },
       { path: 'personas', name: 'personas', component: () => import('../views/persona/PersonaView.vue'), meta: { role: 'approver' } },
       { path: 'tones', name: 'tones', component: () => import('../views/tone/ToneView.vue'), meta: { role: 'editor' } },
