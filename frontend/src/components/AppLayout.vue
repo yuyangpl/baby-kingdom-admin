@@ -8,7 +8,16 @@
       </div>
 
       <nav class="sidebar-nav">
-        <!-- Feeds (approver+) -->
+        <!-- Dashboard (admin only) -->
+        <div v-if="auth.isAdmin" class="nav-group">
+          <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.overview') }}</div>
+          <router-link to="/" class="nav-item" :class="{ 'nav-item--active': $route.name === 'dashboard' }">
+            <el-icon class="nav-item__icon"><DataAnalysis /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.dashboard') }}</span>
+          </router-link>
+        </div>
+
+        <!-- Feeds (all authenticated) -->
         <div class="nav-group">
           <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.content') }}</div>
           <router-link to="/feeds" class="nav-item" :class="{ 'nav-item--active': $route.name === 'feeds' }">
