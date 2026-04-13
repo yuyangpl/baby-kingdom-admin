@@ -81,7 +81,7 @@ async function handleLogin() {
   loading.value = true;
   try {
     await auth.login(form.value.email, form.value.password);
-    router.push((route.query.redirect as string) || '/');
+    router.push((route.query.redirect as string) || '/feeds');
   } catch (err: any) {
     ElMessage.error(err?.error?.message || t('login.error'));
   } finally {
