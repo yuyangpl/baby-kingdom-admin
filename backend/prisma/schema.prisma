@@ -26,7 +26,7 @@ model User {
 
   claimedFeeds  Feed[] @relation("ClaimedFeeds")
   reviewedFeeds Feed[] @relation("ReviewedFeeds")
-  assignedFeeds Feed[] @relation("AssignedFeeds")
+
 
   @@map("users")
 }
@@ -291,11 +291,7 @@ model Feed {
   claimedBy        String?   @map("claimed_by") @db.Uuid
   claimedByUser    User?     @relation("ClaimedFeeds", fields: [claimedBy], references: [id], onDelete: SetNull)
   claimedAt        DateTime? @map("claimed_at") @db.Timestamptz()
-
-  // Assignment (data isolation — determines who can see/approve this feed)
-  assignedTo       String?   @map("assigned_to") @db.Uuid
-  assignedToUser   User?     @relation("AssignedFeeds", fields: [assignedTo], references: [id], onDelete: SetNull)
-  assignedAt       DateTime? @map("assigned_at") @db.Timestamptz()
+  claimExpiresAt   DateTime? @map("claim_expires_at") @db.Timestamptz()
 
   // Review
   reviewedBy       String?   @map("reviewed_by") @db.Uuid
@@ -314,7 +310,7 @@ model Feed {
   @@index([personaId, status])
   @@index([threadFid, status])
   @@index([claimedBy, claimedAt])
-  @@index([assignedTo, status])
+  @@index([status, claimExpiresAt, createdAt])
   @@index([source], type: Gin)
   @@unique([threadTid, personaId])
   @@map("feeds")
