@@ -9,7 +9,7 @@ export function getRedis(): Redis.Redis {
   client = new Redis.default({
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
-    maxRetriesPerRequest: null, // required by BullMQ
+    maxRetriesPerRequest: null,
     retryStrategy(times: number) {
       const delay = Math.min(times * 200, 5000);
       return delay;
