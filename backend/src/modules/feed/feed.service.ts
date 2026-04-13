@@ -3,71 +3,12 @@ import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { checkQuality } from '../gemini/quality-guard.js';
 import * as configService from '../config/config.service.js';
-import { NotFoundError, BusinessError, ConflictError, ForbiddenError } from '../../shared/errors.js';
+import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 import xss from 'xss';
 
 const CLAIM_EXPIRY_MINUTES = 10;
-
-/**
- * Auto-assign a feed to an approver with the fewest pending feeds.
- * Falls back to admin if no approver exists.
- */
-export async function autoAssignFeed(feedId: string) {
-  const prisma = getPrisma();
-
-  // Find approvers, pick the one with fewest pending assigned feeds
-  const approvers = await prisma.user.findMany({ where: { role: 'approver' } });
-
-  let assignTo: string | null = null;
-  if (approvers.length > 0) {
-    const counts = await Promise.all(
-      approvers.map(async (u) => ({
-        userId: u.id,
-        count: await prisma.feed.count({ where: { assignedTo: u.id, status: 'pending' } }),
-      }))
-    );
-    counts.sort((a, b) => a.count - b.count);
-    assignTo = counts[0].userId;
-  } else {
-    // Fallback to first admin
-    const admin = await prisma.user.findFirst({ where: { role: 'admin' } });
-    if (admin) assignTo = admin.id;
-  }
-
-  if (assignTo) {
-    await prisma.feed.update({
-      where: { id: feedId },
-      data: { assignedTo: assignTo, assignedAt: new Date() },
-    });
-  }
-}
-
-/**
- * Admin manually reassign a feed to a different user.
- */
-export async function assignFeed(feedId: string, targetUserId: string, operatorId: string, ip: string) {
-  const prisma = getPrisma();
-  const feed = await findFeed(feedId);
-  if (!feed) throw new NotFoundError('Feed');
-
-  const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
-  if (!targetUser) throw new NotFoundError('User');
-
-  const updated = await prisma.feed.update({
-    where: { id: feed.id },
-    data: { assignedTo: targetUserId, assignedAt: new Date() },
-  });
-
-  await auditService.log({
-    operator: operatorId, eventType: 'FEED_ASSIGNED', module: 'feed',
-    feedId: feed.feedId, targetId: feed.id, ip,
-    actionDetail: `Assigned feed ${feed.feedId} to user ${targetUser.username}`,
-  });
-
-  return updated;
-}
 
 /** Find feed by UUID id or custom feedId field */
 async function findFeed(id: string) {
@@ -88,22 +29,15 @@ interface FeedListParams {
   page?: number;
   limit?: number;
   sort?: string;
-  userId?: string;
-  userRole?: string;
 }
 
-export async function list({ status, source, threadFid, personaId, page = 1, limit = 20, sort = '-createdAt', userId, userRole }: FeedListParams) {
+export async function list({ status, source, threadFid, personaId, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
   const prisma = getPrisma();
   const where: Record<string, any> = {};
   if (status) where.status = status;
   if (source) where.source = { has: source };
   if (threadFid) where.threadFid = parseInt(String(threadFid), 10);
   if (personaId) where.personaId = personaId;
-
-  // Data isolation: non-admin users only see feeds assigned to them
-  if (userRole && userRole !== 'admin' && userId) {
-    where.assignedTo = userId;
-  }
 
   limit = Math.min(parseInt(String(limit)) || 20, 200);
   const skip = (page - 1) * limit;
@@ -163,13 +97,10 @@ export async function unclaim(feedId: string, userId: string) {
 }
 
 // --- Approve / Reject ---
-export async function approve(feedId: string, userId: string, userRole: string, ip: string) {
+export async function approve(feedId: string, userId: string, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only approve pending feeds');
-  if (userRole !== 'admin' && feed.assignedTo !== userId) {
-    throw new ForbiddenError('You can only approve feeds assigned to you');
-  }
 
   const prisma = getPrisma();
   const updated = await prisma.feed.update({
@@ -201,13 +132,10 @@ export async function approve(feedId: string, userId: string, userRole: string, 
   return updated;
 }
 
-export async function reject(feedId: string, userId: string, userRole: string, notes: string | undefined, ip: string) {
+export async function reject(feedId: string, userId: string, notes: string | undefined, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
   if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
-  if (userRole !== 'admin' && feed.assignedTo !== userId) {
-    throw new ForbiddenError('You can only reject feeds assigned to you');
-  }
 
   const prisma = getPrisma();
   const updated = await prisma.feed.update({
@@ -397,7 +325,7 @@ export async function batchApprove(feedIds: string[], userId: string, ip: string
   const results: { succeeded: string[]; failed: { id: string; reason: string }[] } = { succeeded: [], failed: [] };
   for (const id of feedIds) {
     try {
-      await approve(id, userId, 'admin', ip);
+      await approve(id, userId, ip);
       results.succeeded.push(id);
     } catch (err: any) {
       results.failed.push({ id, reason: err.message });
@@ -410,7 +338,7 @@ export async function batchReject(feedIds: string[], userId: string, notes: stri
   const results: { succeeded: string[]; failed: { id: string; reason: string }[] } = { succeeded: [], failed: [] };
   for (const id of feedIds) {
     try {
-      await reject(id, userId, 'admin', notes, ip);
+      await reject(id, userId, notes, ip);
       results.succeeded.push(id);
     } catch (err: any) {
       results.failed.push({ id, reason: err.message });

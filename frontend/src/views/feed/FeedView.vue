@@ -239,35 +239,52 @@
         <!-- Card Footer -->
         <div class="feed-card__footer">
           <div class="feed-card__footer-left">
-            <!-- Assignment info -->
-            <el-tag v-if="feed.assignedTo && authStore.isAdmin" size="small" type="info" effect="plain">
-              {{ $t('feed.assignedTo') }}: {{ feed.assignedToUser?.username || feed.assignedTo }}
-            </el-tag>
+            <!-- Claim / Release -->
+            <template v-if="!feed.claimedBy">
+              <el-button size="small" type="warning" @click="claim(feed)">
+                <el-icon><Lock /></el-icon>
+                {{ $t('feed.claim') }}
+              </el-button>
+            </template>
+            <template v-else-if="isClaimedByMe(feed)">
+              <el-button size="small" type="info" @click="unclaim(feed)">
+                <el-icon><Unlock /></el-icon>
+                {{ $t('feed.unclaim') }}
+              </el-button>
+            </template>
+            <template v-else>
+              <el-button size="small" type="info" disabled>
+                <el-icon><Lock /></el-icon>
+                {{ feed.claimedBy }}
+              </el-button>
+            </template>
 
             <span v-if="feed.charCount" class="feed-card__char-count">
               {{ $t('feed.charCount', { count: feed.charCount }) }}
             </span>
           </div>
           <div class="feed-card__footer-right">
-            <el-button v-if="authStore.isEditor" size="small" @click="openEdit(feed)">
+            <el-button size="small" @click="openEdit(feed)" :disabled="isClaimedByOther(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isEditor" size="small" type="warning" @click="regenerate(feed)">
+            <el-button size="small" type="warning" @click="regenerate(feed)" :disabled="isClaimedByOther(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button
-              v-if="canApprove && feed.status !== 'rejected'"
+              v-if="feed.status !== 'rejected'"
               size="small"
               class="btn-reject"
               @click="rejectWithNotes(feed)"
+              :disabled="isClaimedByOther(feed)"
             >
               {{ $t('feed.reject') }}
             </el-button>
             <el-button
-              v-if="canApprove && feed.status !== 'approved' && feed.status !== 'posted'"
+              v-if="feed.status !== 'approved' && feed.status !== 'posted'"
               size="small"
               class="btn-approve"
               @click="approve(feed)"
+              :disabled="isClaimedByOther(feed)"
             >
               {{ $t('feed.approve') }}
             </el-button>
@@ -315,7 +332,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Lock, Unlock, RefreshRight, ArrowDown } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
@@ -328,9 +345,6 @@ import CustomGenerateModal from './CustomGenerateModal.vue'
 const { t } = useI18n()
 const feedStore = useFeedStore()
 const authStore = useAuthStore()
-
-// approver and admin can approve/reject
-const canApprove = computed(() => authStore.role === 'admin' || authStore.role === 'approver')
 
 const activeTab = ref<string>('pending')
 const selectedIds = ref<Set<string>>(new Set())

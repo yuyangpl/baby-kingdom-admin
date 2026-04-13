@@ -8,6 +8,6 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<a
 
 router.get('/pending', authenticate, wrap(ctrl.pending));
 router.get('/history', authenticate, wrap(ctrl.history));
-router.post('/:id/post', authenticate, authorize('admin'), wrap(ctrl.postFeed));
+router.post('/:id/post', authenticate, authorize('admin', 'editor'), wrap(ctrl.postFeed));
 
 export default router;

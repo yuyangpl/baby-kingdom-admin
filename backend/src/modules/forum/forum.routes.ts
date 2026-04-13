@@ -8,12 +8,12 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<a
   (req: Request, res: Response, next: NextFunction) => fn(req, res, next).catch(next);
 
 router.get('/', authenticate, wrap(ctrl.getTree));
-router.post('/sync', authenticate, authorize('admin', 'editor'), wrap(syncForumIndex));
-router.post('/categories', authenticate, authorize('admin', 'editor'), wrap(ctrl.createCategory));
-router.put('/categories/:id', authenticate, authorize('admin', 'editor'), wrap(ctrl.updateCategory));
-router.post('/boards', authenticate, authorize('admin', 'editor'), wrap(ctrl.createBoard));
-router.put('/boards/:id', authenticate, authorize('admin', 'editor'), wrap(ctrl.updateBoard));
-router.put('/boards/:id/personas', authenticate, authorize('admin', 'editor'), wrap(ctrl.updateBoardPersonas));
-router.delete('/boards/:id', authenticate, authorize('admin', 'editor'), wrap(ctrl.deleteBoard));
+router.post('/sync', authenticate, authorize('admin'), wrap(syncForumIndex));
+router.post('/categories', authenticate, authorize('admin'), wrap(ctrl.createCategory));
+router.put('/categories/:id', authenticate, authorize('admin'), wrap(ctrl.updateCategory));
+router.post('/boards', authenticate, authorize('admin'), wrap(ctrl.createBoard));
+router.put('/boards/:id', authenticate, authorize('admin'), wrap(ctrl.updateBoard));
+router.put('/boards/:id/personas', authenticate, authorize('admin'), wrap(ctrl.updateBoardPersonas));
+router.delete('/boards/:id', authenticate, authorize('admin'), wrap(ctrl.deleteBoard));
 
 export default router;

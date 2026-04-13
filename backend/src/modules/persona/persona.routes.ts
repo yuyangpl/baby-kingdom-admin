@@ -91,7 +91,7 @@ router.get('/:id', authenticate, wrap(async (req, res) => {
 }));
 
 // Create — encrypt bkPassword before save
-router.post('/', authenticate, authorize('admin', 'editor', 'approver'), wrap(async (req, res) => {
+router.post('/', authenticate, authorize('admin'), wrap(async (req, res) => {
   const prisma = getPrisma();
   const data = encryptPasswordIfNeeded(filterBody(req.body));
   const persona = await prisma.persona.create({ data: data as any });
@@ -110,7 +110,7 @@ router.post('/', authenticate, authorize('admin', 'editor', 'approver'), wrap(as
 }));
 
 // Update — encrypt bkPassword before save
-router.put('/:id', authenticate, authorize('admin', 'editor', 'approver'), wrap(async (req, res) => {
+router.put('/:id', authenticate, authorize('admin'), wrap(async (req, res) => {
   const prisma = getPrisma();
   const id = req.params.id as string;
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -142,6 +142,6 @@ router.put('/:id', authenticate, authorize('admin', 'editor', 'approver'), wrap(
 }));
 
 // Delete — use baseCrud
-router.delete('/:id', authenticate, authorize('admin', 'editor', 'approver'), wrap(baseCrud.remove));
+router.delete('/:id', authenticate, authorize('admin'), wrap(baseCrud.remove));
 
 export default router;

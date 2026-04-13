@@ -82,8 +82,8 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 
 export async function updateUserRole(req: Request, res: Response): Promise<void> {
   const { role } = req.body;
-  if (!role || !['admin', 'editor', 'approver', 'viewer'].includes(role)) {
-    throw new ValidationError('Valid role (admin/editor/approver/viewer) is required');
+  if (!role || !['admin', 'editor', 'viewer'].includes(role)) {
+    throw new ValidationError('Valid role (admin/editor/viewer) is required');
   }
 
   const user = await authService.updateUserRole(req.params.id as string, role, (req as any).user.id);

@@ -36,10 +36,6 @@
             <span class="role-desc">{{ $t('user.roleDesc.editor') }}</span>
           </div>
           <div class="role-option">
-            <el-radio value="approver">{{ $t('user.roles.approver') }}</el-radio>
-            <span class="role-desc">{{ $t('user.roleDesc.approver') }}</span>
-          </div>
-          <div class="role-option">
             <el-radio value="viewer">{{ $t('user.roles.viewer') }}</el-radio>
             <span class="role-desc">{{ $t('user.roleDesc.viewer') }}</span>
           </div>
