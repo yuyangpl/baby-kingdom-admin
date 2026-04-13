@@ -62,27 +62,54 @@
 - [x] 1.6 i18n — 新增 dataSources 翻译 key
 
 ### Phase 2: Backend Role Extension
-- [ ] 2.1 Prisma schema — User.role 扩展为 admin|editor|approver|viewer
-- [ ] 2.2 Migration — 更新 role check 约束
-- [ ] 2.3 auth middleware — authorize() 适配 4 级角色
-- [ ] 2.4 Route guards — 各模块路由按新角色分配
-  - feeds: 所有认证用户可读，approver+ 可操作
-  - personas: approver+
-  - tones/topic-rules/forums: editor+
-  - config/scanner/trends/google-trends/audit/users: admin only
+- [ ] 2.1 Prisma schema — User.role 注释更新为 `admin | editor | approver | viewer`
+  - VarChar(10) 够用（approver=8 字符）
+  - 不需要改字段类型
+- [ ] 2.2 Migration — 添加 SQL CHECK 约束 `role IN ('admin','editor','approver','viewer')`
+- [ ] 2.3 auth middleware (auth.ts:14) — role 类型扩展加 `'approver'`
+  - authorize() 逻辑不变（白名单模式，够灵活）
+- [ ] 2.4 Route guards — 各模块路由更新 authorize() 参数：
+  - `feeds`: 读取无限制；claim/edit/approve → `authorize('admin','approver')`；edit content → `authorize('admin','editor','approver')`
+  - `personas`: `authorize('admin','editor','approver')`
+  - `tones/topic-rules/forums`: `authorize('admin','editor')`
+  - `config/scanner/trends/google-trends/audit/users`: `authorize('admin')`
+- [ ] 2.5 dashboard 路由加 `meta: { role: 'admin' }` 防止 URL 直接访问
+- [ ] 2.6 auth.service — register/changeRole 接口校验 approver 为有效角色
 
 ### Phase 3: Feed Assignment
-- [ ] 3.1 Feed model — 新增 assignedTo/assignedAt 字段
-- [ ] 3.2 Feed service — 生成时从 approver 用户中随机指派（负载均衡：选待审最少的）
-- [ ] 3.3 Feed service — approve/reject 校验 assignedTo（admin 豁免）
-- [ ] 3.4 Feed service — admin 可手动重新指派
-- [ ] 3.5 FeedView.vue — "我的/全部" Tab 筛选
-- [ ] 3.6 FeedView.vue — 按角色控制操作按钮（viewer 无操作，editor 可编辑不可审批，approver 可审批指派给自己的）
+- [ ] 3.1 Feed model — 新增 assignedTo/assignedAt 字段 + User relation
+  ```prisma
+  assignedTo     String?   @map("assigned_to") @db.Uuid
+  assignedToUser User?     @relation("AssignedFeeds", fields: [assignedTo], references: [id])
+  assignedAt     DateTime? @map("assigned_at") @db.Timestamptz()
+  ```
+- [ ] 3.2 Feed service — 生成时自动分配逻辑：
+  - 从 role='approver' 的活跃用户中选择
+  - 负载均衡：选当前 assignedTo 且 status='pending' 最少的 approver
+  - 无 approver 时 fallback 到 admin
+- [ ] 3.3 Feed service — approve/reject 加校验：
+  - `if (user.role !== 'admin' && feed.assignedTo !== userId) throw ForbiddenError`
+- [ ] 3.4 Feed service — admin 手动重新指派接口 `PUT /feeds/:id/assign`
+- [ ] 3.5 FeedView.vue — "我的/全部" Tab 筛选：
+  - 默认显示 assignedTo=me 的 feed
+  - "全部" tab 可查看所有（非自己的操作按钮禁用）
+- [ ] 3.6 FeedView.vue — 按角色控制操作按钮：
+  - viewer: 无操作按钮
+  - editor: 可编辑内容，不可审批
+  - approver: 可审批/拒绝仅指派给自己的 feed
+  - admin: 全部操作 + 重新指派
 
 ### Phase 4: Cleanup
-- [ ] 4.1 Seed data — 更新默认角色
-- [ ] 4.2 User management page — 支持 4 个角色选项
+- [ ] 4.1 Seed data — admin 默认角色不变
+- [ ] 4.2 User management page (UserView/UserForm) — 角色下拉支持 4 个选项
 - [ ] 4.3 Testing & merge to dev
+
+## Technical Notes
+
+- **authorize() 是白名单模式**，不是层级继承。每个路由需显式列出允许的角色。
+- **JWT token 中已包含 role**，前端 auth store 从 token/user 读取角色。
+- **现有 claim 机制保留**：assignedTo 是"谁负责审批"，claimedBy 是"谁正在查看/编辑"。
+- **Feed.assignedTo 与 Feed.claimedBy 共存**：assignedTo 决定谁能审批，claimedBy 是临时锁（10 分钟过期）。
 
 ## Branch
 `feature/role-permissions` → merge to `dev`
