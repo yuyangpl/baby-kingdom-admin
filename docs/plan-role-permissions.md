@@ -1,7 +1,7 @@
 # Plan: Multi-User Role Permissions
 
 ## Goal
-实现 4 级角色权限体系，控制菜单可见性和操作权限，Feed 指派机制隔离审批。
+实现 4 级角色权限体系，控制菜单可见性和操作权限，Feed 指派机制隔离审批数据。
 
 ## Roles
 
@@ -39,9 +39,9 @@
 | Feature | admin | editor | approver | viewer |
 |---------|-------|--------|----------|--------|
 | Dashboard | Y | N | N | N |
-| View Feeds | Y | Y | Y | Y (read-only) |
-| Claim/Edit Feed | Y | Y | Y (only assigned) | N |
-| Approve/Reject Feed | Y | N | Y (only assigned) | N |
+| View Feeds | Y (all) | Y (assigned) | Y (assigned) | Y (read-only, assigned) |
+| Edit Feed Content | Y | Y (assigned) | N | N |
+| Approve/Reject Feed | Y | N | Y (assigned) | N |
 | Personas | Y | Y | Y | N |
 | Tones | Y | Y | N | N |
 | Topic Rules | Y | Y | N | N |
@@ -63,20 +63,21 @@
 
 ### Phase 2: Backend Role Extension
 - [ ] 2.1 Prisma schema — User.role 注释更新为 `admin | editor | approver | viewer`
-  - VarChar(10) 够用（approver=8 字符）
-  - 不需要改字段类型
 - [ ] 2.2 Migration — 添加 SQL CHECK 约束 `role IN ('admin','editor','approver','viewer')`
 - [ ] 2.3 auth middleware (auth.ts:14) — role 类型扩展加 `'approver'`
-  - authorize() 逻辑不变（白名单模式，够灵活）
 - [ ] 2.4 Route guards — 各模块路由更新 authorize() 参数：
-  - `feeds`: 读取无限制；claim/edit/approve → `authorize('admin','approver')`；edit content → `authorize('admin','editor','approver')`
+  - `feeds`: 读取无限制；approve/reject → `authorize('admin','approver')`；edit content → `authorize('admin','editor')`
   - `personas`: `authorize('admin','editor','approver')`
   - `tones/topic-rules/forums`: `authorize('admin','editor')`
   - `config/scanner/trends/google-trends/audit/users`: `authorize('admin')`
 - [ ] 2.5 dashboard 路由加 `meta: { role: 'admin' }` 防止 URL 直接访问
 - [ ] 2.6 auth.service — register/changeRole 接口校验 approver 为有效角色
+- [ ] 2.7 移除 claim/unclaim 机制（claimedBy/claimedAt 字段暂保留但不再使用）
+  - 删除 feed.service 中 claim/unclaim 函数
+  - 删除 feed.routes 中 claim/unclaim 路由
+  - 前端 FeedView 去掉 claim 相关按钮和逻辑
 
-### Phase 3: Feed Assignment
+### Phase 3: Feed Assignment（数据隔离）
 - [ ] 3.1 Feed model — 新增 assignedTo/assignedAt 字段 + User relation
   ```prisma
   assignedTo     String?   @map("assigned_to") @db.Uuid
@@ -91,12 +92,12 @@
   - `if (user.role !== 'admin' && feed.assignedTo !== userId) throw ForbiddenError`
 - [ ] 3.4 Feed service — admin 手动重新指派接口 `PUT /feeds/:id/assign`
 - [ ] 3.5 Feed 列表接口 — 按角色自动过滤：
-  - approver/editor: 后端自动过滤 `assignedTo = userId`，只返回指派给自己的
+  - approver/editor/viewer: 后端自动过滤 `assignedTo = userId`，只返回指派给自己的
   - admin: 返回全部
 - [ ] 3.6 FeedView.vue — 按角色控制操作按钮：
   - viewer: 无操作按钮
   - editor: 可编辑内容，不可审批
-  - approver: 可审批/拒绝（后端已保证只能看到自己的）
+  - approver: 可审批/拒绝
   - admin: 全部操作 + 重新指派
 
 ### Phase 4: Cleanup
@@ -108,8 +109,8 @@
 
 - **authorize() 是白名单模式**，不是层级继承。每个路由需显式列出允许的角色。
 - **JWT token 中已包含 role**，前端 auth store 从 token/user 读取角色。
-- **现有 claim 机制保留**：assignedTo 是"谁负责审批"，claimedBy 是"谁正在查看/编辑"。
-- **Feed.assignedTo 与 Feed.claimedBy 共存**：assignedTo 决定谁能审批，claimedBy 是临时锁（10 分钟过期）。
+- **assignedTo 是唯一的数据隔离机制**：决定谁能看到和操作哪些 feed。
+- **claim 机制废弃**：不再需要临时锁，assignedTo 直接决定数据归属。claimedBy/claimedAt 字段暂保留兼容，后续可清理。
 
 ## Branch
 `feature/role-permissions` → merge to `dev`
