@@ -97,6 +97,7 @@ export default {
     topicRules: '話題規則',
     forumBoards: '版塊管理',
     system: '系統',
+    dataSources: '採集源',
     config: '全局配置',
     googleTrends: 'Google 趨勢數據',
     queueMonitor: '隊列監控',

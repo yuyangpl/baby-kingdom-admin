@@ -5,7 +5,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  role: 'admin' | 'editor' | 'viewer';
+  role: 'admin' | 'editor' | 'approver' | 'viewer';
 }
 
 interface AuthState {
@@ -23,6 +23,7 @@ export const useAuthStore = defineStore('auth', {
     isLoggedIn: (state): boolean => !!state.accessToken,
     isAdmin: (state): boolean => state.user?.role === 'admin',
     isEditor: (state): boolean => ['admin', 'editor'].includes(state.user?.role ?? ''),
+    isApprover: (state): boolean => ['admin', 'editor', 'approver'].includes(state.user?.role ?? ''),
     role: (state): string | undefined => state.user?.role,
   },
 

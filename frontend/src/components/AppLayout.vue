@@ -8,69 +8,72 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-group">
-          <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.overview') }}</div>
-          <router-link to="/" class="nav-item" :class="{ 'nav-item--active': $route.name === 'dashboard' }">
-            <el-icon class="nav-item__icon"><DataAnalysis /></el-icon>
-            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.dashboard') }}</span>
-          </router-link>
-        </div>
-
+        <!-- Feeds (approver+) -->
         <div class="nav-group">
           <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.content') }}</div>
           <router-link to="/feeds" class="nav-item" :class="{ 'nav-item--active': $route.name === 'feeds' }">
             <el-icon class="nav-item__icon"><Document /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.feedQueue') }}</span>
           </router-link>
-          <router-link to="/scanner" class="nav-item" :class="{ 'nav-item--active': $route.name === 'scanner' }">
-            <el-icon class="nav-item__icon"><Search /></el-icon>
-            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.scanner') }}</span>
-          </router-link>
-          <router-link to="/trends" class="nav-item" :class="{ 'nav-item--active': $route.name === 'trends' }">
-            <el-icon class="nav-item__icon"><TrendCharts /></el-icon>
-            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.trends') }}</span>
-          </router-link>
-          <router-link v-if="auth.isAdmin" to="/google-trends" class="nav-item" :class="{ 'nav-item--active': $route.name === 'google-trends' }">
-            <el-icon class="nav-item__icon"><DataLine /></el-icon>
-            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.googleTrends') }}</span>
-          </router-link>
-          <!-- <router-link to="/poster" class="nav-item" :class="{ 'nav-item--active': $route.name === 'poster' }">
-            <el-icon class="nav-item__icon"><Promotion /></el-icon>
-            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.poster') }}</span>
-          </router-link> -->
         </div>
 
-        <div class="nav-group">
+        <!-- Configuration (approver: only personas; editor+: all) -->
+        <div v-if="auth.isApprover" class="nav-group">
           <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.configuration') }}</div>
           <router-link to="/personas" class="nav-item" :class="{ 'nav-item--active': $route.name === 'personas' }">
             <el-icon class="nav-item__icon"><User /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.personas') }}</span>
           </router-link>
-          <router-link to="/tones" class="nav-item" :class="{ 'nav-item--active': $route.name === 'tones' }">
+          <router-link v-if="auth.isEditor" to="/tones" class="nav-item" :class="{ 'nav-item--active': $route.name === 'tones' }">
             <el-icon class="nav-item__icon"><ChatDotRound /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.toneModes') }}</span>
           </router-link>
-          <router-link to="/topic-rules" class="nav-item" :class="{ 'nav-item--active': $route.name === 'topic-rules' }">
+          <router-link v-if="auth.isEditor" to="/topic-rules" class="nav-item" :class="{ 'nav-item--active': $route.name === 'topic-rules' }">
             <el-icon class="nav-item__icon"><List /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.topicRules') }}</span>
           </router-link>
-          <router-link to="/forums" class="nav-item" :class="{ 'nav-item--active': $route.name === 'forums' }">
+          <router-link v-if="auth.isEditor" to="/forums" class="nav-item" :class="{ 'nav-item--active': $route.name === 'forums' }">
             <el-icon class="nav-item__icon"><Grid /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.forumBoards') }}</span>
           </router-link>
         </div>
 
-        <div class="nav-group">
+        <!-- System (admin only) -->
+        <div v-if="auth.isAdmin" class="nav-group">
           <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.system') }}</div>
-          <router-link v-if="auth.isAdmin" to="/config" class="nav-item" :class="{ 'nav-item--active': $route.name === 'config' }">
+          <router-link to="/config" class="nav-item" :class="{ 'nav-item--active': $route.name === 'config' }">
             <el-icon class="nav-item__icon"><Setting /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.config') }}</span>
           </router-link>
-<router-link v-if="auth.isAdmin" to="/audit" class="nav-item" :class="{ 'nav-item--active': $route.name === 'audit' }">
+          <!-- 採集源 submenu -->
+          <div class="nav-submenu" :class="{ 'nav-submenu--open': dataSourcesOpen }">
+            <div class="nav-item" @click="dataSourcesOpen = !dataSourcesOpen">
+              <el-icon class="nav-item__icon"><Connection /></el-icon>
+              <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.dataSources') }}</span>
+              <el-icon v-if="!isCollapsed" class="nav-submenu__arrow" :size="12">
+                <ArrowDown v-if="!dataSourcesOpen" /><ArrowUp v-else />
+              </el-icon>
+            </div>
+            <div v-if="dataSourcesOpen" class="nav-submenu__items">
+              <router-link to="/scanner" class="nav-item nav-item--sub" :class="{ 'nav-item--active': $route.name === 'scanner' }">
+                <el-icon class="nav-item__icon"><Search /></el-icon>
+                <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.scanner') }}</span>
+              </router-link>
+              <router-link to="/trends" class="nav-item nav-item--sub" :class="{ 'nav-item--active': $route.name === 'trends' }">
+                <el-icon class="nav-item__icon"><TrendCharts /></el-icon>
+                <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.trends') }}</span>
+              </router-link>
+              <router-link to="/google-trends" class="nav-item nav-item--sub" :class="{ 'nav-item--active': $route.name === 'google-trends' }">
+                <el-icon class="nav-item__icon"><DataLine /></el-icon>
+                <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.googleTrends') }}</span>
+              </router-link>
+            </div>
+          </div>
+          <router-link to="/audit" class="nav-item" :class="{ 'nav-item--active': $route.name === 'audit' }">
             <el-icon class="nav-item__icon"><Notebook /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.auditLog') }}</span>
           </router-link>
-          <router-link v-if="auth.isAdmin" to="/users" class="nav-item" :class="{ 'nav-item--active': $route.name === 'users' }">
+          <router-link to="/users" class="nav-item" :class="{ 'nav-item--active': $route.name === 'users' }">
             <el-icon class="nav-item__icon"><UserFilled /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.users') }}</span>
           </router-link>
@@ -136,6 +139,7 @@ const router = useRouter();
 const { locale } = useI18n();
 const isCollapsed = ref<boolean>(false);
 const pendingCount = ref<number>(0);
+const dataSourcesOpen = ref<boolean>(false);
 
 const unreadCount = computed(() => notifyStore.unreadCount);
 
@@ -255,6 +259,18 @@ async function handleLogout() {
 .nav-item__text {
   margin-left: 12px;
   font-size: 14px;
+}
+
+.nav-submenu__arrow {
+  margin-left: auto;
+  transition: transform 0.2s;
+}
+.nav-submenu__items {
+  overflow: hidden;
+}
+.nav-item--sub {
+  padding-left: 44px;
+  font-size: 13px;
 }
 
 /* Main wrapper */

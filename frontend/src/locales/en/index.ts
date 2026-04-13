@@ -95,6 +95,7 @@ export default {
     topicRules: 'Topic Rules',
     forumBoards: 'Forum Boards',
     system: 'System',
+    dataSources: 'Data Sources',
     config: 'Config',
     googleTrends: 'Google Trends Data',
     queueMonitor: 'Queue Monitor',
