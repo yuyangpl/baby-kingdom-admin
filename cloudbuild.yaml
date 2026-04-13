@@ -8,7 +8,7 @@
 substitutions:
   _REGION: us-central1
   _AR_REPO: babykingdom
-  _CLOUD_SQL_INSTANCE: 'sugar-379907:asia-east1:sugar-dev-test'
+  _CLOUD_SQL_INSTANCE: 'sugar-379907:us-central1:sugar-dev-test'
   _BACKEND_SA: babykingdom-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com
 
 steps:
