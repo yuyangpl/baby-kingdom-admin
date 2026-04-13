@@ -18,7 +18,6 @@ router.get('/:id', authenticate, wrap(ctrl.getById));
 router.post('/:id/approve', authenticate, authorize('admin', 'approver'), wrap(ctrl.approve));
 router.post('/:id/reject', authenticate, authorize('admin', 'approver'), wrap(ctrl.reject));
 router.put('/:id/content', authenticate, authorize('admin', 'editor'), wrap(ctrl.updateContent));
-router.put('/:id/assign', authenticate, authorize('admin'), wrap(ctrl.assign));
 router.post('/:id/regenerate', generateLimiter, authenticate, authorize('admin', 'editor'), wrap(ctrl.regenerate));
 
 export default router;
