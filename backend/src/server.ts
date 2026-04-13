@@ -15,6 +15,11 @@ import logger from './shared/logger.js';
 const PORT: string | number = process.env.PORT || 8080;
 
 async function start(): Promise<void> {
+  // Start HTTP server FIRST so Cloud Run health check passes quickly
+  app.listen(PORT, () => {
+    logger.info(`Backend API listening on port ${PORT}`);
+  });
+
   // Run Prisma migrations on startup (safe: only applies pending migrations)
   try {
     logger.info('Running Prisma migrate deploy...');
@@ -65,10 +70,6 @@ async function start(): Promise<void> {
   });
 
   logger.info('In-process cron registered: daily-reset(0:00 HKT), stats(:05), health(5m)');
-
-  app.listen(PORT, () => {
-    logger.info(`Backend API listening on port ${PORT}`);
-  });
 
   // Graceful shutdown
   const shutdown = async (signal: string): Promise<void> => {
