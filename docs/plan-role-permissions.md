@@ -90,13 +90,13 @@
 - [ ] 3.3 Feed service — approve/reject 加校验：
   - `if (user.role !== 'admin' && feed.assignedTo !== userId) throw ForbiddenError`
 - [ ] 3.4 Feed service — admin 手动重新指派接口 `PUT /feeds/:id/assign`
-- [ ] 3.5 FeedView.vue — "我的/全部" Tab 筛选：
-  - 默认显示 assignedTo=me 的 feed
-  - "全部" tab 可查看所有（非自己的操作按钮禁用）
+- [ ] 3.5 Feed 列表接口 — 按角色自动过滤：
+  - approver/editor: 后端自动过滤 `assignedTo = userId`，只返回指派给自己的
+  - admin: 返回全部
 - [ ] 3.6 FeedView.vue — 按角色控制操作按钮：
   - viewer: 无操作按钮
   - editor: 可编辑内容，不可审批
-  - approver: 可审批/拒绝仅指派给自己的 feed
+  - approver: 可审批/拒绝（后端已保证只能看到自己的）
   - admin: 全部操作 + 重新指派
 
 ### Phase 4: Cleanup
