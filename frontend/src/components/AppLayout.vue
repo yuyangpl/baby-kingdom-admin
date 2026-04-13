@@ -34,10 +34,10 @@
             <el-icon class="nav-item__icon"><DataLine /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.googleTrends') }}</span>
           </router-link>
-          <router-link to="/poster" class="nav-item" :class="{ 'nav-item--active': $route.name === 'poster' }">
+          <!-- <router-link to="/poster" class="nav-item" :class="{ 'nav-item--active': $route.name === 'poster' }">
             <el-icon class="nav-item__icon"><Promotion /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.poster') }}</span>
-          </router-link>
+          </router-link> -->
         </div>
 
         <div class="nav-group">

@@ -2,9 +2,15 @@ import { getPrisma } from '../../shared/database.js';
 
 export async function getRealtime() {
   const prisma = getPrisma();
-  const pendingCount = await prisma.feed.count({ where: { status: 'pending' } });
+  const [pending, approved, posted, rejected, failed] = await Promise.all([
+    prisma.feed.count({ where: { status: 'pending' } }),
+    prisma.feed.count({ where: { status: 'approved' } }),
+    prisma.feed.count({ where: { status: 'posted' } }),
+    prisma.feed.count({ where: { status: 'rejected' } }),
+    prisma.feed.count({ where: { status: 'failed' } }),
+  ]);
 
-  return { pendingFeeds: pendingCount };
+  return { pendingFeeds: pending, approved, posted, rejected, failed };
 }
 
 export async function getToday() {
