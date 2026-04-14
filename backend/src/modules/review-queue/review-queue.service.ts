@@ -127,7 +127,7 @@ export async function reject(feedId: string, userId: string, notes: string | und
   const prisma = getPrisma();
   const feed = await prisma.feed.findFirst({ where: { id: feedId } });
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
+  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only reject pending or approved feeds');
   if (feed.claimedBy !== userId) throw new ForbiddenError('You can only reject feeds you have claimed');
 
   const updated = await prisma.feed.update({

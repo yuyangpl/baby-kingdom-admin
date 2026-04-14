@@ -99,7 +99,7 @@ export async function approve(feedId: string, userId: string, ip: string) {
 export async function reject(feedId: string, userId: string, notes: string | undefined, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
+  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only reject pending or approved feeds');
 
   const prisma = getPrisma();
   const updated = await prisma.feed.update({
