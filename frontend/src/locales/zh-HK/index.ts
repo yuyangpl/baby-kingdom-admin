@@ -105,6 +105,7 @@ export default {
     users: '用戶管理',
     home: '首頁',
     logout: '登出',
+    profile: '個人信息',
     poolRemaining: '待審池剩餘',
     claimed: '已認領',
   },
@@ -573,6 +574,16 @@ export default {
   },
 
   // Users
+  profile: {
+    title: '個人信息',
+    basicInfo: '基本資料',
+    changePassword: '修改密碼',
+    currentPassword: '當前密碼',
+    newPassword: '新密碼',
+    confirmPassword: '確認新密碼',
+    passwordMismatch: '兩次密碼不一致',
+    passwordChanged: '密碼修改成功',
+  },
   user: {
     title: '用戶管理',
     addUser: '新增用戶',

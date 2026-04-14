@@ -103,6 +103,7 @@ export default {
     users: 'Users',
     home: 'Home',
     logout: 'Logout',
+    profile: 'Profile',
     poolRemaining: 'Pool',
     claimed: 'Claimed',
   },
@@ -550,6 +551,16 @@ export default {
     },
   },
 
+  profile: {
+    title: 'Profile',
+    basicInfo: 'Basic Info',
+    changePassword: 'Change Password',
+    currentPassword: 'Current Password',
+    newPassword: 'New Password',
+    confirmPassword: 'Confirm New Password',
+    passwordMismatch: 'Passwords do not match',
+    passwordChanged: 'Password changed successfully',
+  },
   user: {
     title: 'User Management',
     addUser: 'Add User',
