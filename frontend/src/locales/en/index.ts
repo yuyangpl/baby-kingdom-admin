@@ -332,6 +332,10 @@ export default {
     selectArchetype: 'Select archetype',
     selectTone: 'Select tone',
     bkPasswordPlaceholder: 'Baby Kingdom login password',
+    verifyLogin: 'Verify Login',
+    verifySuccess: 'BK Forum login verified',
+    verifyFailed: 'BK Forum login failed',
+    verifyNeedUsernamePassword: 'Please fill in username and password first',
     deleteConfirm: 'Delete this persona?',
     archetypes: {
       pregnant: 'Pregnant',

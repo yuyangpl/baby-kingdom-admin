@@ -341,6 +341,10 @@ export default {
     selectArchetype: '選擇角色類型',
     selectTone: '選擇語氣',
     bkPasswordPlaceholder: 'Baby Kingdom 登入密碼',
+    verifyLogin: '驗證登入',
+    verifySuccess: 'BK 論壇登入驗證成功',
+    verifyFailed: 'BK 論壇登入驗證失敗',
+    verifyNeedUsernamePassword: '請先填寫用戶名和密碼',
     deleteConfirm: '確定刪除此人設？',
     archetypes: {
       pregnant: '孕媽媽',

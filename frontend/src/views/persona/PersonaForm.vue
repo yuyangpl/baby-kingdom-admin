@@ -22,6 +22,13 @@
         <el-input v-model="form.username" :placeholder="$t('persona.usernamePlaceholder')" />
       </el-form-item>
 
+      <el-form-item :label="$t('persona.bkPassword')" prop="bkPassword">
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <el-input v-model="form.bkPassword" type="password" show-password :placeholder="$t('persona.bkPasswordPlaceholder')" />
+          <el-button :loading="verifying" @click="verifyBkLogin">{{ $t('persona.verifyLogin') }}</el-button>
+        </div>
+      </el-form-item>
+
       <el-form-item :label="$t('persona.archetype')" prop="archetype">
         <el-select v-model="form.archetype" :placeholder="$t('persona.selectArchetype')" style="width: 100%">
           <el-option :label="$t('persona.archetypeOptions.pregnant')" value="pregnant" />
@@ -88,10 +95,6 @@
         <el-input-number v-model="form.maxPostsPerDay" :min="1" :max="20" />
       </el-form-item>
 
-      <el-form-item :label="$t('persona.bkPassword')" prop="bkPassword">
-        <el-input v-model="form.bkPassword" type="password" show-password :placeholder="$t('persona.bkPasswordPlaceholder')" />
-      </el-form-item>
-
       <el-form-item :label="$t('persona.overrideNotes')" prop="overrideNotes">
         <el-input
           v-model="form.overrideNotes"
@@ -135,6 +138,26 @@ const { t } = useI18n()
 const isEdit = computed(() => !!props.editData)
 const formRef = ref<FormInstance>()
 const saving = ref<boolean>(false)
+const verifying = ref<boolean>(false)
+
+const verifyBkLogin = async () => {
+  if (!form.username || !form.bkPassword) {
+    ElMessage.warning(t('persona.verifyNeedUsernamePassword'))
+    return
+  }
+  verifying.value = true
+  try {
+    await api.post('/v1/personas/verify-bk-login', {
+      username: form.username,
+      password: form.bkPassword,
+    })
+    ElMessage.success(t('persona.verifySuccess'))
+  } catch (err: any) {
+    ElMessage.error(err.error?.message || err.message || t('persona.verifyFailed'))
+  } finally {
+    verifying.value = false
+  }
+}
 const tones = ref<{ toneId: string; displayName: string }[]>([])
 const tonesLoading = ref(false)
 

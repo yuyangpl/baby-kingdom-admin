@@ -90,6 +90,36 @@ router.get('/:id', authenticate, wrap(async (req, res) => {
   return success(res, maskPersona(persona));
 }));
 
+// Verify BK Forum login with username + password
+router.post('/verify-bk-login', authenticate, authorize('admin', 'approver'), wrap(async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) throw new NotFoundError('Username and password required');
+
+  const configService = await import('../config/config.service.js');
+  const baseUrl = await configService.getValue('BK_BASE_URL') || 'https://bapi.baby-kingdom.com/index.php';
+  const bkApp = await configService.getValue('BK_APP_ID') || 'com.babykindom';
+  const bkVer = await configService.getValue('BK_APP_VERSION') || '3.2.0';
+
+  const formData = new URLSearchParams({
+    mod: 'member', op: 'login',
+    username, password,
+    app: bkApp, ver: bkVer,
+  });
+
+  const res2 = await fetch(baseUrl, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(10000),
+  });
+  const body = await res2.json() as any;
+
+  if (body.status !== 1 || !body.data?.token) {
+    throw new NotFoundError(`BK 登入失敗: ${body.message || '帳號或密碼錯誤'}`);
+  }
+
+  return success(res, { verified: true, uid: body.data.uid, username });
+}));
+
 // Create — encrypt bkPassword before save
 router.post('/', authenticate, authorize('admin', 'approver'), wrap(async (req, res) => {
   const prisma = getPrisma();
