@@ -165,3 +165,47 @@ export async function runHealthCheck(): Promise<AllServicesResult> {
 
   return results;
 }
+
+// Track which preflight alerts have been sent (only once per failure combination)
+const preflightAlertSent = new Set<string>();
+
+/**
+ * Pre-check Gemini and BK Forum before feed generation.
+ * Returns failure reasons (empty = all OK). Sends email alert once per failure.
+ */
+export async function preflight(): Promise<string[]> {
+  const failures: string[] = [];
+
+  const [gemini, bkForum] = await Promise.all([checkGemini(), checkBkForum()]);
+
+  if (gemini.status === 'not_configured') {
+    failures.push('Gemini API Key 未配置');
+  }
+
+  if (bkForum.status === 'disconnected' || bkForum.status === 'not_configured') {
+    failures.push(`BK Forum 連接失敗: ${bkForum.detail || bkForum.status}`);
+  }
+
+  if (failures.length > 0) {
+    const alertKey = failures.join('|');
+    if (!preflightAlertSent.has(alertKey)) {
+      const adminEmails = await configService.getValue('ADMIN_EMAILS');
+      if (adminEmails) {
+        await sendAlert(
+          adminEmails,
+          '[BK Admin 告警] Feed 生成已暫停 — 服務連接失敗',
+          `<h3>Feed 生成前置檢查失敗</h3>
+          <ul>${failures.map(f => `<li>${f}</li>`).join('')}</ul>
+          <p>Feed 生成任務已自動跳過，直到問題修復。</p>
+          <p><b>時間:</b> ${new Date().toISOString()}</p>`,
+        );
+        preflightAlertSent.add(alertKey);
+        logger.warn({ failures }, 'Preflight failed, alert email sent');
+      }
+    }
+  } else {
+    if (preflightAlertSent.size > 0) preflightAlertSent.clear();
+  }
+
+  return failures;
+}

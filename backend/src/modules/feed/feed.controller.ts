@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import * as feedService from './feed.service.js';
 import { success } from '../../shared/response.js';
-import { ValidationError } from '../../shared/errors.js';
+import { ValidationError, BusinessError } from '../../shared/errors.js';
+import { preflight } from '../../shared/health-monitor.js';
 
 export async function list(req: Request, res: Response): Promise<void> {
   const { status, source, threadFid, personaId, page, limit, sort } = req.query;
@@ -47,6 +48,9 @@ export async function regenerate(req: Request, res: Response): Promise<void> {
 }
 
 export async function customGenerate(req: Request, res: Response): Promise<void> {
+  const failures = await preflight();
+  if (failures.length > 0) throw new BusinessError(`服務異常，無法生成: ${failures.join('; ')}`);
+
   const { topic, personaAccountId, toneMode, postType, targetFid } = req.body;
   if (!topic) throw new ValidationError('Topic is required');
   const feed = await feedService.customGenerate({ topic, personaAccountId, toneMode, postType, targetFid }, (req as any).user.id, req.ip ?? '');

@@ -7,56 +7,8 @@ import { postFeed } from '../poster/poster.service.js';
 import { pullAndStore } from '../google-trends/google-trends.service.js';
 import * as configService from '../config/config.service.js';
 import { logTask } from '../task-log/task-log.service.js';
-import { checkBkForum, checkGemini } from '../../shared/health-monitor.js';
-import { sendAlert } from '../../shared/email.js';
+import { preflight } from '../../shared/health-monitor.js';
 import logger from '../../shared/logger.js';
-
-// Track which connection failure alerts have been sent (only send once per failure)
-const connectionAlertSent = new Set<string>();
-
-/**
- * Pre-check Gemini and BK Forum connectivity before feed generation tasks.
- * Returns failure reasons array (empty = all OK). Sends email alert once per failure.
- */
-async function preflight(): Promise<string[]> {
-  const failures: string[] = [];
-
-  const [gemini, bkForum] = await Promise.all([checkGemini(), checkBkForum()]);
-
-  if (gemini.status === 'not_configured') {
-    failures.push('Gemini API Key 未配置');
-  }
-
-  if (bkForum.status === 'disconnected' || bkForum.status === 'not_configured') {
-    failures.push(`BK Forum 連接失敗: ${bkForum.detail || bkForum.status}`);
-  }
-
-  if (failures.length > 0) {
-    const alertKey = failures.join('|');
-    if (!connectionAlertSent.has(alertKey)) {
-      const adminEmails = await configService.getValue('ADMIN_EMAILS');
-      if (adminEmails) {
-        await sendAlert(
-          adminEmails,
-          '[BK Admin 告警] Feed 生成已暫停 — 服務連接失敗',
-          `<h3>Feed 生成前置檢查失敗</h3>
-          <ul>${failures.map(f => `<li>${f}</li>`).join('')}</ul>
-          <p>Feed 生成任務（Scanner / Trends）已自動跳過，直到問題修復。</p>
-          <p><b>時間:</b> ${new Date().toISOString()}</p>`,
-        );
-        connectionAlertSent.add(alertKey);
-        logger.warn({ failures }, 'Preflight failed, alert email sent');
-      }
-    }
-  } else {
-    // Services recovered — clear sent alerts
-    if (connectionAlertSent.size > 0) {
-      connectionAlertSent.clear();
-    }
-  }
-
-  return failures;
-}
 
 export async function scannerTask(req: Request, res: Response): Promise<void> {
   const paused = await configService.getValue('SCANNER_PAUSED');
