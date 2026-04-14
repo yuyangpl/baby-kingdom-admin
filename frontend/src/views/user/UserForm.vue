@@ -18,28 +18,19 @@
       </el-form-item>
 
       <el-form-item :label="$t('user.email')" prop="email">
-        <el-input v-model="form.email" type="email" placeholder="user@example.com" />
+        <el-input v-model="form.email" type="email" placeholder="user@example.com" autocomplete="new-email" />
       </el-form-item>
 
       <el-form-item :label="$t('user.password')" prop="password">
-        <el-input v-model="form.password" type="password" show-password :placeholder="$t('user.passwordPlaceholder')" />
+        <el-input v-model="form.password" type="password" show-password :placeholder="$t('user.passwordPlaceholder')" autocomplete="new-password" />
       </el-form-item>
 
       <el-form-item :label="$t('user.role')" prop="role">
-        <el-radio-group v-model="form.role" class="role-radio-group">
-          <div class="role-option">
-            <el-radio value="admin">{{ $t('user.roles.admin') }}</el-radio>
-            <span class="role-desc">{{ $t('user.roleDesc.admin') }}</span>
-          </div>
-          <div class="role-option">
-            <el-radio value="approver">{{ $t('user.roles.approver') }}</el-radio>
-            <span class="role-desc">{{ $t('user.roleDesc.approver') }}</span>
-          </div>
-          <div class="role-option">
-            <el-radio value="viewer">{{ $t('user.roles.viewer') }}</el-radio>
-            <span class="role-desc">{{ $t('user.roleDesc.viewer') }}</span>
-          </div>
-        </el-radio-group>
+        <el-select v-model="form.role" style="width: 100%">
+          <el-option value="admin" :label="$t('user.roles.admin')" />
+          <el-option value="approver" :label="$t('user.roles.approver')" />
+          <el-option value="viewer" :label="$t('user.roles.viewer')" />
+        </el-select>
       </el-form-item>
     </el-form>
 
@@ -76,7 +67,7 @@ const defaultForm = () => ({
   username: '',
   email: '',
   password: '',
-  role: 'viewer',
+  role: 'approver',
 })
 
 const form = reactive(defaultForm())
@@ -127,29 +118,5 @@ const handleSave = async () => {
 <style scoped>
 .user-form {
   padding: 0 4px;
-}
-.role-radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-}
-.role-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid var(--bk-border);
-  border-radius: var(--bk-radius-sm);
-  transition: var(--bk-transition);
-}
-.role-option:hover {
-  border-color: var(--bk-primary-light);
-  background: var(--bk-muted);
-}
-.role-desc {
-  font-size: 12px;
-  color: var(--bk-muted-fg);
-  line-height: 1.4;
 }
 </style>
