@@ -101,9 +101,11 @@
           <span class="header-title">{{ $t('nav.appTitle') }}</span>
         </div>
         <div class="header-right">
-          <el-badge :value="unreadCount || pendingCount" :hidden="!unreadCount && !pendingCount" class="notification-badge" @click="notifyStore.markAllRead()">
-            <el-icon :size="20"><Bell /></el-icon>
-          </el-badge>
+          <div class="queue-stats">
+            <span class="queue-stat">{{ $t('nav.poolRemaining') }} <strong class="queue-stat__num">{{ queueStats.unclaimed }}</strong></span>
+            <span class="queue-stat-divider">|</span>
+            <span class="queue-stat">{{ $t('nav.claimed') }} <strong class="queue-stat__num queue-stat__num--claimed">{{ queueStats.claimed }}</strong></span>
+          </div>
           <button class="lang-toggle" @click="toggleLanguage">
             {{ locale === 'zh-HK' ? 'EN' : '繁中' }}
           </button>
@@ -147,10 +149,8 @@ const appStore = useAppStore();
 const router = useRouter();
 const { locale } = useI18n();
 const isCollapsed = ref<boolean>(false);
-const pendingCount = ref<number>(0);
 const dataSourcesOpen = ref<boolean>(false);
-
-const unreadCount = computed(() => notifyStore.unreadCount);
+const queueStats = ref({ unclaimed: 0, claimed: 0 });
 
 function toggleLanguage() {
   const newLang = locale.value === 'zh-HK' ? 'en' : 'zh-HK';
@@ -161,17 +161,20 @@ function toggleLanguage() {
 // Poll for updates (replaces Socket.io real-time events)
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-onMounted(async () => {
+const loadQueueStats = async () => {
   try {
-    const res = await api.get('/v1/dashboard/realtime');
-    pendingCount.value = res.data?.pendingFeeds || 0;
+    const res: any = await api.get('/v1/review-queue/stats');
+    const data = res.data || res;
+    queueStats.value = { unclaimed: data.unclaimed || 0, claimed: data.claimed || 0 };
   } catch { /* ignore */ }
+};
 
-  // Poll for pending feed count every 30s
+onMounted(async () => {
+  await loadQueueStats();
+
+  // Poll queue stats every 30s
   pollTimer = setInterval(async () => {
-    try {
-      const res = await api.get('/v1/dashboard/realtime');
-      pendingCount.value = res.data?.pendingFeeds || 0;
+    await loadQueueStats();
     } catch { /* ignore */ }
   }, 30000);
 });
@@ -354,8 +357,24 @@ async function handleLogout() {
   font-size: 14px;
   color: var(--bk-foreground);
 }
-.notification-badge {
-  cursor: pointer;
+.queue-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--bk-muted-fg);
+}
+.queue-stat__num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--bk-primary);
+  margin-left: 4px;
+}
+.queue-stat__num--claimed {
+  color: var(--bk-success);
+}
+.queue-stat-divider {
+  color: var(--bk-border);
 }
 
 /* Content */

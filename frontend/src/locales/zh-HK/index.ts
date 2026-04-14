@@ -105,6 +105,8 @@ export default {
     users: '用戶管理',
     home: '首頁',
     logout: '登出',
+    poolRemaining: '待審池剩餘',
+    claimed: '已認領',
   },
 
   // Login

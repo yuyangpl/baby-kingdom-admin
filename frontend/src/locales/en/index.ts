@@ -103,6 +103,8 @@ export default {
     users: 'Users',
     home: 'Home',
     logout: 'Logout',
+    poolRemaining: 'Pool',
+    claimed: 'Claimed',
   },
 
   login: {
