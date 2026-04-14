@@ -5,6 +5,7 @@
       <div class="sidebar-logo">
         <span v-if="!isCollapsed" class="sidebar-logo__text">{{ $t('nav.appName') }}</span>
         <span v-else class="sidebar-logo__text">{{ $t('nav.appNameShort') }}</span>
+        <span v-if="!isCollapsed" class="sidebar-logo__sub">{{ $t('nav.appTitle') }}</span>
       </div>
 
       <nav class="sidebar-nav">
@@ -212,16 +213,24 @@ async function handleLogout() {
 .sidebar-logo {
   height: var(--bk-header-height);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  gap: 2px;
 }
 .sidebar-logo__text {
   color: #fff;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   white-space: nowrap;
+}
+.sidebar-logo__sub {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-nav {
