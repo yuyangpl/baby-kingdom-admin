@@ -19,13 +19,14 @@ model User {
   email       String    @unique @db.VarChar(255)
   passwordHash String  @map("password_hash") @db.VarChar(255)
   role        String    @default("viewer") @db.VarChar(10)
-  // role CHECK: admin | editor | viewer
+  // role CHECK: admin | approver | viewer
   lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz()
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
 
   claimedFeeds  Feed[] @relation("ClaimedFeeds")
   reviewedFeeds Feed[] @relation("ReviewedFeeds")
+
 
   @@map("users")
 }
@@ -290,6 +291,7 @@ model Feed {
   claimedBy        String?   @map("claimed_by") @db.Uuid
   claimedByUser    User?     @relation("ClaimedFeeds", fields: [claimedBy], references: [id], onDelete: SetNull)
   claimedAt        DateTime? @map("claimed_at") @db.Timestamptz()
+  claimExpiresAt   DateTime? @map("claim_expires_at") @db.Timestamptz()
 
   // Review
   reviewedBy       String?   @map("reviewed_by") @db.Uuid
@@ -308,6 +310,7 @@ model Feed {
   @@index([personaId, status])
   @@index([threadFid, status])
   @@index([claimedBy, claimedAt])
+  @@index([status, claimExpiresAt, createdAt])
   @@index([source], type: Gin)
   @@unique([threadTid, personaId])
   @@map("feeds")

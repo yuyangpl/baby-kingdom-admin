@@ -15,11 +15,11 @@
         </div>
         <p class="role-card__desc">{{ $t('user.roleDesc.admin') }}</p>
       </div>
-      <div class="role-card role-card--editor">
+      <div class="role-card role-card--approver">
         <div class="role-card__header">
-          <el-tag type="primary" size="small" effect="dark">{{ $t('user.roles.editor') }}</el-tag>
+          <el-tag type="primary" size="small" effect="dark">{{ $t('user.roles.approver') }}</el-tag>
         </div>
-        <p class="role-card__desc">{{ $t('user.roleDesc.editor') }}</p>
+        <p class="role-card__desc">{{ $t('user.roleDesc.approver') }}</p>
       </div>
       <div class="role-card role-card--viewer">
         <div class="role-card__header">
@@ -72,7 +72,7 @@
             @change="(val: any) => handleRoleChange(row, val)"
           >
             <el-option value="admin" :label="$t('user.roles.admin')" />
-            <el-option value="editor" :label="$t('user.roles.editor')" />
+            <el-option value="approver" :label="$t('user.roles.approver')" />
             <el-option value="viewer" :label="$t('user.roles.viewer')" />
           </el-select>
         </template>
@@ -215,7 +215,7 @@ onMounted(loadUsers)
 .role-card--admin {
   border-left-color: var(--bk-danger);
 }
-.role-card--editor {
+.role-card--approver {
   border-left-color: var(--bk-primary);
 }
 .role-card--viewer {

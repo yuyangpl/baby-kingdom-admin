@@ -31,3 +31,4 @@ redis-data/
 
 # Test
 coverage/
+.worktrees

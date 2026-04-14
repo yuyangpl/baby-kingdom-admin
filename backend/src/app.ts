@@ -23,6 +23,7 @@ import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import googleTrendsRoutes from './modules/google-trends/google-trends.routes.js';
 import tasksRoutes from './modules/tasks/tasks.routes.js';
 import taskLogRoutes from './modules/task-log/task-log.routes.js';
+import reviewQueueRoutes from './modules/review-queue/review-queue.routes.js';
 
 const app: Express = express();
 
@@ -62,6 +63,7 @@ app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/google-trends', googleTrendsRoutes);
 
 app.use('/api/v1/task-logs', taskLogRoutes);
+app.use('/api/v1/review-queue', reviewQueueRoutes);
 
 // Task endpoints (called by Cloud Scheduler, no auth required)
 app.use('/tasks', tasksRoutes);

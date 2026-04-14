@@ -89,7 +89,18 @@ export async function updateBoard(id: string, data: Record<string, any>, userId:
   if (!board) throw new NotFoundError('ForumBoard');
   const before = { ...board };
 
-  const { personaBindings, replyThreshold, ...rest } = data;
+  const { personaBindings, replyThreshold, ...raw } = data;
+
+  // Whitelist valid ForumBoard fields
+  const allowedFields = [
+    'name', 'fid', 'categoryId', 'enableScraping', 'enableAutoReply',
+    'replyThresholdMin', 'replyThresholdMax', 'scanInterval',
+    'defaultToneMode', 'defaultRuleIds', 'excludeRuleIds', 'note', 'isActive',
+  ];
+  const rest: Record<string, any> = {};
+  for (const key of allowedFields) {
+    if (key in raw) rest[key] = raw[key];
+  }
 
   // Flatten replyThreshold
   if (replyThreshold) {

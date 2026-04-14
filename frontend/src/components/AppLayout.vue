@@ -5,6 +5,7 @@
       <div class="sidebar-logo">
         <span v-if="!isCollapsed" class="sidebar-logo__text">{{ $t('nav.appName') }}</span>
         <span v-else class="sidebar-logo__text">{{ $t('nav.appNameShort') }}</span>
+        <span v-if="!isCollapsed" class="sidebar-logo__sub">{{ $t('nav.appTitle') }}</span>
       </div>
 
       <nav class="sidebar-nav">
@@ -33,15 +34,15 @@
             <el-icon class="nav-item__icon"><User /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.personas') }}</span>
           </router-link>
-          <router-link v-if="auth.isEditor" to="/tones" class="nav-item" :class="{ 'nav-item--active': $route.name === 'tones' }">
+          <router-link v-if="auth.isApprover" to="/tones" class="nav-item" :class="{ 'nav-item--active': $route.name === 'tones' }">
             <el-icon class="nav-item__icon"><ChatDotRound /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.toneModes') }}</span>
           </router-link>
-          <router-link v-if="auth.isEditor" to="/topic-rules" class="nav-item" :class="{ 'nav-item--active': $route.name === 'topic-rules' }">
+          <router-link v-if="auth.isApprover" to="/topic-rules" class="nav-item" :class="{ 'nav-item--active': $route.name === 'topic-rules' }">
             <el-icon class="nav-item__icon"><List /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.topicRules') }}</span>
           </router-link>
-          <router-link v-if="auth.isEditor" to="/forums" class="nav-item" :class="{ 'nav-item--active': $route.name === 'forums' }">
+          <router-link v-if="auth.isApprover" to="/forums" class="nav-item" :class="{ 'nav-item--active': $route.name === 'forums' }">
             <el-icon class="nav-item__icon"><Grid /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.forumBoards') }}</span>
           </router-link>
@@ -98,12 +99,14 @@
           <button class="header-toggle" @click="isCollapsed = !isCollapsed" aria-label="Toggle sidebar">
             <el-icon :size="20"><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
           </button>
-          <span class="header-title">{{ $t('nav.appTitle') }}</span>
+          <span class="header-title">{{ $t('nav.appName') }}</span>
         </div>
         <div class="header-right">
-          <el-badge :value="unreadCount || pendingCount" :hidden="!unreadCount && !pendingCount" class="notification-badge" @click="notifyStore.markAllRead()">
-            <el-icon :size="20"><Bell /></el-icon>
-          </el-badge>
+          <div class="queue-stats">
+            <span class="queue-stat">{{ $t('nav.poolRemaining') }} <strong class="queue-stat__num">{{ queueStats.unclaimed }}</strong></span>
+            <span class="queue-stat-divider">|</span>
+            <span class="queue-stat">{{ $t('nav.claimed') }} <strong class="queue-stat__num queue-stat__num--claimed">{{ queueStats.claimed }}</strong></span>
+          </div>
           <button class="lang-toggle" @click="toggleLanguage">
             {{ locale === 'zh-HK' ? 'EN' : '繁中' }}
           </button>
@@ -116,7 +119,7 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>{{ auth.user?.role }}</el-dropdown-item>
+                <el-dropdown-item @click="router.push('/profile')">{{ $t('nav.profile') }}</el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">{{ $t('nav.logout') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -147,10 +150,8 @@ const appStore = useAppStore();
 const router = useRouter();
 const { locale } = useI18n();
 const isCollapsed = ref<boolean>(false);
-const pendingCount = ref<number>(0);
 const dataSourcesOpen = ref<boolean>(false);
-
-const unreadCount = computed(() => notifyStore.unreadCount);
+const queueStats = ref({ unclaimed: 0, claimed: 0 });
 
 function toggleLanguage() {
   const newLang = locale.value === 'zh-HK' ? 'en' : 'zh-HK';
@@ -161,18 +162,20 @@ function toggleLanguage() {
 // Poll for updates (replaces Socket.io real-time events)
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-onMounted(async () => {
+const loadQueueStats = async () => {
   try {
-    const res = await api.get('/v1/dashboard/realtime');
-    pendingCount.value = res.data?.pendingFeeds || 0;
+    const res: any = await api.get('/v1/review-queue/stats');
+    const data = res.data || res;
+    queueStats.value = { unclaimed: data.unclaimed || 0, claimed: data.claimed || 0 };
   } catch { /* ignore */ }
+};
 
-  // Poll for pending feed count every 30s
+onMounted(async () => {
+  await loadQueueStats();
+
+  // Poll queue stats every 30s
   pollTimer = setInterval(async () => {
-    try {
-      const res = await api.get('/v1/dashboard/realtime');
-      pendingCount.value = res.data?.pendingFeeds || 0;
-    } catch { /* ignore */ }
+    await loadQueueStats();
   }, 30000);
 });
 
@@ -210,16 +213,24 @@ async function handleLogout() {
 .sidebar-logo {
   height: var(--bk-header-height);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  gap: 2px;
 }
 .sidebar-logo__text {
   color: #fff;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   white-space: nowrap;
+}
+.sidebar-logo__sub {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-nav {
@@ -354,8 +365,24 @@ async function handleLogout() {
   font-size: 14px;
   color: var(--bk-foreground);
 }
-.notification-badge {
-  cursor: pointer;
+.queue-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--bk-muted-fg);
+}
+.queue-stat__num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--bk-primary);
+  margin-left: 4px;
+}
+.queue-stat__num--claimed {
+  color: var(--bk-success);
+}
+.queue-stat-divider {
+  color: var(--bk-border);
 }
 
 /* Content */

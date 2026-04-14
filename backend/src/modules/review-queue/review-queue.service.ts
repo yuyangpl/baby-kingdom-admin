@@ -1,0 +1,200 @@
+import { getPrisma } from '../../shared/database.js';
+import { BusinessError, ForbiddenError, NotFoundError } from '../../shared/errors.js';
+import * as auditService from '../audit/audit.service.js';
+import logger from '../../shared/logger.js';
+
+const DEFAULT_BATCH_SIZE = 10;
+const CLAIM_TTL_MINUTES = 30;
+
+/**
+ * Atomically claim next N unclaimed/expired pending feeds using FOR UPDATE SKIP LOCKED.
+ */
+export async function claimBatch(userId: string, count: number = DEFAULT_BATCH_SIZE) {
+  const prisma = getPrisma();
+  const batchSize = Math.min(Math.max(count, 1), 50);
+  const ttl = `${CLAIM_TTL_MINUTES} minutes`;
+
+  // Check if user already has active claims
+  const existingClaims = await prisma.feed.count({
+    where: { claimedBy: userId, claimExpiresAt: { gt: new Date() } },
+  });
+  if (existingClaims > 0) {
+    throw new BusinessError(`You already have ${existingClaims} active claims. Finish or release them first.`);
+  }
+
+  // Atomic batch claim with SKIP LOCKED
+  const claimed = await prisma.$queryRawUnsafe<any[]>(`
+    WITH picked AS (
+      SELECT id FROM feeds
+      WHERE status = 'pending'
+        AND (claimed_by IS NULL OR claim_expires_at < NOW())
+      ORDER BY created_at ASC
+      LIMIT $1
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE feeds
+    SET claimed_by = $2::uuid,
+        claimed_at = NOW(),
+        claim_expires_at = NOW() + $3::interval
+    WHERE id IN (SELECT id FROM picked)
+    RETURNING *
+  `, batchSize, userId, ttl);
+
+  const remaining = await prisma.feed.count({
+    where: {
+      status: 'pending',
+      OR: [
+        { claimedBy: null },
+        { claimExpiresAt: { lt: new Date() } },
+      ],
+    },
+  });
+
+  return {
+    claimed,
+    claimExpiresAt: claimed.length > 0 ? claimed[0].claim_expires_at : null,
+    remainingInPool: remaining,
+  };
+}
+
+/**
+ * Get current user's active (non-expired) claimed feeds.
+ */
+export async function myWorkbench(userId: string) {
+  const prisma = getPrisma();
+  const feeds = await prisma.feed.findMany({
+    where: {
+      claimedBy: userId,
+      claimExpiresAt: { gt: new Date() },
+      status: 'pending',
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return {
+    feeds,
+    claimExpiresAt: feeds.length > 0 ? feeds[0].claimExpiresAt : null,
+    total: feeds.length,
+  };
+}
+
+/**
+ * Approve a claimed feed. Requires claimedBy = userId.
+ */
+export async function approve(feedId: string, userId: string, ip: string) {
+  const prisma = getPrisma();
+  const feed = await prisma.feed.findFirst({
+    where: { id: feedId },
+  });
+  if (!feed) throw new NotFoundError('Feed');
+  if (feed.status !== 'pending') throw new BusinessError('Can only approve pending feeds');
+  if (feed.claimedBy !== userId) throw new ForbiddenError('You can only approve feeds you have claimed');
+
+  const updated = await prisma.feed.update({
+    where: { id: feed.id },
+    data: {
+      status: 'approved',
+      reviewedBy: userId,
+      reviewedAt: new Date(),
+      claimedBy: null,
+      claimedAt: null,
+      claimExpiresAt: null,
+    },
+  });
+
+  await auditService.log({
+    operator: userId, eventType: 'FEED_APPROVED', module: 'feed',
+    feedId: feed.feedId, targetId: feed.id, ip,
+    actionDetail: `Approved feed ${feed.feedId}`,
+  });
+
+  // Dispatch to poster
+  const port = process.env.PORT || 8080;
+  fetch(`http://localhost:${port}/tasks/poster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedId: feed.id, triggeredBy: 'approve' }),
+    signal: AbortSignal.timeout(30000),
+  }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
+
+  return updated;
+}
+
+/**
+ * Reject a claimed feed.
+ */
+export async function reject(feedId: string, userId: string, notes: string | undefined, ip: string) {
+  const prisma = getPrisma();
+  const feed = await prisma.feed.findFirst({ where: { id: feedId } });
+  if (!feed) throw new NotFoundError('Feed');
+  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only reject pending or approved feeds');
+  if (feed.claimedBy !== userId) throw new ForbiddenError('You can only reject feeds you have claimed');
+
+  const updated = await prisma.feed.update({
+    where: { id: feed.id },
+    data: {
+      status: 'rejected',
+      reviewedBy: userId,
+      reviewedAt: new Date(),
+      adminNotes: notes || '',
+      claimedBy: null,
+      claimedAt: null,
+      claimExpiresAt: null,
+    },
+  });
+
+  await auditService.log({
+    operator: userId, eventType: 'FEED_REJECTED', module: 'feed',
+    feedId: feed.feedId, targetId: feed.id, ip,
+    actionDetail: `Rejected feed ${feed.feedId}: ${notes || ''}`,
+  });
+
+  return updated;
+}
+
+/**
+ * Skip — release a single claimed item back to pool.
+ */
+export async function skip(feedId: string, userId: string) {
+  const prisma = getPrisma();
+  const feed = await prisma.feed.findFirst({ where: { id: feedId } });
+  if (!feed) throw new NotFoundError('Feed');
+  if (feed.claimedBy !== userId) throw new ForbiddenError('You can only skip feeds you have claimed');
+
+  return prisma.feed.update({
+    where: { id: feed.id },
+    data: { claimedBy: null, claimedAt: null, claimExpiresAt: null },
+  });
+}
+
+/**
+ * Heartbeat — extend claim TTL for all user's active claims.
+ */
+export async function extendClaims(userId: string) {
+  const prisma = getPrisma();
+  const result = await prisma.feed.updateMany({
+    where: {
+      claimedBy: userId,
+      claimExpiresAt: { gt: new Date() },
+      status: 'pending',
+    },
+    data: {
+      claimExpiresAt: new Date(Date.now() + CLAIM_TTL_MINUTES * 60 * 1000),
+    },
+  });
+  return { extended: result.count };
+}
+
+/**
+ * Team-level stats.
+ */
+export async function stats() {
+  const prisma = getPrisma();
+  const now = new Date();
+  const [totalPending, claimed, unclaimed] = await Promise.all([
+    prisma.feed.count({ where: { status: 'pending' } }),
+    prisma.feed.count({ where: { status: 'pending', claimedBy: { not: null }, claimExpiresAt: { gt: now } } }),
+    prisma.feed.count({ where: { status: 'pending', OR: [{ claimedBy: null }, { claimExpiresAt: { lt: now } }] } }),
+  ]);
+  return { totalPending, claimed, unclaimed };
+}

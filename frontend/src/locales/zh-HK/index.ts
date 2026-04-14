@@ -81,8 +81,8 @@ export default {
 
   // App Layout / Navigation
   nav: {
-    appTitle: 'Baby Kingdom Admin',
-    appName: 'BK Admin',
+    appTitle: 'PressLogic · BK Seeding',
+    appName: '親子王國·管理台',
     appNameShort: 'BK',
     overview: '總覽',
     dashboard: '儀表板',
@@ -105,6 +105,9 @@ export default {
     users: '用戶管理',
     home: '首頁',
     logout: '登出',
+    profile: '個人信息',
+    poolRemaining: '待審池剩餘',
+    claimed: '已認領',
   },
 
   // Login
@@ -157,6 +160,7 @@ export default {
     },
     claim: '認領',
     unclaim: '釋放',
+    assignedTo: '指派給',
     approve: '通過',
     reject: '拒絕',
     regenerate: '重新生成',
@@ -166,6 +170,20 @@ export default {
     postNowConfirm: '確定要將此帖發佈到 BK 論壇嗎？',
     posted: '發帖成功',
     postQueued: '已加入發帖佇列',
+    startReview: '開始審核',
+    startReviewDesc: '抽取 {count} 條',
+    workbench: '工作台',
+    workbenchProgress: '{current} / {total}',
+    workbenchExpiry: '本批次 {minutes} 分鐘後自動釋放',
+    workbenchExpired: '上次批次已過期並釋放',
+    workbenchEmpty: '暫無待審項目',
+    workbenchComplete: '批次完成！',
+    skipItem: '跳過',
+    nextPreview: '下一條預覽',
+    poolRemaining: '待審池剩餘 {count} 條',
+    teamClaimed: '團隊已認領 {count} 條',
+    exitWorkbench: '退出工作台',
+    rejectNotesPrompt: '請輸入拒絕原因',
     topic: '話題',
     content: '內容',
     threadSubject: '帖子主題',
@@ -556,6 +574,16 @@ export default {
   },
 
   // Users
+  profile: {
+    title: '個人信息',
+    basicInfo: '基本資料',
+    changePassword: '修改密碼',
+    currentPassword: '當前密碼',
+    newPassword: '新密碼',
+    confirmPassword: '確認新密碼',
+    passwordMismatch: '兩次密碼不一致',
+    passwordChanged: '密碼修改成功',
+  },
   user: {
     title: '用戶管理',
     addUser: '新增用戶',
@@ -566,19 +594,20 @@ export default {
     lastLogin: '最後登入',
     roles: {
       admin: '管理員',
-      editor: '編輯',
+      approver: '審批者',
       viewer: '檢視者',
     },
     roleDesc: {
-      admin: '完整系統存取權限。管理用戶、配置設定、審批內容，存取所有隊列和審計日誌。',
-      editor: '內容管理。認領 Feed、編輯和審批 AI 生成的回覆、管理人設和語氣。',
-      viewer: '唯讀存取。查看儀表板、Feed、隊列狀態和審計日誌，無法進行修改。',
+      admin: '完整系統存取權限。管理用戶、採集源、全局配置，存取所有功能。',
+      approver: '內容審批與管理。審批/拒絕 Feed、編輯內容、管理人設、語氣模式、話題規則和版塊配置。',
+      viewer: '唯讀存取。查看 Feed，無法進行修改。',
     },
     you: '你',
     roleUpdated: '角色已更新為 {role}',
     deleteConfirm: '確定刪除此用戶？',
     cannotDeleteSelf: '不能刪除自己',
     passwordPlaceholder: '最少 8 個字元',
+    generatePassword: '自動生成',
     roleFailed: '更新角色失敗',
   },
 

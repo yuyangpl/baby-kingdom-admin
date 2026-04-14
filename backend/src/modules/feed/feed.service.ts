@@ -3,12 +3,11 @@ import { callGemini } from '../gemini/gemini.service.js';
 import { buildPrompt, autoAssignTier } from '../gemini/prompt.builder.js';
 import { checkQuality } from '../gemini/quality-guard.js';
 import * as configService from '../config/config.service.js';
-import { NotFoundError, BusinessError, ConflictError } from '../../shared/errors.js';
+import { NotFoundError, BusinessError } from '../../shared/errors.js';
 import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 import xss from 'xss';
 
-const CLAIM_EXPIRY_MINUTES = 10;
 
 /** Find feed by UUID id or custom feedId field */
 async function findFeed(id: string) {
@@ -61,41 +60,6 @@ export async function getById(id: string) {
   return feed;
 }
 
-// --- Claim ---
-export async function claim(feedId: string, userId: string) {
-  const feed = await findFeed(feedId);
-  if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'pending') throw new BusinessError('Can only claim pending feeds');
-
-  if (feed.claimedBy && feed.claimedBy !== userId) {
-    const expiresAt = new Date(feed.claimedAt!.getTime() + CLAIM_EXPIRY_MINUTES * 60 * 1000);
-    if (expiresAt > new Date()) {
-      throw new ConflictError('Feed is claimed by another user');
-    }
-  }
-
-  const prisma = getPrisma();
-  return prisma.feed.update({
-    where: { id: feed.id },
-    data: { claimedBy: userId, claimedAt: new Date() },
-  });
-}
-
-export async function unclaim(feedId: string, userId: string) {
-  const feed = await findFeed(feedId);
-  if (!feed) throw new NotFoundError('Feed');
-
-  if (feed.claimedBy !== userId) {
-    throw new BusinessError('You did not claim this feed');
-  }
-
-  const prisma = getPrisma();
-  return prisma.feed.update({
-    where: { id: feed.id },
-    data: { claimedBy: null, claimedAt: null },
-  });
-}
-
 // --- Approve / Reject ---
 export async function approve(feedId: string, userId: string, ip: string) {
   const feed = await findFeed(feedId);
@@ -135,7 +99,7 @@ export async function approve(feedId: string, userId: string, ip: string) {
 export async function reject(feedId: string, userId: string, notes: string | undefined, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
+  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only reject pending or approved feeds');
 
   const prisma = getPrisma();
   const updated = await prisma.feed.update({

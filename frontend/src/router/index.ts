@@ -7,12 +7,12 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('../components/AppLayout.vue'),
     children: [
-      { path: '', name: 'dashboard', component: () => import('../views/dashboard/DashboardView.vue') },
+      { path: '', name: 'dashboard', component: () => import('../views/dashboard/DashboardView.vue'), meta: { role: 'admin' } },
       { path: 'feeds', name: 'feeds', component: () => import('../views/feed/FeedView.vue') },
       { path: 'personas', name: 'personas', component: () => import('../views/persona/PersonaView.vue'), meta: { role: 'approver' } },
-      { path: 'tones', name: 'tones', component: () => import('../views/tone/ToneView.vue'), meta: { role: 'editor' } },
-      { path: 'topic-rules', name: 'topic-rules', component: () => import('../views/topic-rules/TopicRulesView.vue'), meta: { role: 'editor' } },
-      { path: 'forums', name: 'forums', component: () => import('../views/forum/ForumView.vue'), meta: { role: 'editor' } },
+      { path: 'tones', name: 'tones', component: () => import('../views/tone/ToneView.vue'), meta: { role: 'approver' } },
+      { path: 'topic-rules', name: 'topic-rules', component: () => import('../views/topic-rules/TopicRulesView.vue'), meta: { role: 'approver' } },
+      { path: 'forums', name: 'forums', component: () => import('../views/forum/ForumView.vue'), meta: { role: 'approver' } },
       { path: 'config', name: 'config', component: () => import('../views/config/ConfigView.vue'), meta: { role: 'admin' } },
       { path: 'scanner', name: 'scanner', component: () => import('../views/scanner/ScannerView.vue'), meta: { role: 'admin' } },
       { path: 'trends', name: 'trends', component: () => import('../views/trends/TrendsView.vue'), meta: { role: 'admin' } },
@@ -20,6 +20,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'poster', name: 'poster', component: () => import('../views/poster/PosterView.vue'), meta: { role: 'admin' } },
       { path: 'audit', name: 'audit', component: () => import('../views/audit/AuditView.vue'), meta: { role: 'admin' } },
       { path: 'users', name: 'users', component: () => import('../views/user/UserView.vue'), meta: { role: 'admin' } },
+      { path: 'profile', name: 'profile', component: () => import('../views/profile/ProfileView.vue') },
     ],
   },
 ];
@@ -29,7 +30,7 @@ const router = createRouter({
   routes,
 });
 
-const roleHierarchy: Record<string, number> = { admin: 4, editor: 3, approver: 2, viewer: 1 };
+const roleHierarchy: Record<string, number> = { admin: 3, approver: 2, viewer: 1 };
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
