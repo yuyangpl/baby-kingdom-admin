@@ -560,15 +560,13 @@ export default {
     lastLogin: 'Last Login',
     roles: {
       admin: 'Admin',
-      editor: 'Editor',
       approver: 'Approver',
       viewer: 'Viewer',
     },
     roleDesc: {
       admin: 'Full system access. Manage users, data sources, global config, and all features.',
-      editor: 'Content management. Edit feed content, manage tones, topic rules, and forum boards.',
-      approver: 'Feed approval. Approve/reject assigned feeds, manage personas.',
-      viewer: 'Read-only access. View assigned feeds without making changes.',
+      approver: 'Content review & management. Approve/reject feeds, edit content, manage personas, tones, topic rules, and forum boards.',
+      viewer: 'Read-only access. View feeds without making changes.',
     },
     you: 'You',
     roleUpdated: 'Role updated to {role}',

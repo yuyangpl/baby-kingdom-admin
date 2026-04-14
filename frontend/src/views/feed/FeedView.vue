@@ -298,10 +298,10 @@
             </span>
           </div>
           <div class="feed-card__footer-right">
-            <el-button v-if="authStore.isEditor" size="small" @click="openEdit(feed)">
+            <el-button v-if="authStore.isApprover" size="small" @click="openEdit(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isEditor" size="small" type="warning" @click="regenerate(feed)">
+            <el-button v-if="authStore.isApprover" size="small" type="warning" @click="regenerate(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button

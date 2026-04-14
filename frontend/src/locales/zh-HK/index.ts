@@ -583,15 +583,13 @@ export default {
     lastLogin: '最後登入',
     roles: {
       admin: '管理員',
-      editor: '編輯',
       approver: '審批者',
       viewer: '檢視者',
     },
     roleDesc: {
       admin: '完整系統存取權限。管理用戶、採集源、全局配置，存取所有功能。',
-      editor: '內容管理。編輯 Feed 內容、管理語氣模式、話題規則和版塊配置。',
-      approver: '審批 Feed。審批/拒絕指派給自己的 Feed，管理人設。',
-      viewer: '唯讀存取。查看指派給自己的 Feed，無法進行修改。',
+      approver: '內容審批與管理。審批/拒絕 Feed、編輯內容、管理人設、語氣模式、話題規則和版塊配置。',
+      viewer: '唯讀存取。查看 Feed，無法進行修改。',
     },
     you: '你',
     roleUpdated: '角色已更新為 {role}',

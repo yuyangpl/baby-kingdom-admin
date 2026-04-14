@@ -19,7 +19,7 @@ model User {
   email       String    @unique @db.VarChar(255)
   passwordHash String  @map("password_hash") @db.VarChar(255)
   role        String    @default("viewer") @db.VarChar(10)
-  // role CHECK: admin | editor | approver | viewer
+  // role CHECK: admin | approver | viewer
   lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz()
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()

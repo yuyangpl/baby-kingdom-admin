@@ -9,7 +9,7 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<a
 
 // Static routes MUST come before parameterized routes
 router.get('/', authenticate, wrap(ctrl.list));
-router.post('/custom-generate', generateLimiter, authenticate, authorize('admin', 'editor'), wrap(ctrl.customGenerate));
+router.post('/custom-generate', generateLimiter, authenticate, authorize('admin', 'approver'), wrap(ctrl.customGenerate));
 router.post('/batch/approve', authenticate, authorize('admin', 'approver'), wrap(ctrl.batchApprove));
 router.post('/batch/reject', authenticate, authorize('admin', 'approver'), wrap(ctrl.batchReject));
 
@@ -17,7 +17,7 @@ router.post('/batch/reject', authenticate, authorize('admin', 'approver'), wrap(
 router.get('/:id', authenticate, wrap(ctrl.getById));
 router.post('/:id/approve', authenticate, authorize('admin', 'approver'), wrap(ctrl.approve));
 router.post('/:id/reject', authenticate, authorize('admin', 'approver'), wrap(ctrl.reject));
-router.put('/:id/content', authenticate, authorize('admin', 'editor'), wrap(ctrl.updateContent));
-router.post('/:id/regenerate', generateLimiter, authenticate, authorize('admin', 'editor'), wrap(ctrl.regenerate));
+router.put('/:id/content', authenticate, authorize('admin', 'approver'), wrap(ctrl.updateContent));
+router.post('/:id/regenerate', generateLimiter, authenticate, authorize('admin', 'approver'), wrap(ctrl.regenerate));
 
 export default router;

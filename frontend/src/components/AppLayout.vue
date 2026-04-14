@@ -33,15 +33,15 @@
             <el-icon class="nav-item__icon"><User /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.personas') }}</span>
           </router-link>
-          <router-link v-if="auth.isEditor" to="/tones" class="nav-item" :class="{ 'nav-item--active': $route.name === 'tones' }">
+          <router-link v-if="auth.isApprover" to="/tones" class="nav-item" :class="{ 'nav-item--active': $route.name === 'tones' }">
             <el-icon class="nav-item__icon"><ChatDotRound /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.toneModes') }}</span>
           </router-link>
-          <router-link v-if="auth.isEditor" to="/topic-rules" class="nav-item" :class="{ 'nav-item--active': $route.name === 'topic-rules' }">
+          <router-link v-if="auth.isApprover" to="/topic-rules" class="nav-item" :class="{ 'nav-item--active': $route.name === 'topic-rules' }">
             <el-icon class="nav-item__icon"><List /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.topicRules') }}</span>
           </router-link>
-          <router-link v-if="auth.isEditor" to="/forums" class="nav-item" :class="{ 'nav-item--active': $route.name === 'forums' }">
+          <router-link v-if="auth.isApprover" to="/forums" class="nav-item" :class="{ 'nav-item--active': $route.name === 'forums' }">
             <el-icon class="nav-item__icon"><Grid /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.forumBoards') }}</span>
           </router-link>
