@@ -93,8 +93,9 @@ export async function approve(feedId: string, userId: string, ip: string) {
     where: { id: feedId },
   });
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'pending') throw new BusinessError('Can only approve pending feeds');
-  if (feed.claimedBy !== userId) throw new ForbiddenError('You can only approve feeds you have claimed');
+  if (!['pending', 'failed'].includes(feed.status)) throw new BusinessError('Can only approve pending or failed feeds');
+  // pending 需要认领检查，failed 允许直接重新通过
+  if (feed.status === 'pending' && feed.claimedBy !== userId) throw new ForbiddenError('You can only approve feeds you have claimed');
 
   const updated = await prisma.feed.update({
     where: { id: feed.id },
@@ -102,6 +103,7 @@ export async function approve(feedId: string, userId: string, ip: string) {
       status: 'approved',
       reviewedBy: userId,
       reviewedAt: new Date(),
+      failReason: null,
       claimedBy: null,
       claimedAt: null,
       claimExpiresAt: null,

@@ -11,16 +11,8 @@ export async function postFeed(req: Request, res: Response): Promise<void> {
   if (!feed) throw new BusinessError('Feed not found');
   if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
 
-  const port = process.env.PORT || 8080;
-  const feedId = feed.id;
-  fetch(`http://localhost:${port}/tasks/poster`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feedId, triggeredBy: 'manual' }),
-    signal: AbortSignal.timeout(30000),
-  }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
-
-  success(res, { queued: true, feedId: feed.feedId });
+  await posterService.postFeed(feed.id, req.user?.id, req.ip || '');
+  success(res, { posted: true, feedId: feed.feedId });
 }
 
 export async function pending(_req: Request, res: Response): Promise<void> {

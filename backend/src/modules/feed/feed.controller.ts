@@ -36,6 +36,11 @@ export async function reject(req: Request, res: Response): Promise<void> {
   success(res, feed);
 }
 
+export async function revertToPending(req: Request, res: Response): Promise<void> {
+  const feed = await feedService.revertToPending(req.params.id as string, (req as any).user.id, req.ip ?? '');
+  success(res, feed);
+}
+
 export async function updateContent(req: Request, res: Response): Promise<void> {
   const { content, toneMode, personaId, adminNotes } = req.body;
   if (!content) throw new ValidationError('Content is required');

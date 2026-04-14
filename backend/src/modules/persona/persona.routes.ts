@@ -101,13 +101,11 @@ router.post('/verify-bk-login', authenticate, authorize('admin', 'approver'), wr
   const bkApp = await configService.getValue('BK_APP') || 'android';
   const bkVer = await configService.getValue('BK_VER') || '3.11.11';
 
-  const formData = new URLSearchParams({
-    mod: 'member', op: 'login',
-    username, password,
-    app: bkApp, ver: bkVer,
-  });
+  const qs = new URLSearchParams({ mod: 'member', op: 'login', app: bkApp, ver: bkVer });
+  const url = `${baseUrl}?${qs.toString()}`;
+  const formData = new URLSearchParams({ username, password });
 
-  const res2 = await fetch(baseUrl, {
+  const res2 = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: formData.toString(),

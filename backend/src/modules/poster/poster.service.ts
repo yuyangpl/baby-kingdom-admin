@@ -27,6 +27,14 @@ interface PreflightResult {
   error?: string;
 }
 
+/**
+ * Build BK API URL: mod/op/app/ver go in query string (avoids VER_DOWNLOGD_ issue).
+ */
+function buildBkUrl(baseUrl: string, mod: string, op: string, app: string, ver: string): string {
+  const qs = new URLSearchParams({ mod, op, app, ver });
+  return `${baseUrl}?${qs.toString()}`;
+}
+
 interface ThreadItem {
   tid: number;
   subject: string;
@@ -156,28 +164,24 @@ async function ensureBkLogin(persona: any, baseUrl: string, bkApp: string, bkVer
     throw new Error(`Failed to decrypt password for ${persona.accountId}`);
   }
 
-  const params = new URLSearchParams({
-    mod: 'member', op: 'login',
-    username: persona.username,
-    password,
-    app: bkApp, ver: bkVer,
-  });
+  const url = buildBkUrl(baseUrl, 'member', 'login', bkApp, bkVer);
+  const loginBody = new URLSearchParams({ username: persona.username, password });
 
-  const resp = await fetch(baseUrl, {
+  const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
+    body: loginBody.toString(),
     signal: AbortSignal.timeout(10000),
   });
 
-  const body = await resp.json() as BkApiResponse;
+  const respBody = await resp.json() as BkApiResponse;
 
-  if (body.status !== 1) {
-    throw new Error(`BK login failed for ${persona.username}: ${body.message || 'Unknown error'}`);
+  if (respBody.status !== 1) {
+    throw new Error(`BK login failed for ${persona.username}: ${respBody.message || 'Unknown error'}`);
   }
 
-  const token = body.data?.token;
-  const uid = body.data?.uid;
+  const token = respBody.data?.token;
+  const uid = respBody.data?.uid;
 
   _bkTokens[persona.accountId] = token;
 
@@ -185,7 +189,7 @@ async function ensureBkLogin(persona: any, baseUrl: string, bkApp: string, bkVer
     where: { id: persona.id },
     data: {
       bkToken: token,
-      bkUid: uid,
+      bkUid: uid ? parseInt(String(uid), 10) : null,
       bkTokenExpiry: new Date(Date.now() + 24 * 3600 * 1000),
       tokenStatus: 'active',
     },
@@ -235,38 +239,37 @@ async function preflightCheck(baseUrl: string, token: string, fid: number, bkApp
 // --- Post new thread (matches GAS _postNewThread with retry) ---
 
 async function postNewThread(baseUrl: string, token: string, feed: any, content: string, typeid: string, bkApp: string, bkVer: string, retryCount = 0): Promise<PostResult> {
-  const paramObj: Record<string, string> = {
-    mod: 'forum', op: 'newthread',
+  const url = buildBkUrl(baseUrl, 'forum', 'newthread', bkApp, bkVer);
+  const bodyObj: Record<string, string> = {
     fid: String(feed.threadFid), token,
     subject: feed.subject || feed.threadSubject,
     message: content,
-    app: bkApp, ver: bkVer,
   };
-  if (typeid) paramObj.typeid = typeid;
+  if (typeid) bodyObj.typeid = typeid;
 
-  const params = new URLSearchParams(paramObj);
+  const postBody = new URLSearchParams(bodyObj);
 
   try {
-    const resp = await fetch(baseUrl, {
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
+      body: postBody.toString(),
       signal: AbortSignal.timeout(15000),
     });
-    const body = await resp.json() as BkApiResponse;
+    const respBody = await resp.json() as BkApiResponse;
 
-    if (body.status === 1) {
-      return { success: true, postId: body.data?.tid || 'unknown', postUrl: '' };
+    if (respBody.status === 1) {
+      return { success: true, postId: respBody.data?.tid || 'unknown', postUrl: '' };
     }
 
     // Rate limit retry (max 2 retries, 32s sleep -- matches GAS)
-    if (String(body.message).includes('\u767c\u5e16\u904e\u65bc\u983b\u7e41') && retryCount < 2) {
+    if (String(respBody.message).includes('\u767c\u5e16\u904e\u65bc\u983b\u7e41') && retryCount < 2) {
       logger.info({ retryCount }, 'Rate limited by BK, waiting 32s before retry');
       await new Promise((resolve) => setTimeout(resolve, 32000));
       return postNewThread(baseUrl, token, feed, content, typeid, bkApp, bkVer, retryCount + 1);
     }
 
-    return { success: false, error: body.message || 'Post failed' };
+    return { success: false, error: respBody.message || 'Post failed' };
   } catch (e: any) {
     return { success: false, error: e.message };
   }
@@ -275,34 +278,33 @@ async function postNewThread(baseUrl: string, token: string, feed: any, content:
 // --- Post reply (matches GAS _postReply with retry) ---
 
 async function postReply(baseUrl: string, token: string, feed: any, content: string, bkApp: string, bkVer: string, retryCount = 0): Promise<PostResult> {
-  const params = new URLSearchParams({
-    mod: 'forum', op: 'newreply',
+  const url = buildBkUrl(baseUrl, 'forum', 'newreply', bkApp, bkVer);
+  const replyBody = new URLSearchParams({
     tid: String(feed.threadTid), fid: String(feed.threadFid),
     token, message: content,
-    app: bkApp, ver: bkVer,
   });
 
   try {
-    const resp = await fetch(baseUrl, {
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
+      body: replyBody.toString(),
       signal: AbortSignal.timeout(15000),
     });
-    const body = await resp.json() as BkApiResponse;
+    const respBody = await resp.json() as BkApiResponse;
 
-    if (body.status === 1) {
-      return { success: true, postId: body.data?.pid || 'unknown', postUrl: '' };
+    if (respBody.status === 1) {
+      return { success: true, postId: respBody.data?.pid || 'unknown', postUrl: '' };
     }
 
     // Rate limit retry (max 2 retries, 32s sleep)
-    if (String(body.message).includes('\u767c\u5e16\u904e\u65bc\u983b\u7e41') && retryCount < 2) {
+    if (String(respBody.message).includes('\u767c\u5e16\u904e\u65bc\u983b\u7e41') && retryCount < 2) {
       logger.info({ retryCount }, 'Rate limited by BK, waiting 32s before retry');
       await new Promise((resolve) => setTimeout(resolve, 32000));
       return postReply(baseUrl, token, feed, content, bkApp, bkVer, retryCount + 1);
     }
 
-    return { success: false, error: body.message || 'Reply failed' };
+    return { success: false, error: respBody.message || 'Reply failed' };
   } catch (e: any) {
     return { success: false, error: e.message };
   }

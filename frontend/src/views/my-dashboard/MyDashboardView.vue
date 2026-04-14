@@ -169,6 +169,12 @@
               <el-button type="success" :loading="postLoading" :disabled="actionLoading" @click="doPost">{{ $t('myDashboard.publish') }}</el-button>
               <el-button :disabled="actionLoading" @click="advanceToNext">{{ $t('myDashboard.next') }}</el-button>
             </template>
+            <template v-else-if="currentFeed.status === 'failed'">
+              <!-- 发布失败：重新通过 + 发布 -->
+              <div class="feed-card__fail">{{ currentFeed.failReason }}</div>
+              <el-button class="btn-approve" :loading="approveLoading" :disabled="actionLoading" @click="doApprove">{{ $t('myDashboard.reApprove') }}</el-button>
+              <el-button :disabled="actionLoading" @click="advanceToNext">{{ $t('myDashboard.next') }}</el-button>
+            </template>
             <template v-else>
               <!-- pending：显示审核按钮 -->
               <el-button :loading="skipLoading" :disabled="actionLoading" @click="doSkip">↷ {{ $t('myDashboard.skip') }} (S)</el-button>
@@ -444,7 +450,11 @@ const doPost = async () => {
     ElMessage.success(t('myDashboard.posted'))
     advance()
   } catch (err: any) {
-    ElMessage.error(err.error?.message || err.message || t('common.error'))
+    const msg = err.error?.message || err.message || t('common.error')
+    ElMessage.error(msg)
+    // 发布失败，更新本地状态
+    feeds.value[workbenchIndex.value] = { ...feed, status: 'failed', failReason: msg }
+    feeds.value = [...feeds.value]
   } finally {
     postLoading.value = false
   }
@@ -456,9 +466,16 @@ const doApproveAndPost = async () => {
   approveAndPostLoading.value = true
   try {
     await api.post(`/v1/review-queue/${feed.id}/approve`)
-    await api.post(`/v1/poster/${feed.id}/post`)
-    ElMessage.success(t('myDashboard.posted'))
-    advance()
+    try {
+      await api.post(`/v1/poster/${feed.id}/post`)
+      ElMessage.success(t('myDashboard.posted'))
+      advance()
+    } catch (postErr: any) {
+      const msg = postErr.error?.message || postErr.message || t('common.error')
+      ElMessage.error(msg)
+      feeds.value[workbenchIndex.value] = { ...feed, status: 'failed', failReason: msg }
+      feeds.value = [...feeds.value]
+    }
   } catch (err: any) {
     ElMessage.error(err.error?.message || err.message || t('common.error'))
   } finally {
@@ -665,6 +682,11 @@ onUnmounted(() => {
 .feed-card__footer {
   display: flex; justify-content: space-between; align-items: center;
   margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bk-border);
+}
+.feed-card__fail {
+  font-size: 12px; color: var(--el-color-danger);
+  border: 1px solid var(--el-color-danger-light-5); border-radius: var(--bk-radius-sm);
+  padding: 6px 10px; line-height: 1.5; word-break: break-all; margin-bottom: 8px;
 }
 .feed-card__footer-left { display: flex; align-items: center; gap: 8px; }
 .feed-card__footer-right { display: flex; align-items: center; gap: 8px; }

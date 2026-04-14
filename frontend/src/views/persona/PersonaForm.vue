@@ -25,7 +25,7 @@
 
       <el-form-item :label="$t('persona.bkPassword')" prop="bkPassword">
         <div style="display: flex; gap: 8px; width: 100%;">
-          <el-input v-model="form.bkPassword" type="password" show-password :placeholder="$t('persona.bkPasswordPlaceholder')" autocomplete="off" />
+          <el-input v-model="form.bkPassword" type="password" show-password :placeholder="hasExistingPassword ? $t('persona.bkPasswordKeep') : $t('persona.bkPasswordPlaceholder')" autocomplete="off" />
           <el-button :loading="verifying" @click="verifyBkLogin">{{ $t('persona.verifyLogin') }}</el-button>
         </div>
       </el-form-item>
@@ -137,6 +137,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const isEdit = computed(() => !!props.editData)
+const hasExistingPassword = computed(() => isEdit.value && !!props.editData?.bkPassword)
 const formRef = ref<FormInstance>()
 const saving = ref<boolean>(false)
 const verifying = ref<boolean>(false)

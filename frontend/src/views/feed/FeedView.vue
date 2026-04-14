@@ -130,13 +130,14 @@
             <div v-if="feed.trendSummary" class="feed-card__trend-summary">
               {{ feed.trendSummary }}
             </div>
-            <div v-if="feed.draftContent && feed.postType === 'reply'" class="feed-card__preview">
+            <div v-if="feed.draftContent" class="feed-card__preview">
               <span class="feed-card__preview-label">{{ feed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
-              {{ feed.draftContent }}
+              {{ truncate(feed.draftContent, 200) }}
             </div>
-            <div v-if="feed.finalContent" class="feed-card__draft-box">
+            <div v-if="feed.finalContent && feed.finalContent !== feed.draftContent" class="feed-card__draft-box">
               {{ truncate(feed.finalContent, 200) }}
             </div>
+            <div v-if="feed.failReason" class="feed-card__fail">{{ feed.failReason }}</div>
           </div>
           <!-- Right: Persona Info -->
           <div v-if="feed.bkUsername" class="feed-card__persona">
@@ -241,14 +242,14 @@
             </span>
           </div>
           <div class="feed-card__footer-right">
-            <el-button v-if="authStore.isApprover" size="small" @click="openEdit(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" @click="openEdit(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isApprover" size="small" type="warning" @click="regenerate(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" type="warning" @click="regenerate(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button
-              v-if="canApprove && feed.status !== 'rejected'"
+              v-if="canApprove && !['rejected', 'posted'].includes(feed.status)"
               size="small"
               class="btn-reject"
               @click="rejectWithNotes(feed)"
@@ -256,12 +257,20 @@
               {{ $t('feed.reject') }}
             </el-button>
             <el-button
-              v-if="canApprove && feed.status !== 'approved' && feed.status !== 'posted'"
+              v-if="canApprove && ['pending', 'failed'].includes(feed.status)"
               size="small"
               class="btn-approve"
               @click="approve(feed)"
             >
-              {{ $t('feed.approve') }}
+              {{ feed.status === 'failed' ? $t('myDashboard.reApprove') : $t('feed.approve') }}
+            </el-button>
+            <el-button
+              v-if="canApprove && feed.status === 'rejected'"
+              size="small"
+              class="btn-approve"
+              @click="revertToPending(feed)"
+            >
+              {{ $t('feed.revertToPending') }}
             </el-button>
             <el-button
               v-if="feed.status === 'approved'"
@@ -533,6 +542,17 @@ const approve = async (row: any) => {
   }
 }
 
+const revertToPending = async (row: any) => {
+  try {
+    await api.post(`/v1/feeds/${row.feedId}/revert-pending`)
+    ElMessage.success(t('common.success'))
+    loadFeeds()
+    loadTabCounts()
+  } catch (err: any) {
+    ElMessage.error(err.message || t('common.error'))
+  }
+}
+
 const rejectWithNotes = async (row: any) => {
   try {
     const { value: notes } = await ElMessageBox.prompt(
@@ -563,7 +583,7 @@ const postNow = async (row: any) => {
       { confirmButtonText: t('feed.postNow'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
     await api.post(`/v1/poster/${row.id || row._id}/post`)
-    ElMessage.success(t('feed.postQueued'))
+    ElMessage.success(t('feed.postSuccess'))
     loadFeeds()
   } catch (err: any) {
     if (err === 'cancel') return
@@ -820,6 +840,17 @@ onMounted(() => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.feed-card__fail {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--el-color-danger);
+  border: 1px solid var(--el-color-danger-light-5);
+  border-radius: var(--bk-radius-sm);
+  padding: 6px 10px;
+  line-height: 1.5;
+  word-break: break-all;
 }
 
 /* Persona Info */

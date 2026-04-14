@@ -75,7 +75,7 @@ export async function getById(id: string) {
 export async function approve(feedId: string, userId: string, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'pending') throw new BusinessError('Can only approve pending feeds');
+  if (!['pending', 'failed'].includes(feed.status)) throw new BusinessError('Can only approve pending or failed feeds');
 
   const prisma = getPrisma();
   const updated = await prisma.feed.update({
@@ -84,6 +84,7 @@ export async function approve(feedId: string, userId: string, ip: string) {
       status: 'approved',
       reviewedBy: userId,
       reviewedAt: new Date(),
+      failReason: null,
       claimedBy: null,
       claimedAt: null,
     },
@@ -103,6 +104,31 @@ export async function approve(feedId: string, userId: string, ip: string) {
     body: JSON.stringify({ feedId: feed.id, triggeredBy: 'approve' }),
     signal: AbortSignal.timeout(30000),
   }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
+
+  return updated;
+}
+
+export async function revertToPending(feedId: string, userId: string, ip: string) {
+  const feed = await findFeed(feedId);
+  if (!feed) throw new NotFoundError('Feed');
+  if (feed.status !== 'rejected') throw new BusinessError('Can only revert rejected feeds');
+
+  const prisma = getPrisma();
+  const updated = await prisma.feed.update({
+    where: { id: feed.id },
+    data: {
+      status: 'pending',
+      reviewedBy: null,
+      reviewedAt: null,
+      adminNotes: null,
+    },
+  });
+
+  await auditService.log({
+    operator: userId, eventType: 'FEED_REVERTED', module: 'feed',
+    feedId: feed.feedId, targetId: feed.id, ip,
+    actionDetail: `Reverted feed ${feed.feedId} to pending`,
+  });
 
   return updated;
 }
