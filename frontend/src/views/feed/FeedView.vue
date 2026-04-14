@@ -125,8 +125,8 @@
       </el-card>
     </template>
 
-    <!-- Start Review CTA -->
-    <div v-else-if="activeTab === 'pending' && canApprove && !workbenchMode" class="start-review-cta">
+    <!-- Start Review CTA (approver only, not admin) -->
+    <div v-else-if="activeTab === 'pending' && isApproverOnly && !workbenchMode" class="start-review-cta">
       <div class="cta-stats">
         <span>{{ $t('feed.poolRemaining', { count: teamStats.unclaimed }) }}</span>
         <span>{{ $t('feed.teamClaimed', { count: teamStats.claimed }) }}</span>
@@ -379,6 +379,8 @@ const authStore = useAuthStore()
 
 // approver and admin can approve/reject
 const canApprove = computed(() => authStore.role === 'admin' || authStore.role === 'approver')
+// approver but not admin — needs batch claim workflow
+const isApproverOnly = computed(() => authStore.role === 'approver')
 
 const activeTab = ref<string>('pending')
 const selectedIds = ref<Set<string>>(new Set())
@@ -627,14 +629,24 @@ const toggleSelect = (feedId: string, checked: boolean) => {
 }
 
 const loadFeeds = async () => {
+  // Approver only sees feeds claimed by themselves
+  if (isApproverOnly.value) {
+    feedStore.setFilter('claimedBy', authStore.user?.id || '')
+  } else {
+    feedStore.setFilter('claimedBy', '')
+  }
   await feedStore.fetchFeeds()
 }
 
 const loadTabCounts = async () => {
   const statuses = ['pending', 'approved', 'posted', 'rejected', 'failed']
+  const extraParams: Record<string, string> = {}
+  if (isApproverOnly.value && authStore.user?.id) {
+    extraParams.claimedBy = authStore.user.id
+  }
   await Promise.all(statuses.map(async (s) => {
     try {
-      const res = await api.get('/v1/feeds', { params: { status: s, limit: 1 } })
+      const res = await api.get('/v1/feeds', { params: { status: s, limit: 1, ...extraParams } })
       tabCounts.value[s] = (res as any).pagination?.total ?? 0
     } catch { /* ignore */ }
   }))

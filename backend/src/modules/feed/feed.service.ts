@@ -25,18 +25,20 @@ interface FeedListParams {
   source?: string;
   threadFid?: string | number;
   personaId?: string;
+  claimedBy?: string;
   page?: number;
   limit?: number;
   sort?: string;
 }
 
-export async function list({ status, source, threadFid, personaId, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
+export async function list({ status, source, threadFid, personaId, claimedBy, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
   const prisma = getPrisma();
   const where: Record<string, any> = {};
   if (status) where.status = status;
   if (source) where.source = { has: source };
   if (threadFid) where.threadFid = parseInt(String(threadFid), 10);
   if (personaId) where.personaId = personaId;
+  if (claimedBy) where.claimedBy = claimedBy;
 
   limit = Math.min(parseInt(String(limit)) || 20, 200);
   const skip = (page - 1) * limit;
