@@ -81,8 +81,8 @@ export default {
 
   // App Layout / Navigation
   nav: {
-    appTitle: 'Baby Kingdom Admin',
-    appName: 'BK Admin',
+    appTitle: 'PressLogic · BK Seeding',
+    appName: '親子王國·管理台',
     appNameShort: 'BK',
     overview: '總覽',
     dashboard: '儀表板',

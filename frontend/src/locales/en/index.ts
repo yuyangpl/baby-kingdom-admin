@@ -79,8 +79,8 @@ export default {
   },
 
   nav: {
-    appTitle: 'Baby Kingdom Admin',
-    appName: 'BK Admin',
+    appTitle: 'PressLogic · BK Seeding',
+    appName: 'BK Seeding',
     appNameShort: 'BK',
     overview: 'Overview',
     dashboard: 'Dashboard',
