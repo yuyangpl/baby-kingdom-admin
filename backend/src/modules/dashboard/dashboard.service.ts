@@ -25,33 +25,46 @@ export async function getToday() {
     where: { taskName: 'scanner', createdAt: { gte: startOfDay, lte: endOfDay } },
     select: { result: true },
   });
-  let totalScanned = 0, totalHit = 0;
+  let totalScanned = 0, totalHit = 0, totalFeeds = 0;
   for (const log of scannerLogs) {
     const r = log.result as any;
     if (r && typeof r === 'object') {
       totalScanned += r.scanned || 0;
       totalHit += r.hits || 0;
+      totalFeeds += r.feeds || 0;
     }
   }
 
-  const [generated, approved, rejected, posted, failed, trendsPulled, trendsWithFeeds, threads, replies] = await Promise.all([
+  // 从 TaskLog 汇总今日 trends 生成的 feed 数量
+  const trendsLogs = await prisma.taskLog.findMany({
+    where: { taskName: 'trends', createdAt: { gte: startOfDay, lte: endOfDay } },
+    select: { result: true },
+  });
+  let trendsFeedsGenerated = 0;
+  for (const log of trendsLogs) {
+    const r = log.result as any;
+    if (r && typeof r === 'object') {
+      trendsFeedsGenerated += r.feedsGenerated || 0;
+    }
+  }
+
+  const [generated, approved, rejected, posted, failed, threads, replies] = await Promise.all([
     prisma.feed.count({ where: dayFilter }),
     prisma.feed.count({ where: { status: 'approved', reviewedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'rejected', reviewedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'posted', postedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'failed', updatedAt: { gte: startOfDay, lte: endOfDay } } }),
-    prisma.trend.count({ where: dayFilter }),
-    prisma.trend.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay }, NOT: { feedIds: { equals: [] } } } }),
     prisma.feed.count({ where: { ...dayFilter, type: 'thread' } }),
     prisma.feed.count({ where: { ...dayFilter, type: 'reply' } }),
   ]);
 
   const totalReviewed = approved + rejected;
+  // 命中率 = 插入待审池的 feed 数 / 总扫描帖子数
   return {
     date: today,
-    scanner: { totalScanned, totalHit, hitRate: totalScanned > 0 ? Math.round(totalHit / totalScanned * 100) / 100 : 0 },
+    scanner: { totalScanned, totalHit, totalFeeds, hitRate: totalScanned > 0 ? Math.round(totalFeeds / totalScanned * 100) / 100 : 0 },
     feeds: { generated, approved, rejected, posted, failed },
-    trends: { pulled: trendsPulled, used: trendsWithFeeds },
+    trends: { pulled: trendsFeedsGenerated },
     posts: { threads, replies },
     quality: { approvalRate: totalReviewed > 0 ? Math.round(approved / totalReviewed * 100) / 100 : 0 },
   };
@@ -96,15 +109,30 @@ export async function aggregateDailyStats(): Promise<void> {
     where: { taskName: 'scanner', createdAt: { gte: startOfDay, lte: endOfDay } },
     select: { result: true },
   });
-  let totalScanned = 0, totalHit = 0;
+  let totalScanned = 0, totalHit = 0, totalFeeds = 0;
   for (const log of scannerLogs) {
     const r = log.result as any;
     if (r && typeof r === 'object') {
       totalScanned += r.scanned || 0;
       totalHit += r.hits || 0;
+      totalFeeds += r.feeds || 0;
     }
   }
-  const hitRate = totalScanned > 0 ? totalHit / totalScanned : 0;
+  // 命中率 = 插入待审池的 feed 数 / 总扫描帖子数
+  const hitRate = totalScanned > 0 ? totalFeeds / totalScanned : 0;
+
+  // 从 TaskLog 汇总今日 trends 生成的 feed 数量
+  const trendsLogs = await prisma.taskLog.findMany({
+    where: { taskName: 'trends', createdAt: { gte: startOfDay, lte: endOfDay } },
+    select: { result: true },
+  });
+  let trendsFeedsGenerated = 0;
+  for (const log of trendsLogs) {
+    const r = log.result as any;
+    if (r && typeof r === 'object') {
+      trendsFeedsGenerated += r.feedsGenerated || 0;
+    }
+  }
 
   const [
     generatedCount,
@@ -112,8 +140,6 @@ export async function aggregateDailyStats(): Promise<void> {
     rejectedCount,
     postedCount,
     failedCount,
-    trendsPulled,
-    trendsWithFeeds,
     duplicateCount,
     threadCount,
     replyCount,
@@ -123,8 +149,6 @@ export async function aggregateDailyStats(): Promise<void> {
     prisma.feed.count({ where: { status: 'rejected', reviewedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'posted', postedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'failed', updatedAt: { gte: startOfDay, lte: endOfDay } } }),
-    prisma.trend.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay } } }),
-    prisma.trend.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay }, NOT: { feedIds: { equals: [] } } } }),
     prisma.feed.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay }, isDuplicate: true } }),
     prisma.feed.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay }, type: 'thread' } }),
     prisma.feed.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay }, type: 'reply' } }),
@@ -134,9 +158,9 @@ export async function aggregateDailyStats(): Promise<void> {
   const approvalRate = totalReviewed > 0 ? approvedCount / totalReviewed : 0;
 
   const data = {
-    scanner: { totalScanned, totalHit: totalHit, hitRate: Math.round(hitRate * 100) / 100 },
+    scanner: { totalScanned, totalHit, totalFeeds, hitRate: Math.round(hitRate * 100) / 100 },
     feeds: { generated: generatedCount, approved: approvedCount, rejected: rejectedCount, posted: postedCount, failed: failedCount },
-    trends: { pulled: trendsPulled, used: trendsWithFeeds },
+    trends: { pulled: trendsFeedsGenerated },
     posts: { threads: threadCount, replies: replyCount },
     quality: { approvalRate: Math.round(approvalRate * 100) / 100, duplicateCount },
   };

@@ -23,7 +23,7 @@ export async function claimBatch(userId: string, count: number = DEFAULT_BATCH_S
   }
 
   // Atomic batch claim with SKIP LOCKED
-  const claimed = await prisma.$queryRawUnsafe<any[]>(`
+  const rawClaimed = await prisma.$queryRawUnsafe<any[]>(`
     WITH picked AS (
       SELECT id FROM feeds
       WHERE status = 'pending'
@@ -37,8 +37,14 @@ export async function claimBatch(userId: string, count: number = DEFAULT_BATCH_S
         claimed_at = NOW(),
         claim_expires_at = NOW() + $3::interval
     WHERE id IN (SELECT id FROM picked)
-    RETURNING *
+    RETURNING id
   `, batchSize, userId, ttl);
+
+  // Re-query with Prisma to get consistent camelCase field names
+  const claimedIds = rawClaimed.map(r => r.id);
+  const claimed = claimedIds.length > 0
+    ? await prisma.feed.findMany({ where: { id: { in: claimedIds } }, orderBy: { createdAt: 'asc' } })
+    : [];
 
   const remaining = await prisma.feed.count({
     where: {
@@ -52,7 +58,7 @@ export async function claimBatch(userId: string, count: number = DEFAULT_BATCH_S
 
   return {
     claimed,
-    claimExpiresAt: claimed.length > 0 ? claimed[0].claim_expires_at : null,
+    claimExpiresAt: claimed.length > 0 ? claimed[0].claimExpiresAt : null,
     remainingInPool: remaining,
   };
 }
@@ -161,10 +167,33 @@ export async function skip(feedId: string, userId: string) {
   if (!feed) throw new NotFoundError('Feed');
   if (feed.claimedBy !== userId) throw new ForbiddenError('You can only skip feeds you have claimed');
 
-  return prisma.feed.update({
+  const updated = await prisma.feed.update({
     where: { id: feed.id },
     data: { claimedBy: null, claimedAt: null, claimExpiresAt: null },
   });
+
+  await auditService.log({
+    operator: userId, eventType: 'FEED_SKIPPED', module: 'feed',
+    feedId: feed.feedId, targetId: feed.id,
+    actionDetail: `Skipped feed ${feed.feedId}`,
+  });
+
+  return updated;
+}
+
+/**
+ * Release all active claims — return pending items back to pool.
+ */
+export async function releaseClaims(userId: string) {
+  const prisma = getPrisma();
+  const result = await prisma.feed.updateMany({
+    where: {
+      claimedBy: userId,
+      status: 'pending',
+    },
+    data: { claimedBy: null, claimedAt: null, claimExpiresAt: null },
+  });
+  return { released: result.count };
 }
 
 /**
@@ -186,14 +215,68 @@ export async function extendClaims(userId: string) {
 }
 
 /**
+ * Personal today's review stats for a user.
+ */
+export async function myStats(userId: string) {
+  const prisma = getPrisma();
+  const today = new Date().toISOString().slice(0, 10);
+  const startOfDay = new Date(today + 'T00:00:00.000Z');
+  const endOfDay = new Date(today + 'T23:59:59.999Z');
+
+  const dayRange = { gte: startOfDay, lte: endOfDay };
+
+  const [approved, rejected, posted] = await Promise.all([
+    prisma.feed.count({ where: { reviewedBy: userId, status: 'approved', reviewedAt: dayRange } }),
+    prisma.feed.count({ where: { reviewedBy: userId, status: 'rejected', reviewedAt: dayRange } }),
+    prisma.feed.count({ where: { reviewedBy: userId, status: 'posted', reviewedAt: dayRange } }),
+  ]);
+
+  // 跳过数：今天由该用户认领但释放的（audit log SKIP）
+  const skipped = await prisma.auditLog.count({
+    where: {
+      operator: userId,
+      eventType: 'FEED_SKIPPED',
+      createdAt: dayRange,
+    },
+  });
+
+  const total = approved + rejected + skipped;
+
+  // 平均用时：从 claimedAt 到 reviewedAt 的秒数
+  const reviewedFeeds = await prisma.feed.findMany({
+    where: {
+      reviewedBy: userId,
+      reviewedAt: dayRange,
+      claimedAt: { not: null },
+    },
+    select: { claimedAt: true, reviewedAt: true },
+  });
+  let avgSeconds = 0;
+  if (reviewedFeeds.length > 0) {
+    const totalMs = reviewedFeeds.reduce((sum, f) => {
+      if (f.claimedAt && f.reviewedAt) {
+        return sum + (f.reviewedAt.getTime() - f.claimedAt.getTime());
+      }
+      return sum;
+    }, 0);
+    avgSeconds = Math.round(totalMs / reviewedFeeds.length / 1000);
+  }
+
+  return { total, approved, rejected, skipped, posted, avgSeconds };
+}
+
+/**
  * Team-level stats.
  */
-export async function stats() {
+export async function stats(userId?: string) {
   const prisma = getPrisma();
   const now = new Date();
   const [totalPending, claimed, unclaimed] = await Promise.all([
     prisma.feed.count({ where: { status: 'pending' } }),
-    prisma.feed.count({ where: { status: 'pending', claimedBy: { not: null }, claimExpiresAt: { gt: now } } }),
+    // 如果传了 userId，只统计该用户的认领数；否则统计全局
+    userId
+      ? prisma.feed.count({ where: { status: 'pending', claimedBy: userId, claimExpiresAt: { gt: now } } })
+      : prisma.feed.count({ where: { status: 'pending', claimedBy: { not: null }, claimExpiresAt: { gt: now } } }),
     prisma.feed.count({ where: { status: 'pending', OR: [{ claimedBy: null }, { claimExpiresAt: { lt: now } }] } }),
   ]);
   return { totalPending, claimed, unclaimed };

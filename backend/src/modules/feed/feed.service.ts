@@ -26,12 +26,13 @@ interface FeedListParams {
   threadFid?: string | number;
   personaId?: string;
   claimedBy?: string;
+  reviewedBy?: string;
   page?: number;
   limit?: number;
   sort?: string;
 }
 
-export async function list({ status, source, threadFid, personaId, claimedBy, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
+export async function list({ status, source, threadFid, personaId, claimedBy, reviewedBy, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
   const prisma = getPrisma();
   const where: Record<string, any> = {};
   if (status) where.status = status;
@@ -39,6 +40,7 @@ export async function list({ status, source, threadFid, personaId, claimedBy, pa
   if (threadFid) where.threadFid = parseInt(String(threadFid), 10);
   if (personaId) where.personaId = personaId;
   if (claimedBy) where.claimedBy = claimedBy;
+  if (reviewedBy) where.reviewedBy = reviewedBy;
 
   limit = Math.min(parseInt(String(limit)) || 20, 200);
   const skip = (page - 1) * limit;
@@ -57,7 +59,14 @@ export async function list({ status, source, threadFid, personaId, claimedBy, pa
 
 export async function getById(id: string) {
   const prisma = getPrisma();
-  const feed = await prisma.feed.findUnique({ where: { id } });
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let feed;
+  if (uuidRegex.test(id)) {
+    feed = await prisma.feed.findUnique({ where: { id } });
+  }
+  if (!feed) {
+    feed = await prisma.feed.findUnique({ where: { feedId: id } });
+  }
   if (!feed) throw new NotFoundError('Feed');
   return feed;
 }

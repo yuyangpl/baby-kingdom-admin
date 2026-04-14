@@ -37,15 +37,13 @@ export async function scannerTask(req: Request, res: Response): Promise<void> {
       const stats = await scanBoard(board.fid);
       const duration = Date.now() - start;
 
-      // 只记录有命中的扫描（hits > 0 或 feeds > 0）
-      if (stats.hits > 0 || stats.feeds > 0) {
-        await logTask('scanner', {
-          status: stats.status === 'interrupted' ? 'failed' : 'completed',
-          duration,
-          result: stats,
-          triggeredBy,
-        });
-      }
+      // 记录所有扫描结果（包括无命中），确保已扫描总数准确
+      await logTask('scanner', {
+        status: stats.status === 'interrupted' ? 'failed' : (stats.status === 'skipped' ? 'skipped' : 'completed'),
+        duration,
+        result: stats,
+        triggeredBy,
+      });
       results.push(stats);
     }
 

@@ -21,6 +21,10 @@
         <!-- Feeds (all authenticated) -->
         <div class="nav-group">
           <div v-if="!isCollapsed" class="nav-group__title">{{ $t('nav.content') }}</div>
+          <router-link v-if="!auth.isAdmin" to="/my-dashboard" class="nav-item" :class="{ 'nav-item--active': $route.name === 'my-dashboard' }">
+            <el-icon class="nav-item__icon"><DataLine /></el-icon>
+            <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.myDashboard') }}</span>
+          </router-link>
           <router-link to="/feeds" class="nav-item" :class="{ 'nav-item--active': $route.name === 'feeds' }">
             <el-icon class="nav-item__icon"><Document /></el-icon>
             <span v-if="!isCollapsed" class="nav-item__text">{{ $t('nav.feedQueue') }}</span>
@@ -89,6 +93,20 @@
           </router-link>
         </div>
       </nav>
+
+      <!-- Approver: personal stats (fixed bottom) -->
+      <div v-if="!auth.isAdmin && !isCollapsed" class="sidebar-stats">
+        <div class="sidebar-stats__row">
+          <span class="sidebar-stats__label">{{ $t('myDashboard.processed') }}</span>
+          <span class="sidebar-stats__value">{{ approverStats.total }} {{ $t('myDashboard.items') }}</span>
+        </div>
+        <div class="sidebar-stats__detail">
+          <span class="sidebar-stats__chip sidebar-stats__chip--ok">{{ $t('myDashboard.approved') }} {{ approverStats.approved }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--posted">{{ $t('myDashboard.posted') }} {{ approverStats.posted }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--no">{{ $t('myDashboard.rejected') }} {{ approverStats.rejected }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--skip">{{ $t('myDashboard.skipped') }} {{ approverStats.skipped }}</span>
+        </div>
+      </div>
     </aside>
 
     <!-- Main area -->
@@ -152,6 +170,13 @@ const { locale } = useI18n();
 const isCollapsed = ref<boolean>(false);
 const dataSourcesOpen = ref<boolean>(false);
 const queueStats = ref({ unclaimed: 0, claimed: 0 });
+const approverStats = ref({ total: 0, approved: 0, rejected: 0, skipped: 0, posted: 0, avgSeconds: 0 });
+const approverAvgTime = computed(() => {
+  if (approverStats.value.total === 0) return '--';
+  const s = approverStats.value.avgSeconds;
+  if (s < 60) return `${s} 秒/條`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} /條`;
+});
 
 function toggleLanguage() {
   const newLang = locale.value === 'zh-HK' ? 'en' : 'zh-HK';
@@ -164,23 +189,39 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const loadQueueStats = async () => {
   try {
-    const res: any = await api.get('/v1/review-queue/stats');
+    const params = auth.isAdmin ? {} : { mine: 'true' };
+    const res: any = await api.get('/v1/review-queue/stats', { params });
     const data = res.data || res;
     queueStats.value = { unclaimed: data.unclaimed || 0, claimed: data.claimed || 0 };
   } catch { /* ignore */ }
 };
 
-onMounted(async () => {
-  await loadQueueStats();
+const loadApproverStats = async () => {
+  if (auth.isAdmin) return;
+  try {
+    const res: any = await api.get('/v1/review-queue/my-stats');
+    approverStats.value = res.data || res;
+  } catch { /* ignore */ }
+};
 
-  // Poll queue stats every 30s
+const onRefreshStats = () => {
+  loadQueueStats();
+  loadApproverStats();
+};
+
+onMounted(async () => {
+  await Promise.all([loadQueueStats(), loadApproverStats()]);
+  window.addEventListener('refresh-queue-stats', onRefreshStats);
+
+  // Poll stats every 30s
   pollTimer = setInterval(async () => {
-    await loadQueueStats();
+    await Promise.all([loadQueueStats(), loadApproverStats()]);
   }, 30000);
 });
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer);
+  window.removeEventListener('refresh-queue-stats', onRefreshStats);
 });
 
 async function handleLogout() {
@@ -291,6 +332,59 @@ async function handleLogout() {
 .nav-item--sub {
   padding-left: 44px;
   font-size: 13px;
+}
+
+/* Sidebar approver stats */
+.sidebar-stats {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+.sidebar-stats__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.sidebar-stats__row:last-child { margin-bottom: 0; }
+.sidebar-stats__label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.sidebar-stats__value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.sidebar-stats__detail {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.sidebar-stats__chip {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.sidebar-stats__chip--ok {
+  background: rgba(103, 194, 58, 0.15);
+  color: #67c23a;
+}
+.sidebar-stats__chip--posted {
+  background: rgba(64, 158, 255, 0.15);
+  color: #409eff;
+}
+.sidebar-stats__chip--no {
+  background: rgba(245, 108, 108, 0.15);
+  color: #f56c6c;
+}
+.sidebar-stats__chip--skip {
+  background: rgba(230, 162, 60, 0.15);
+  color: #e6a23c;
 }
 
 /* Main wrapper */

@@ -168,6 +168,19 @@ export async function updateUserRole(userId: string, role: string, operatorId: s
   return stripPassword(updated);
 }
 
+export async function resetPassword(userId: string, newPassword: string) {
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new NotFoundError('User');
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+  return stripPassword(user);
+}
+
 export async function deleteUser(userId: string, operatorId: string) {
   if (userId === operatorId) {
     throw new ForbiddenError('Cannot delete yourself');

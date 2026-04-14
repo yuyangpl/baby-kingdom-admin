@@ -13,6 +13,7 @@
       :rules="rules"
       label-position="top"
       class="persona-form"
+      autocomplete="off"
     >
       <el-form-item :label="$t('persona.accountId')" prop="accountId">
         <el-input v-model="form.accountId" :disabled="isEdit" placeholder="e.g. acc_001" />
@@ -24,7 +25,7 @@
 
       <el-form-item :label="$t('persona.bkPassword')" prop="bkPassword">
         <div style="display: flex; gap: 8px; width: 100%;">
-          <el-input v-model="form.bkPassword" type="password" show-password :placeholder="$t('persona.bkPasswordPlaceholder')" />
+          <el-input v-model="form.bkPassword" type="password" show-password :placeholder="$t('persona.bkPasswordPlaceholder')" autocomplete="off" />
           <el-button :loading="verifying" @click="verifyBkLogin">{{ $t('persona.verifyLogin') }}</el-button>
         </div>
       </el-form-item>

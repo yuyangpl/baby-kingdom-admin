@@ -5,13 +5,14 @@ import { ValidationError, BusinessError } from '../../shared/errors.js';
 import { preflight } from '../../shared/health-monitor.js';
 
 export async function list(req: Request, res: Response): Promise<void> {
-  const { status, source, threadFid, personaId, claimedBy, page, limit, sort } = req.query;
+  const { status, source, threadFid, personaId, claimedBy, reviewedBy, page, limit, sort } = req.query;
   const result = await feedService.list({
     status: status as string | undefined,
     source: source as string | undefined,
     threadFid: threadFid as string | number | undefined,
     personaId: personaId as string | undefined,
     claimedBy: claimedBy as string | undefined,
+    reviewedBy: reviewedBy as string | undefined,
     page: parseInt(page as string) || 1,
     limit: parseInt(limit as string) || 20,
     sort: (sort as string) || '-createdAt',
