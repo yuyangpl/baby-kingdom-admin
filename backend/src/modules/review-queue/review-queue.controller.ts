@@ -34,7 +34,18 @@ export async function extendClaims(req: Request, res: Response): Promise<void> {
   success(res, result);
 }
 
+export async function releaseClaims(req: Request, res: Response): Promise<void> {
+  const result = await service.releaseClaims(req.user!.id);
+  success(res, result);
+}
+
+export async function getMyStats(req: Request, res: Response): Promise<void> {
+  const result = await service.myStats(req.user!.id);
+  success(res, result);
+}
+
 export async function getStats(req: Request, res: Response): Promise<void> {
-  const result = await service.stats();
+  const mine = req.query.mine === 'true';
+  const result = await service.stats(mine ? req.user!.id : undefined);
   success(res, result);
 }

@@ -9,6 +9,7 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', name: 'dashboard', component: () => import('../views/dashboard/DashboardView.vue'), meta: { role: 'admin' } },
       { path: 'feeds', name: 'feeds', component: () => import('../views/feed/FeedView.vue') },
+      { path: 'my-dashboard', name: 'my-dashboard', component: () => import('../views/my-dashboard/MyDashboardView.vue'), meta: { maxRole: 'approver' } },
       { path: 'personas', name: 'personas', component: () => import('../views/persona/PersonaView.vue'), meta: { role: 'approver' } },
       { path: 'tones', name: 'tones', component: () => import('../views/tone/ToneView.vue'), meta: { role: 'approver' } },
       { path: 'topic-rules', name: 'topic-rules', component: () => import('../views/topic-rules/TopicRulesView.vue'), meta: { role: 'approver' } },
@@ -47,10 +48,16 @@ router.beforeEach(async (to) => {
     if (!auth.user) return { name: 'login' };
   }
 
-  // Role check
+  // Role check: minimum role
   const requiredRole = to.meta.role as string | undefined;
   if (requiredRole && roleHierarchy[auth.role ?? ''] < roleHierarchy[requiredRole]) {
-    return { name: 'feeds' };
+    return { name: auth.role === 'admin' ? 'feeds' : 'my-dashboard' };
+  }
+
+  // Role check: maximum role (e.g. admin should not access approver-only pages)
+  const maxRole = to.meta.maxRole as string | undefined;
+  if (maxRole && roleHierarchy[auth.role ?? ''] > roleHierarchy[maxRole]) {
+    return { name: 'dashboard' };
   }
 });
 

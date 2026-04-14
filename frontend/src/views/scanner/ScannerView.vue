@@ -52,6 +52,22 @@
         style="width: 100%"
         highlight-current-row
       >
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div v-if="row.result?.skipped" style="padding: 8px 20px; font-size: 13px; color: #909399;">
+              {{ $t('scanner.skippedDetail') }}:
+              {{ $t('scanner.skipQueueFull') }}: {{ row.result.skipped.queueFull }},
+              {{ $t('scanner.skipReplyCount') }}: {{ row.result.skipped.replyCount }},
+              {{ $t('scanner.skipDuplicate') }}: {{ row.result.skipped.duplicate }},
+              {{ $t('scanner.skipLowRelevance') }}: {{ row.result.skipped.lowRelevance }},
+              {{ $t('scanner.skipNotWorth') }}: {{ row.result.skipped.notWorth }},
+              {{ $t('scanner.skipNoPersona') }}: {{ row.result.skipped.noPersona }}
+            </div>
+            <div v-if="row.error" style="padding: 8px 20px; color: var(--el-color-danger);">
+              {{ row.error }}
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="createdAt" :label="$t('common.time')" min-width="170">
           <template #default="{ row }">
             {{ row.createdAt ? new Date(row.createdAt).toLocaleString() : '--' }}
@@ -108,22 +124,6 @@
             >
               {{ scanRecordStatusLabel(row) }}
             </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column type="expand">
-          <template #default="{ row }">
-            <div v-if="row.result?.skipped" style="padding: 8px 20px; font-size: 13px; color: #909399;">
-              {{ $t('scanner.skippedDetail') }}:
-              {{ $t('scanner.skipQueueFull') }}: {{ row.result.skipped.queueFull }},
-              {{ $t('scanner.skipReplyCount') }}: {{ row.result.skipped.replyCount }},
-              {{ $t('scanner.skipDuplicate') }}: {{ row.result.skipped.duplicate }},
-              {{ $t('scanner.skipLowRelevance') }}: {{ row.result.skipped.lowRelevance }},
-              {{ $t('scanner.skipNotWorth') }}: {{ row.result.skipped.notWorth }},
-              {{ $t('scanner.skipNoPersona') }}: {{ row.result.skipped.noPersona }}
-            </div>
-            <div v-if="row.error" style="padding: 8px 20px; color: var(--el-color-danger);">
-              {{ row.error }}
-            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -311,10 +311,13 @@ const openFeedDialog = async (row: any) => {
   showFeedDialog.value = true
   dialogLoading.value = true
   try {
-    const from = row.createdAt
-    const duration = row.duration || 60000
-    const to = new Date(new Date(from).getTime() + duration).toISOString()
-    const res: any = await api.get('/v1/scanner/history', { params: { from, to, limit: 50 } })
+    // 用扫描开始前1分钟到结束后2分钟的范围，确保覆盖
+    const startTime = new Date(row.createdAt).getTime()
+    const duration = row.duration || 300000
+    const from = new Date(startTime - 60000).toISOString()
+    const to = new Date(startTime + duration + 120000).toISOString()
+    const fid = row.result?.boardFid
+    const res: any = await api.get('/v1/scanner/history', { params: { from, to, fid, limit: 50 } })
     const payload = res.data ?? res
     dialogFeeds.value = Array.isArray(payload) ? payload : (payload.data ?? [])
   } catch {

@@ -7,12 +7,20 @@ import { postFeed } from '../poster/poster.service.js';
 import { pullAndStore } from '../google-trends/google-trends.service.js';
 import * as configService from '../config/config.service.js';
 import { logTask } from '../task-log/task-log.service.js';
+import { preflight } from '../../shared/health-monitor.js';
 import logger from '../../shared/logger.js';
 
 export async function scannerTask(req: Request, res: Response): Promise<void> {
   const paused = await configService.getValue('SCANNER_PAUSED');
   if (paused === 'true') {
     res.json({ skipped: true, reason: 'paused' });
+    return;
+  }
+
+  // Pre-check Gemini + BK Forum connectivity
+  const failures = await preflight();
+  if (failures.length > 0) {
+    res.json({ skipped: true, reason: 'preflight_failed', failures });
     return;
   }
 
@@ -29,15 +37,13 @@ export async function scannerTask(req: Request, res: Response): Promise<void> {
       const stats = await scanBoard(board.fid);
       const duration = Date.now() - start;
 
-      // 只记录有命中的扫描（hits > 0 或 feeds > 0）
-      if (stats.hits > 0 || stats.feeds > 0) {
-        await logTask('scanner', {
-          status: stats.status === 'interrupted' ? 'failed' : 'completed',
-          duration,
-          result: stats,
-          triggeredBy,
-        });
-      }
+      // 记录所有扫描结果（包括无命中），确保已扫描总数准确
+      await logTask('scanner', {
+        status: stats.status === 'interrupted' ? 'failed' : (stats.status === 'skipped' ? 'skipped' : 'completed'),
+        duration,
+        result: stats,
+        triggeredBy,
+      });
       results.push(stats);
     }
 
@@ -53,6 +59,13 @@ export async function trendsTask(req: Request, res: Response): Promise<void> {
   const paused = await configService.getValue('TRENDS_PAUSED');
   if (paused === 'true') {
     res.json({ skipped: true, reason: 'paused' });
+    return;
+  }
+
+  // Pre-check Gemini + BK Forum connectivity
+  const failures = await preflight();
+  if (failures.length > 0) {
+    res.json({ skipped: true, reason: 'preflight_failed', failures });
     return;
   }
 

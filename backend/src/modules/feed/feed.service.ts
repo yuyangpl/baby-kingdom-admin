@@ -25,18 +25,22 @@ interface FeedListParams {
   source?: string;
   threadFid?: string | number;
   personaId?: string;
+  claimedBy?: string;
+  reviewedBy?: string;
   page?: number;
   limit?: number;
   sort?: string;
 }
 
-export async function list({ status, source, threadFid, personaId, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
+export async function list({ status, source, threadFid, personaId, claimedBy, reviewedBy, page = 1, limit = 20, sort = '-createdAt' }: FeedListParams) {
   const prisma = getPrisma();
   const where: Record<string, any> = {};
   if (status) where.status = status;
   if (source) where.source = { has: source };
   if (threadFid) where.threadFid = parseInt(String(threadFid), 10);
   if (personaId) where.personaId = personaId;
+  if (claimedBy) where.claimedBy = claimedBy;
+  if (reviewedBy) where.reviewedBy = reviewedBy;
 
   limit = Math.min(parseInt(String(limit)) || 20, 200);
   const skip = (page - 1) * limit;
@@ -55,7 +59,14 @@ export async function list({ status, source, threadFid, personaId, page = 1, lim
 
 export async function getById(id: string) {
   const prisma = getPrisma();
-  const feed = await prisma.feed.findUnique({ where: { id } });
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let feed;
+  if (uuidRegex.test(id)) {
+    feed = await prisma.feed.findUnique({ where: { id } });
+  }
+  if (!feed) {
+    feed = await prisma.feed.findUnique({ where: { feedId: id } });
+  }
   if (!feed) throw new NotFoundError('Feed');
   return feed;
 }
@@ -64,7 +75,7 @@ export async function getById(id: string) {
 export async function approve(feedId: string, userId: string, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'pending') throw new BusinessError('Can only approve pending feeds');
+  if (!['pending', 'failed'].includes(feed.status)) throw new BusinessError('Can only approve pending or failed feeds');
 
   const prisma = getPrisma();
   const updated = await prisma.feed.update({
@@ -73,6 +84,7 @@ export async function approve(feedId: string, userId: string, ip: string) {
       status: 'approved',
       reviewedBy: userId,
       reviewedAt: new Date(),
+      failReason: null,
       claimedBy: null,
       claimedAt: null,
     },
@@ -92,6 +104,31 @@ export async function approve(feedId: string, userId: string, ip: string) {
     body: JSON.stringify({ feedId: feed.id, triggeredBy: 'approve' }),
     signal: AbortSignal.timeout(30000),
   }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
+
+  return updated;
+}
+
+export async function revertToPending(feedId: string, userId: string, ip: string) {
+  const feed = await findFeed(feedId);
+  if (!feed) throw new NotFoundError('Feed');
+  if (feed.status !== 'rejected') throw new BusinessError('Can only revert rejected feeds');
+
+  const prisma = getPrisma();
+  const updated = await prisma.feed.update({
+    where: { id: feed.id },
+    data: {
+      status: 'pending',
+      reviewedBy: null,
+      reviewedAt: null,
+      adminNotes: null,
+    },
+  });
+
+  await auditService.log({
+    operator: userId, eventType: 'FEED_REVERTED', module: 'feed',
+    feedId: feed.feedId, targetId: feed.id, ip,
+    actionDetail: `Reverted feed ${feed.feedId} to pending`,
+  });
 
   return updated;
 }

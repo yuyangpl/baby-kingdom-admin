@@ -35,8 +35,8 @@ export function createRateLimit(options: RateLimitOptions, forceEnable = false):
 }
 
 // Pre-built limiters (disabled in test mode)
-export const loginLimiter    = createRateLimit({ windowMs: 60 * 1000,      max: 5  });
+export const loginLimiter    = createRateLimit({ windowMs: 60 * 1000,      max: 20  });
 export const refreshLimiter  = createRateLimit({ windowMs: 60 * 1000,      max: 10 });
 export const generateLimiter = createRateLimit({ windowMs: 60 * 1000,      max: 10 });
 export const scannerLimiter  = createRateLimit({ windowMs: 5 * 60 * 1000,  max: 3  });
-export const globalLimiter   = createRateLimit({ windowMs: 60 * 1000,      max: 100 });
+export const globalLimiter   = createRateLimit({ windowMs: 60 * 1000,      max: 300 });

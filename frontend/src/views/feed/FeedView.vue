@@ -79,63 +79,6 @@
       </div>
     </div>
 
-    <!-- Workbench Mode -->
-    <template v-if="workbenchMode && currentWorkbenchFeed">
-      <el-card shadow="never" class="workbench-card">
-        <template #header>
-          <div class="workbench-header">
-            <span class="workbench-title">
-              {{ $t('feed.workbench') }} ({{ $t('feed.workbenchProgress', { current: workbenchIndex + 1, total: workbenchFeeds.length }) }})
-            </span>
-            <el-button size="small" @click="exitWorkbench">{{ $t('feed.exitWorkbench') }}</el-button>
-          </div>
-        </template>
-
-        <div class="workbench-feed">
-          <div class="workbench-meta">
-            <code>{{ currentWorkbenchFeed.feed_id || currentWorkbenchFeed.feedId }}</code>
-            <el-tag size="small" type="info">{{ currentWorkbenchFeed.persona_id || currentWorkbenchFeed.personaId }}</el-tag>
-            <el-tag size="small">{{ boardMap[currentWorkbenchFeed.thread_fid || currentWorkbenchFeed.threadFid] || `fid:${currentWorkbenchFeed.thread_fid || currentWorkbenchFeed.threadFid}` }}</el-tag>
-          </div>
-
-          <h4 v-if="currentWorkbenchFeed.thread_subject || currentWorkbenchFeed.threadSubject" class="workbench-subject">
-            {{ currentWorkbenchFeed.thread_subject || currentWorkbenchFeed.threadSubject }}
-          </h4>
-
-          <div class="workbench-content">
-            {{ currentWorkbenchFeed.final_content || currentWorkbenchFeed.finalContent || currentWorkbenchFeed.draft_content || currentWorkbenchFeed.draftContent }}
-          </div>
-        </div>
-
-        <div class="workbench-actions">
-          <el-button type="success" size="large" @click="workbenchApprove">
-            ✓ {{ $t('feed.approve') }} (J)
-          </el-button>
-          <el-button type="danger" size="large" @click="workbenchReject">
-            ✗ {{ $t('feed.reject') }} (K)
-          </el-button>
-          <el-button size="large" @click="workbenchSkip">
-            ↷ {{ $t('feed.skipItem') }} (S)
-          </el-button>
-        </div>
-
-        <div v-if="workbenchFeeds[workbenchIndex + 1]" class="workbench-preview">
-          {{ $t('feed.nextPreview') }}: {{ workbenchFeeds[workbenchIndex + 1].feed_id || workbenchFeeds[workbenchIndex + 1].feedId }}
-        </div>
-      </el-card>
-    </template>
-
-    <!-- Start Review CTA -->
-    <div v-else-if="activeTab === 'pending' && canApprove && !workbenchMode" class="start-review-cta">
-      <div class="cta-stats">
-        <span>{{ $t('feed.poolRemaining', { count: teamStats.unclaimed }) }}</span>
-        <span>{{ $t('feed.teamClaimed', { count: teamStats.claimed }) }}</span>
-      </div>
-      <el-button type="primary" size="large" @click="startReview" :disabled="teamStats.unclaimed === 0">
-        ▶ {{ $t('feed.startReview') }} ({{ $t('feed.startReviewDesc', { count: 10 }) }})
-      </el-button>
-    </div>
-
     <!-- Feed Cards (scrollable) -->
     <div v-loading="feedStore.loading" class="feed-cards">
       <div
@@ -187,13 +130,14 @@
             <div v-if="feed.trendSummary" class="feed-card__trend-summary">
               {{ feed.trendSummary }}
             </div>
-            <div v-if="feed.draftContent && feed.postType === 'reply'" class="feed-card__preview">
+            <div v-if="feed.draftContent" class="feed-card__preview">
               <span class="feed-card__preview-label">{{ feed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
-              {{ feed.draftContent }}
+              {{ truncate(feed.draftContent, 200) }}
             </div>
-            <div v-if="feed.finalContent" class="feed-card__draft-box">
+            <div v-if="feed.finalContent && feed.finalContent !== feed.draftContent" class="feed-card__draft-box">
               {{ truncate(feed.finalContent, 200) }}
             </div>
+            <div v-if="feed.failReason" class="feed-card__fail">{{ feed.failReason }}</div>
           </div>
           <!-- Right: Persona Info -->
           <div v-if="feed.bkUsername" class="feed-card__persona">
@@ -298,14 +242,14 @@
             </span>
           </div>
           <div class="feed-card__footer-right">
-            <el-button v-if="authStore.isApprover" size="small" @click="openEdit(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" @click="openEdit(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isApprover" size="small" type="warning" @click="regenerate(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" type="warning" @click="regenerate(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button
-              v-if="canApprove && feed.status !== 'rejected'"
+              v-if="canApprove && !['rejected', 'posted'].includes(feed.status)"
               size="small"
               class="btn-reject"
               @click="rejectWithNotes(feed)"
@@ -313,12 +257,20 @@
               {{ $t('feed.reject') }}
             </el-button>
             <el-button
-              v-if="canApprove && feed.status !== 'approved' && feed.status !== 'posted'"
+              v-if="canApprove && ['pending', 'failed'].includes(feed.status)"
               size="small"
               class="btn-approve"
               @click="approve(feed)"
             >
-              {{ $t('feed.approve') }}
+              {{ feed.status === 'failed' ? $t('myDashboard.reApprove') : $t('feed.approve') }}
+            </el-button>
+            <el-button
+              v-if="canApprove && feed.status === 'rejected'"
+              size="small"
+              class="btn-approve"
+              @click="revertToPending(feed)"
+            >
+              {{ $t('feed.revertToPending') }}
             </el-button>
             <el-button
               v-if="feed.status === 'approved'"
@@ -363,7 +315,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { RefreshRight, ArrowDown } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
@@ -379,7 +331,7 @@ const authStore = useAuthStore()
 
 // approver and admin can approve/reject
 const canApprove = computed(() => authStore.role === 'admin' || authStore.role === 'approver')
-
+const isApproverOnly = computed(() => authStore.role === 'approver')
 const activeTab = ref<string>('pending')
 const selectedIds = ref<Set<string>>(new Set())
 const showEditModal = ref<boolean>(false)
@@ -392,134 +344,6 @@ const personaCache = ref<Record<string, any>>({})
 const boards = ref<{ fid: number; name: string }[]>([])
 const boardMap = ref<Record<number, string>>({})
 const boardFilterValue = ref<string>('')
-
-// Workbench state
-const workbenchMode = ref(false)
-const workbenchFeeds = ref<any[]>([])
-const workbenchIndex = ref(0)
-const workbenchExpiresAt = ref<string | null>(null)
-const poolRemaining = ref(0)
-const teamStats = ref({ totalPending: 0, claimed: 0, unclaimed: 0 })
-let heartbeatTimer: ReturnType<typeof setInterval> | null = null
-
-const currentWorkbenchFeed = computed(() =>
-  workbenchFeeds.value[workbenchIndex.value] || null
-)
-
-const startReview = async () => {
-  try {
-    const res: any = await api.post('/v1/review-queue/claim-batch', { count: 10 })
-    const data = res.data || res
-    if (!data.claimed || data.claimed.length === 0) {
-      ElMessage.info(t('feed.workbenchEmpty'))
-      return
-    }
-    workbenchFeeds.value = data.claimed
-    workbenchIndex.value = 0
-    workbenchExpiresAt.value = data.claimExpiresAt
-    poolRemaining.value = data.remainingInPool
-    workbenchMode.value = true
-    startHeartbeat()
-  } catch (err: any) {
-    ElMessage.error(err.error?.message || err.message || t('common.error'))
-  }
-}
-
-const workbenchApprove = async () => {
-  const feed = currentWorkbenchFeed.value
-  if (!feed) return
-  try {
-    await api.post(`/v1/review-queue/${feed.id}/approve`)
-    ElMessage.success(t('feed.approve'))
-    advanceWorkbench()
-  } catch (err: any) {
-    ElMessage.error(err.error?.message || err.message || t('common.error'))
-  }
-}
-
-const workbenchReject = async () => {
-  const feed = currentWorkbenchFeed.value
-  if (!feed) return
-  try {
-    const { value: notes } = await ElMessageBox.prompt(t('feed.rejectNotesPrompt'), t('feed.reject'), {
-      confirmButtonText: t('feed.reject'),
-      cancelButtonText: t('common.cancel'),
-      inputType: 'textarea',
-    })
-    await api.post(`/v1/review-queue/${feed.id}/reject`, { notes })
-    ElMessage.success(t('feed.reject'))
-    advanceWorkbench()
-  } catch (err: any) {
-    if (err === 'cancel') return
-    ElMessage.error(err.error?.message || err.message || t('common.error'))
-  }
-}
-
-const workbenchSkip = async () => {
-  const feed = currentWorkbenchFeed.value
-  if (!feed) return
-  try {
-    await api.post(`/v1/review-queue/${feed.id}/skip`)
-    advanceWorkbench()
-  } catch (err: any) {
-    ElMessage.error(err.error?.message || err.message || t('common.error'))
-  }
-}
-
-const advanceWorkbench = () => {
-  workbenchFeeds.value.splice(workbenchIndex.value, 1)
-  if (workbenchFeeds.value.length === 0) {
-    workbenchMode.value = false
-    stopHeartbeat()
-    ElMessage.success(t('feed.workbenchComplete'))
-    loadFeeds()
-    loadStats()
-    return
-  }
-  if (workbenchIndex.value >= workbenchFeeds.value.length) {
-    workbenchIndex.value = workbenchFeeds.value.length - 1
-  }
-}
-
-const exitWorkbench = () => {
-  workbenchMode.value = false
-  stopHeartbeat()
-  loadFeeds()
-  loadStats()
-}
-
-const startHeartbeat = () => {
-  stopHeartbeat()
-  heartbeatTimer = setInterval(async () => {
-    try {
-      await api.post('/v1/review-queue/extend-claims')
-    } catch { /* ignore */ }
-  }, 5 * 60 * 1000)
-}
-
-const stopHeartbeat = () => {
-  if (heartbeatTimer) {
-    clearInterval(heartbeatTimer)
-    heartbeatTimer = null
-  }
-}
-
-const loadStats = async () => {
-  try {
-    const res: any = await api.get('/v1/review-queue/stats')
-    teamStats.value = res.data || res
-  } catch { /* ignore */ }
-}
-
-const handleKeydown = (e: KeyboardEvent) => {
-  if (!workbenchMode.value) return
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-  switch (e.key.toLowerCase()) {
-    case 'j': e.preventDefault(); workbenchApprove(); break
-    case 'k': e.preventDefault(); workbenchReject(); break
-    case 's': e.preventDefault(); workbenchSkip(); break
-  }
-}
 
 const loadPersonaDetail = async (accountId: string) => {
   if (!accountId || personaCache.value[accountId]) return
@@ -626,15 +450,41 @@ const toggleSelect = (feedId: string, checked: boolean) => {
   selectedIds.value = copy
 }
 
+const applyApproverFilter = () => {
+  if (!isApproverOnly.value) {
+    feedStore.filters.claimedBy = ''
+    feedStore.filters.reviewedBy = ''
+    return
+  }
+  const userId = authStore.user?.id || ''
+  if (feedStore.filters.status === 'pending') {
+    feedStore.filters.claimedBy = userId
+    feedStore.filters.reviewedBy = ''
+  } else {
+    feedStore.filters.claimedBy = ''
+    feedStore.filters.reviewedBy = userId
+  }
+}
+
 const loadFeeds = async () => {
+  applyApproverFilter()
   await feedStore.fetchFeeds()
 }
 
 const loadTabCounts = async () => {
   const statuses = ['pending', 'approved', 'posted', 'rejected', 'failed']
+  const userId = authStore.user?.id || ''
   await Promise.all(statuses.map(async (s) => {
     try {
-      const res = await api.get('/v1/feeds', { params: { status: s, limit: 1 } })
+      const params: Record<string, string | number> = { status: s, limit: 1 }
+      if (isApproverOnly.value) {
+        if (s === 'pending') {
+          params.claimedBy = userId
+        } else {
+          params.reviewedBy = userId
+        }
+      }
+      const res = await api.get('/v1/feeds', { params })
       tabCounts.value[s] = (res as any).pagination?.total ?? 0
     } catch { /* ignore */ }
   }))
@@ -692,6 +542,17 @@ const approve = async (row: any) => {
   }
 }
 
+const revertToPending = async (row: any) => {
+  try {
+    await api.post(`/v1/feeds/${row.feedId}/revert-pending`)
+    ElMessage.success(t('common.success'))
+    loadFeeds()
+    loadTabCounts()
+  } catch (err: any) {
+    ElMessage.error(err.message || t('common.error'))
+  }
+}
+
 const rejectWithNotes = async (row: any) => {
   try {
     const { value: notes } = await ElMessageBox.prompt(
@@ -722,7 +583,7 @@ const postNow = async (row: any) => {
       { confirmButtonText: t('feed.postNow'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
     await api.post(`/v1/poster/${row.id || row._id}/post`)
-    ElMessage.success(t('feed.postQueued'))
+    ElMessage.success(t('feed.postSuccess'))
     loadFeeds()
   } catch (err: any) {
     if (err === 'cancel') return
@@ -785,25 +646,8 @@ onMounted(() => {
   loadTabCounts()
   loadTones()
   loadBoards()
-  loadStats()
-  // Check for existing workbench
-  api.get('/v1/review-queue/my-workbench').then((res: any) => {
-    const data = res.data || res
-    if (data.feeds && data.feeds.length > 0) {
-      workbenchFeeds.value = data.feeds
-      workbenchIndex.value = 0
-      workbenchExpiresAt.value = data.claimExpiresAt
-      workbenchMode.value = true
-      startHeartbeat()
-    }
-  }).catch(() => {})
-  window.addEventListener('keydown', handleKeydown)
 })
 
-onUnmounted(() => {
-  stopHeartbeat()
-  window.removeEventListener('keydown', handleKeydown)
-})
 </script>
 
 <style scoped>
@@ -998,6 +842,17 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.feed-card__fail {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--el-color-danger);
+  border: 1px solid var(--el-color-danger-light-5);
+  border-radius: var(--bk-radius-sm);
+  padding: 6px 10px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
 /* Persona Info */
 .feed-card__persona {
   flex: 1;
@@ -1172,65 +1027,4 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* Workbench */
-.workbench-card {
-  margin-bottom: 20px;
-}
-.workbench-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.workbench-title {
-  font-weight: 600;
-  font-size: 16px;
-}
-.workbench-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.workbench-subject {
-  font-size: 15px;
-  margin: 8px 0;
-  color: var(--bk-foreground);
-}
-.workbench-content {
-  background: var(--el-fill-color-lighter);
-  padding: 16px;
-  border-radius: 8px;
-  line-height: 1.8;
-  white-space: pre-wrap;
-  font-size: 14px;
-  max-height: 300px;
-  overflow-y: auto;
-  margin: 12px 0;
-}
-.workbench-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  padding: 16px 0;
-}
-.workbench-preview {
-  text-align: center;
-  color: var(--bk-muted-fg);
-  font-size: 13px;
-  padding-top: 8px;
-  border-top: 1px solid var(--bk-border);
-}
-.start-review-cta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 60px 0;
-}
-.cta-stats {
-  display: flex;
-  gap: 24px;
-  color: var(--bk-muted-fg);
-  font-size: 14px;
-}
 </style>

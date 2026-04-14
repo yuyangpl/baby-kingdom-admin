@@ -29,16 +29,26 @@
         </el-descriptions-item>
       </el-descriptions>
 
-      <!-- Original thread content (replies only) -->
-      <div v-if="editData.postType === 'reply' && editData.threadContent" class="original-content">
+      <!-- Original thread content -->
+      <div v-if="editData.threadContent?.trim()" class="original-content">
         <div class="section-label">{{ $t('feed.originalThread') }}</div>
         <div class="content-box content-box--muted">{{ editData.threadContent }}</div>
       </div>
 
-      <!-- Trend summary (replies only, scanner source) -->
-      <div v-if="editData.postType === 'reply' && editData.trendSummary" class="original-content">
+      <!-- Trend summary -->
+      <div v-if="editData.trendSummary" class="original-content">
         <div class="section-label">{{ $t('feed.trendSummary') }}</div>
         <div class="content-box content-box--muted">{{ editData.trendSummary }}</div>
+      </div>
+
+      <!-- Draft / generated content preview -->
+      <div v-if="editData.draftContent" class="original-content">
+        <div class="section-label">{{ editData.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</div>
+        <div class="content-box content-box--preview">{{ editData.draftContent }}</div>
+      </div>
+      <div v-if="editData.finalContent && editData.finalContent !== editData.draftContent" class="original-content">
+        <div class="section-label">{{ $t('feed.finalContent') }}</div>
+        <div class="content-box content-box--preview">{{ editData.finalContent }}</div>
       </div>
 
       <!-- Editable form -->
@@ -84,6 +94,7 @@
     <template #footer>
       <div class="modal-footer">
         <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
+        <el-button type="warning" :loading="regenerating" @click="handleRegenerate">{{ $t('feed.regenerate') }}</el-button>
         <el-button :loading="savingDraft" @click="handleSaveDraft">{{ $t('common.save') }}</el-button>
         <el-button type="success" :loading="savingApprove" @click="handleSaveAndApprove">
           {{ $t('common.save') }} &amp; {{ $t('feed.approve') }}
@@ -116,6 +127,7 @@ const emit = defineEmits<{
 const formRef = ref<FormInstance>()
 const savingDraft = ref(false)
 const savingApprove = ref(false)
+const regenerating = ref(false)
 
 const tones = ref<{ toneId: string; displayName: string }[]>([])
 const tonesLoading = ref(false)
@@ -205,6 +217,24 @@ const handleSaveDraft = async () => {
   }
 }
 
+const handleRegenerate = async () => {
+  const feedId = props.editData?.feedId
+  if (!feedId) return
+  regenerating.value = true
+  try {
+    await api.post(`/v1/feeds/${feedId}/regenerate`)
+    // 重新加载 feed 内容
+    const res = await api.get(`/v1/feeds/${feedId}`)
+    const data = res.data || res
+    form.content = data.finalContent || data.draftContent || ''
+    ElMessage.success(t('feed.regenerate'))
+  } catch (err: any) {
+    ElMessage.error(err.message || t('common.error'))
+  } finally {
+    regenerating.value = false
+  }
+}
+
 const handleSaveAndApprove = async () => {
   savingApprove.value = true
   try {
@@ -245,14 +275,21 @@ const handleSaveAndApprove = async () => {
   border-radius: 4px;
   line-height: 1.6;
   white-space: pre-wrap;
+  word-break: break-all;
   font-size: 13px;
   max-height: 150px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .content-box--muted {
   background: #f5f7fa;
   border: 1px solid #ebeef5;
   color: #606266;
+}
+.content-box--preview {
+  background: var(--el-fill-color-lighter, #fafafa);
+  border: 1px solid var(--el-border-color-lighter, #e4e7ed);
+  color: var(--el-text-color-regular, #606266);
 }
 .edit-section {
   padding: 0 4px;

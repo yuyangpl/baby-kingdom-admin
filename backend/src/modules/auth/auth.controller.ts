@@ -90,6 +90,15 @@ export async function updateUserRole(req: Request, res: Response): Promise<void>
   success(res, user);
 }
 
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const { password } = req.body;
+  if (!password || password.length < 8) {
+    throw new ValidationError('Password must be at least 8 characters');
+  }
+  await authService.resetPassword(req.params.id as string, password);
+  success(res, null);
+}
+
 export async function deleteUser(req: Request, res: Response): Promise<void> {
   await authService.deleteUser(req.params.id as string, (req as any).user.id);
   success(res, null);

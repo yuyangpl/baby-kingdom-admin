@@ -12,18 +12,19 @@
       :rules="rules"
       label-position="top"
       class="user-form"
+      autocomplete="off"
     >
       <el-form-item :label="$t('user.username')" prop="username">
         <el-input v-model="form.username" :placeholder="$t('user.username')" />
       </el-form-item>
 
       <el-form-item :label="$t('user.email')" prop="email">
-        <el-input v-model="form.email" type="email" placeholder="user@example.com" autocomplete="new-email" />
+        <el-input v-model="form.email" placeholder="user@example.com" :readonly="autoFillGuard" @focus="autoFillGuard = false" />
       </el-form-item>
 
       <el-form-item :label="$t('user.password')" prop="password">
         <div style="display: flex; gap: 8px; width: 100%;">
-          <el-input v-model="form.password" type="password" show-password :placeholder="$t('user.passwordPlaceholder')" autocomplete="new-password" />
+          <el-input v-model="form.password" :type="autoFillGuard ? 'text' : 'password'" show-password :placeholder="$t('user.passwordPlaceholder')" :readonly="autoFillGuard" @focus="autoFillGuard = false" />
           <el-button @click="generatePassword">{{ $t('user.generatePassword') }}</el-button>
         </div>
       </el-form-item>
@@ -60,11 +61,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  saved: []
+  saved: [credentials: { username: string; email: string; password: string }]
 }>()
 
 const formRef = ref<FormInstance>()
 const saving = ref<boolean>(false)
+const autoFillGuard = ref(true)
 
 const defaultForm = () => ({
   username: '',
@@ -97,6 +99,7 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open) {
+      autoFillGuard.value = true
       Object.assign(form, defaultForm())
       formRef.value?.clearValidate()
     }
@@ -110,12 +113,15 @@ const handleSave = async () => {
     return
   }
   saving.value = true
+  // 保存表单数据副本，提交前启用 autoFillGuard 使密码框变 text 类型，防止浏览器弹出"保存密码"
+  const payload = { ...form }
+  autoFillGuard.value = true
   try {
-    await api.post('/v1/auth/users', form)
-    ElMessage.success(t('common.success'))
-    emit('saved')
+    await api.post('/v1/auth/users', payload)
+    emit('saved', { username: payload.username, email: payload.email, password: payload.password })
     emit('update:modelValue', false)
   } catch (err: any) {
+    autoFillGuard.value = false
     ElMessage.error(err.message || t('common.error'))
   } finally {
     saving.value = false

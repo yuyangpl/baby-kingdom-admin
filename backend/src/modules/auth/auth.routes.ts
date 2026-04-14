@@ -21,8 +21,10 @@ router.put('/password', authenticate, wrap(ctrl.changePassword));
 
 // Admin only
 router.post('/register', authenticate, authorize('admin'), wrap(ctrl.register));
+router.post('/users', authenticate, authorize('admin'), wrap(ctrl.register));
 router.get('/users', authenticate, authorize('admin'), wrap(ctrl.listUsers));
 router.put('/users/:id/role', authenticate, authorize('admin'), wrap(ctrl.updateUserRole));
+router.put('/users/:id/password', authenticate, authorize('admin'), wrap(ctrl.resetPassword));
 router.delete('/users/:id', authenticate, authorize('admin'), wrap(ctrl.deleteUser));
 
 export default router;

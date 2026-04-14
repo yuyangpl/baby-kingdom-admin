@@ -90,21 +90,25 @@
         </template>
       </el-table-column>
 
-      <el-table-column :label="$t('common.actions')" width="100" fixed="right" align="center">
+      <el-table-column :label="$t('common.actions')" width="180" fixed="right" align="center">
         <template #default="{ row }">
-          <el-popconfirm
-            v-if="!isCurrentUser(row)"
-            :title="$t('user.deleteConfirm')"
-            :confirm-button-text="$t('common.delete')"
-            :cancel-button-text="$t('common.cancel')"
-            @confirm="handleDelete(row)"
-          >
-            <template #reference>
-              <el-button type="danger" size="small" plain>
-                {{ $t('common.delete') }}
-              </el-button>
-            </template>
-          </el-popconfirm>
+          <template v-if="!isCurrentUser(row)">
+            <el-button size="small" plain @click="handleResetPassword(row)">
+              {{ $t('user.resetPassword') }}
+            </el-button>
+            <el-popconfirm
+              :title="$t('user.deleteConfirm')"
+              :confirm-button-text="$t('common.delete')"
+              :cancel-button-text="$t('common.cancel')"
+              @confirm="handleDelete(row)"
+            >
+              <template #reference>
+                <el-button type="danger" size="small" plain>
+                  {{ $t('common.delete') }}
+                </el-button>
+              </template>
+            </el-popconfirm>
+          </template>
           <span v-else class="text-muted">--</span>
         </template>
       </el-table-column>
@@ -113,14 +117,44 @@
     <UserForm
       v-model="showForm"
       :edit-data="null"
-      @saved="onSaved"
+      @saved="onCreated"
     />
+
+    <!-- 凭据弹窗 -->
+    <el-dialog
+      v-model="showCredentials"
+      :title="$t('user.credentialsTitle')"
+      width="420px"
+      :close-on-click-modal="false"
+    >
+      <el-alert type="warning" :closable="false" style="margin-bottom: 16px">
+        {{ $t('user.credentialsTip') }}
+      </el-alert>
+      <div class="credentials-box">
+        <div class="credentials-row">
+          <span class="credentials-label">{{ $t('user.username') }}</span>
+          <span class="credentials-value">{{ credentials.username }}</span>
+        </div>
+        <div class="credentials-row">
+          <span class="credentials-label">{{ $t('user.email') }}</span>
+          <span class="credentials-value">{{ credentials.email }}</span>
+        </div>
+        <div class="credentials-row">
+          <span class="credentials-label">{{ $t('user.password') }}</span>
+          <span class="credentials-value credentials-value--mono">{{ credentials.password }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="copyCredentials" type="primary">{{ $t('user.copyAll') }}</el-button>
+        <el-button @click="showCredentials = false">{{ $t('common.confirm') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../api'
@@ -132,6 +166,8 @@ const auth = useAuthStore()
 const users = ref<any[]>([])
 const loading = ref<boolean>(false)
 const showForm = ref<boolean>(false)
+const showCredentials = ref(false)
+const credentials = reactive({ username: '', email: '', password: '' })
 
 const avatarInitial = (name: string) => {
   return name ? name.charAt(0).toUpperCase() : '?'
@@ -181,8 +217,45 @@ const handleDelete = async (row: any) => {
   }
 }
 
-const onSaved = () => {
+const generateRandomPassword = () => {
+  const chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefghjkmnpqrstwxyz23456789!@#$%'
+  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+
+const onCreated = (creds: { username: string; email: string; password: string }) => {
+  credentials.username = creds.username
+  credentials.email = creds.email
+  credentials.password = creds.password
+  showCredentials.value = true
   loadUsers()
+}
+
+const handleResetPassword = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(t('user.resetPasswordConfirm'), t('user.resetPassword'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+  const newPassword = generateRandomPassword()
+  try {
+    await api.put(`/v1/auth/users/${row.id || row._id}/password`, { password: newPassword })
+    credentials.username = row.username
+    credentials.email = row.email
+    credentials.password = newPassword
+    showCredentials.value = true
+  } catch (err: any) {
+    ElMessage.error(err.message || t('common.error'))
+  }
+}
+
+const copyCredentials = async () => {
+  const text = `${t('user.username')}: ${credentials.username}\n${t('user.email')}: ${credentials.email}\n${t('user.password')}: ${credentials.password}`
+  await navigator.clipboard.writeText(text)
+  ElMessage.success(t('user.copied'))
 }
 
 onMounted(loadUsers)
@@ -249,6 +322,38 @@ onMounted(loadUsers)
 .text-muted {
   color: var(--bk-muted-fg);
   font-size: 13px;
+}
+
+/* Credentials dialog */
+.credentials-box {
+  background: var(--bk-muted);
+  border: 1px solid var(--bk-border);
+  border-radius: var(--bk-radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.credentials-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.credentials-label {
+  font-size: 13px;
+  color: var(--bk-muted-fg);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+.credentials-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bk-foreground);
+  word-break: break-all;
+}
+.credentials-value--mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  letter-spacing: 0.5px;
 }
 
 @media (max-width: 768px) {

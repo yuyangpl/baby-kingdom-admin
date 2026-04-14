@@ -335,7 +335,7 @@ function generateFeedId(): string {
   return `FQ-${ts}-${rand}`;
 }
 
-export async function getHistory({ page = 1, limit = 20, from, to }: { page?: number; limit?: number; from?: string; to?: string }) {
+export async function getHistory({ page = 1, limit = 20, from, to, fid }: { page?: number; limit?: number; from?: string; to?: string; fid?: number }) {
   const prisma = getPrisma();
   const skip = (page - 1) * limit;
   const where: any = { source: { has: 'scanner' } };
@@ -344,6 +344,7 @@ export async function getHistory({ page = 1, limit = 20, from, to }: { page?: nu
     if (from) where.createdAt.gte = new Date(from);
     if (to) where.createdAt.lte = new Date(to);
   }
+  if (fid) where.threadFid = fid;
   const [data, total] = await Promise.all([
     prisma.feed.findMany({
       where,

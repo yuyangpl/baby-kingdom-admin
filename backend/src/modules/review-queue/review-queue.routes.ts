@@ -10,6 +10,8 @@ const wrap = (fn: (req: Request, res: Response, next: NextFunction) => Promise<a
 router.post('/claim-batch', authenticate, authorize('admin', 'approver'), wrap(ctrl.claimBatch));
 router.get('/my-workbench', authenticate, authorize('admin', 'approver'), wrap(ctrl.getMyWorkbench));
 router.post('/extend-claims', authenticate, authorize('admin', 'approver'), wrap(ctrl.extendClaims));
+router.post('/release-claims', authenticate, authorize('admin', 'approver'), wrap(ctrl.releaseClaims));
+router.get('/my-stats', authenticate, wrap(ctrl.getMyStats));
 router.get('/stats', authenticate, wrap(ctrl.getStats));
 
 // Parameterized routes
