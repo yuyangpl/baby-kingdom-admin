@@ -175,7 +175,6 @@ onMounted(async () => {
   // Poll queue stats every 30s
   pollTimer = setInterval(async () => {
     await loadQueueStats();
-    } catch { /* ignore */ }
   }, 30000);
 });
 
