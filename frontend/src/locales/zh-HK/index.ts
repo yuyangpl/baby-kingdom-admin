@@ -148,7 +148,7 @@ export default {
     title: 'Feed 隊列',
     newFeeds: '條新 Feed 可用',
     loadNew: '載入新 Feed',
-    customGenerate: '自訂生成',
+    customGenerate: '生成新貼文草稿',
     batchApprove: '批量通過',
     batchReject: '批量拒絕',
     tabs: {
