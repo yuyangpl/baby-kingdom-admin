@@ -22,7 +22,10 @@
       </el-form-item>
 
       <el-form-item :label="$t('user.password')" prop="password">
-        <el-input v-model="form.password" type="password" show-password :placeholder="$t('user.passwordPlaceholder')" autocomplete="new-password" />
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <el-input v-model="form.password" type="password" show-password :placeholder="$t('user.passwordPlaceholder')" autocomplete="new-password" />
+          <el-button @click="generatePassword">{{ $t('user.generatePassword') }}</el-button>
+        </div>
       </el-form-item>
 
       <el-form-item :label="$t('user.role')" prop="role">
@@ -71,6 +74,11 @@ const defaultForm = () => ({
 })
 
 const form = reactive(defaultForm())
+
+const generatePassword = () => {
+  const chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefghjkmnpqrstwxyz23456789!@#$%'
+  form.password = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
 
 const rules = {
   username: [{ required: true, message: () => t('common.fieldRequired'), trigger: 'blur' }],

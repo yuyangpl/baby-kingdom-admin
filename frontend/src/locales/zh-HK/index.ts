@@ -596,6 +596,7 @@ export default {
     deleteConfirm: '確定刪除此用戶？',
     cannotDeleteSelf: '不能刪除自己',
     passwordPlaceholder: '最少 8 個字元',
+    generatePassword: '自動生成',
     roleFailed: '更新角色失敗',
   },
 

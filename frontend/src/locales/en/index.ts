@@ -573,6 +573,7 @@ export default {
     deleteConfirm: 'Delete this user?',
     cannotDeleteSelf: 'Cannot delete yourself',
     passwordPlaceholder: 'Min 8 characters',
+    generatePassword: 'Generate',
     roleFailed: 'Failed to update role',
   },
 
