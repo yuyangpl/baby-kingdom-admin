@@ -93,12 +93,13 @@ router.get('/:id', authenticate, wrap(async (req, res) => {
 // Verify BK Forum login with username + password
 router.post('/verify-bk-login', authenticate, authorize('admin', 'approver'), wrap(async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) throw new NotFoundError('Username and password required');
+  const { BusinessError } = await import('../../shared/errors.js');
+  if (!username || !password) throw new BusinessError('Username and password required');
 
   const configService = await import('../config/config.service.js');
   const baseUrl = await configService.getValue('BK_BASE_URL') || 'https://bapi.baby-kingdom.com/index.php';
-  const bkApp = await configService.getValue('BK_APP_ID') || 'com.babykindom';
-  const bkVer = await configService.getValue('BK_APP_VERSION') || '3.2.0';
+  const bkApp = await configService.getValue('BK_APP') || 'android';
+  const bkVer = await configService.getValue('BK_VER') || '3.11.11';
 
   const formData = new URLSearchParams({
     mod: 'member', op: 'login',
@@ -108,13 +109,14 @@ router.post('/verify-bk-login', authenticate, authorize('admin', 'approver'), wr
 
   const res2 = await fetch(baseUrl, {
     method: 'POST',
-    body: formData,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData.toString(),
     signal: AbortSignal.timeout(10000),
   });
   const body = await res2.json() as any;
 
   if (body.status !== 1 || !body.data?.token) {
-    throw new NotFoundError(`BK 登入失敗: ${body.message || '帳號或密碼錯誤'}`);
+    throw new BusinessError(`BK 登入失敗: ${body.message || '帳號或密碼錯誤'}`);
   }
 
   return success(res, { verified: true, uid: body.data.uid, username });
