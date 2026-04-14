@@ -31,21 +31,17 @@
 
       <!-- Status Tabs -->
       <el-tabs v-model="activeTab" @tab-change="onTabChange" class="feed-tabs">
-        <el-tab-pane name="pending">
+        <el-tab-pane v-for="tab in ['pending', 'approved', 'posted', 'rejected', 'failed']" :key="tab" :name="tab">
           <template #label>
-            {{ $t('feed.tabs.pending') }}
+            {{ $t(`feed.tabs.${tab}`) }}
             <el-badge
-              v-if="pendingCount > 0"
-              :value="pendingCount"
+              v-if="tabCounts[tab] > 0"
+              :value="tabCounts[tab]"
               :max="99"
               class="tab-badge"
             />
           </template>
         </el-tab-pane>
-        <el-tab-pane :label="$t('feed.tabs.approved')" name="approved" />
-        <el-tab-pane :label="$t('feed.tabs.posted')" name="posted" />
-        <el-tab-pane :label="$t('feed.tabs.rejected')" name="rejected" />
-        <el-tab-pane :label="$t('feed.tabs.failed')" name="failed" />
       </el-tabs>
 
       <!-- Quick filter chips -->
@@ -390,6 +386,7 @@ const showEditModal = ref<boolean>(false)
 const editRow = ref<Record<string, any> | null>(null)
 const showCustomGenerate = ref<boolean>(false)
 const pendingCount = ref<number>(0)
+const tabCounts = ref<Record<string, number>>({ pending: 0, approved: 0, posted: 0, rejected: 0, failed: 0 })
 const tones = ref<{ toneId: string; displayName: string }[]>([])
 const personaCache = ref<Record<string, any>>({})
 const boards = ref<{ fid: number; name: string }[]>([])
@@ -633,13 +630,15 @@ const loadFeeds = async () => {
   await feedStore.fetchFeeds()
 }
 
-const loadPendingCount = async () => {
-  try {
-    const res = await api.get('/v1/feeds', { params: { status: 'pending', limit: 1 } })
-    pendingCount.value = (res as any).pagination?.total ?? 0
-  } catch {
-    // ignore
-  }
+const loadTabCounts = async () => {
+  const statuses = ['pending', 'approved', 'posted', 'rejected', 'failed']
+  await Promise.all(statuses.map(async (s) => {
+    try {
+      const res = await api.get('/v1/feeds', { params: { status: s, limit: 1 } })
+      tabCounts.value[s] = (res as any).pagination?.total ?? 0
+    } catch { /* ignore */ }
+  }))
+  pendingCount.value = tabCounts.value.pending
 }
 
 const onTabChange = (tab: string) => {
@@ -679,7 +678,7 @@ const openEdit = (row: any) => {
 
 const onFeedSaved = () => {
   loadFeeds()
-  loadPendingCount()
+  loadTabCounts()
 }
 
 const approve = async (row: any) => {
@@ -687,7 +686,7 @@ const approve = async (row: any) => {
     await api.post(`/v1/feeds/${row.feedId}/approve`)
     ElMessage.success(t('feed.approve'))
     loadFeeds()
-    loadPendingCount()
+    loadTabCounts()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
   }
@@ -708,7 +707,7 @@ const rejectWithNotes = async (row: any) => {
     await api.post(`/v1/feeds/${row.feedId}/reject`, { notes: notes || '' })
     ElMessage.success(t('feed.reject'))
     loadFeeds()
-    loadPendingCount()
+    loadTabCounts()
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
@@ -749,7 +748,7 @@ const batchApprove = async () => {
     ElMessage.success(`${ids.length} ${t('feed.approve')}`)
     selectedIds.value = new Set()
     loadFeeds()
-    loadPendingCount()
+    loadTabCounts()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
   }
@@ -773,7 +772,7 @@ const batchReject = async () => {
     ElMessage.success(`${ids.length} ${t('feed.reject')}`)
     selectedIds.value = new Set()
     loadFeeds()
-    loadPendingCount()
+    loadTabCounts()
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
@@ -783,7 +782,7 @@ const batchReject = async () => {
 onMounted(() => {
   feedStore.setFilter('status', 'pending')
   loadFeeds()
-  loadPendingCount()
+  loadTabCounts()
   loadTones()
   loadBoards()
   loadStats()
