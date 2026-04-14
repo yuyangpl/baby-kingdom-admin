@@ -99,7 +99,7 @@
           <button class="header-toggle" @click="isCollapsed = !isCollapsed" aria-label="Toggle sidebar">
             <el-icon :size="20"><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
           </button>
-          <span class="header-title">{{ $t('nav.appTitle') }}</span>
+          <span class="header-title">{{ $t('nav.appName') }}</span>
         </div>
         <div class="header-right">
           <div class="queue-stats">
