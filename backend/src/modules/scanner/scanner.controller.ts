@@ -20,12 +20,13 @@ export async function trigger(req: Request, res: Response): Promise<void> {
 }
 
 export async function history(req: Request, res: Response): Promise<void> {
-  const { page, limit, from, to } = req.query;
+  const { page, limit, from, to, fid } = req.query;
   const result = await scannerService.getHistory({
     page: parseInt(page as string) || 1,
     limit: parseInt(limit as string) || 20,
     from: from as string,
     to: to as string,
+    fid: fid ? parseInt(fid as string) : undefined,
   });
   res.json({ success: true, data: result.data, pagination: result.pagination });
 }
