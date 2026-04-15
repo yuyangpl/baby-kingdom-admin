@@ -219,9 +219,10 @@ export async function myStats(userId: string) {
 
   const dayRange = { gte: startOfDay, lte: endOfDay };
 
-  const [posted, rejected] = await Promise.all([
+  const [posted, rejected, failed] = await Promise.all([
     prisma.feed.count({ where: { reviewedBy: userId, status: 'posted', reviewedAt: dayRange } }),
     prisma.feed.count({ where: { reviewedBy: userId, status: 'rejected', reviewedAt: dayRange } }),
+    prisma.feed.count({ where: { reviewedBy: userId, status: 'failed', reviewedAt: dayRange } }),
   ]);
 
   const skipped = await prisma.auditLog.count({
@@ -254,7 +255,7 @@ export async function myStats(userId: string) {
     avgSeconds = Math.round(totalMs / reviewedFeeds.length / 1000);
   }
 
-  return { total, posted, rejected, skipped, avgSeconds };
+  return { total, posted, rejected, failed, skipped, avgSeconds };
 }
 
 /**

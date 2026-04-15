@@ -1,5 +1,5 @@
 <template>
-  <div class="feed-view">
+  <div v-loading="batchLoading" class="feed-view">
     <!-- Sticky top bar -->
     <div class="feed-sticky-top">
       <div class="feed-header">
@@ -14,14 +14,16 @@
           </el-button>
           <el-button
             type="success"
-            :disabled="!selectedIds.size"
+            :disabled="!selectedIds.size || batchPublishing"
+            :loading="batchPublishing"
             @click="batchPublish"
           >
             {{ $t('feed.batchPublish') }} ({{ selectedIds.size }})
           </el-button>
           <el-button
             type="danger"
-            :disabled="!selectedIds.size"
+            :disabled="!selectedIds.size || batchRejecting"
+            :loading="batchRejecting"
             @click="batchReject"
           >
             {{ $t('feed.batchReject') }} ({{ selectedIds.size }})
@@ -248,15 +250,16 @@
             </span>
           </div>
           <div class="feed-card__footer-right">
-            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" @click="openEdit(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" :disabled="!!actionFeedId" @click="openEdit(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" type="warning" @click="regenerate(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" type="warning" :loading="actionFeedId === feed.feedId && !publishingId" :disabled="!!actionFeedId && actionFeedId !== feed.feedId" @click="regenerate(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button
               v-if="canApprove && !['rejected', 'posted'].includes(feed.status)"
               class="btn-reject"
+              :disabled="!!actionFeedId && actionFeedId !== feed.feedId"
               @click="rejectWithNotes(feed)"
             >
               {{ $t('feed.reject') }}
@@ -264,6 +267,8 @@
             <el-button
               v-if="canApprove && feed.status === 'pending'"
               type="success"
+              :loading="publishingId === feed.feedId"
+              :disabled="!!actionFeedId && actionFeedId !== feed.feedId"
               @click="publishFeed(feed)"
             >
               {{ $t('feed.publish') }}
@@ -271,6 +276,7 @@
             <el-button
               v-if="canApprove && feed.status === 'failed'"
               class="btn-approve"
+              :disabled="!!actionFeedId"
               @click="revertToPending(feed)"
             >
               {{ $t('feed.revertToPending') }}
@@ -278,6 +284,7 @@
             <el-button
               v-if="canApprove && feed.status === 'rejected'"
               class="btn-approve"
+              :disabled="!!actionFeedId"
               @click="revertToPending(feed)"
             >
               {{ $t('feed.revertToPending') }}
@@ -339,6 +346,11 @@ const activeTab = ref<string>('pending')
 const selectedIds = ref<Set<string>>(new Set())
 const showEditModal = ref<boolean>(false)
 const editRow = ref<Record<string, any> | null>(null)
+const publishingId = ref<string>('')
+const actionFeedId = ref<string>('')
+const batchPublishing = ref(false)
+const batchRejecting = ref(false)
+const batchLoading = computed(() => batchPublishing.value || batchRejecting.value)
 const showCustomGenerate = ref<boolean>(false)
 const pendingCount = ref<number>(0)
 const tabCounts = ref<Record<string, number>>({ pending: 0, posted: 0, rejected: 0, failed: 0 })
@@ -535,6 +547,8 @@ const onFeedSaved = () => {
 }
 
 const publishFeed = async (row: any) => {
+  actionFeedId.value = row.feedId
+  publishingId.value = row.feedId
   try {
     await api.post(`/v1/feeds/${row.feedId}/publish`)
     ElMessage.success(t('feed.postSuccess'))
@@ -542,6 +556,9 @@ const publishFeed = async (row: any) => {
     loadTabCounts()
   } catch (err: any) {
     ElMessage.error(err.error?.message || err.message || t('common.error'))
+  } finally {
+    publishingId.value = ''
+    actionFeedId.value = ''
   }
 }
 
@@ -568,6 +585,7 @@ const rejectWithNotes = async (row: any) => {
         inputPlaceholder: t('feed.placeholder.notes'),
       }
     )
+    actionFeedId.value = row.feedId
     await api.post(`/v1/feeds/${row.feedId}/reject`, { notes: notes || '' })
     ElMessage.success(t('feed.reject'))
     loadFeeds()
@@ -575,22 +593,28 @@ const rejectWithNotes = async (row: any) => {
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    actionFeedId.value = ''
   }
 }
 
 const regenerate = async (row: any) => {
+  actionFeedId.value = row.feedId
   try {
     await api.post(`/v1/feeds/${row.feedId}/regenerate`)
     ElMessage.success(t('feed.regenerate'))
     loadFeeds()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    actionFeedId.value = ''
   }
 }
 
 const batchPublish = async () => {
   const ids = Array.from(selectedIds.value)
   if (!ids.length) return
+  batchPublishing.value = true
   try {
     await api.post('/v1/feeds/batch/publish', { feedIds: ids })
     ElMessage.success(`${ids.length} ${t('feed.postSuccess')}`)
@@ -599,6 +623,8 @@ const batchPublish = async () => {
     loadTabCounts()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    batchPublishing.value = false
   }
 }
 
@@ -616,6 +642,7 @@ const batchReject = async () => {
         inputPlaceholder: t('feed.placeholder.notes'),
       }
     )
+    batchRejecting.value = true
     await api.post('/v1/feeds/batch/reject', { feedIds: ids, notes: notes || '' })
     ElMessage.success(`${ids.length} ${t('feed.reject')}`)
     selectedIds.value = new Set()
@@ -624,6 +651,8 @@ const batchReject = async () => {
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    batchRejecting.value = false
   }
 }
 

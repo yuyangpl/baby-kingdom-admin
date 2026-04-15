@@ -103,6 +103,7 @@
         <div class="sidebar-stats__detail">
           <span class="sidebar-stats__chip sidebar-stats__chip--posted" @click="goFeedTab('posted')">{{ $t('myDashboard.posted') }} {{ approverStats.posted }}</span>
           <span class="sidebar-stats__chip sidebar-stats__chip--no" @click="goFeedTab('rejected')">{{ $t('myDashboard.rejected') }} {{ approverStats.rejected }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--fail" @click="goFeedTab('failed')">{{ $t('common.failed') }} {{ approverStats.failed }}</span>
           <span class="sidebar-stats__chip sidebar-stats__chip--skip" @click="goFeedTab('pending')">{{ $t('myDashboard.skipped') }} {{ approverStats.skipped }}</span>
         </div>
       </div>
@@ -169,7 +170,7 @@ const { locale } = useI18n();
 const isCollapsed = ref<boolean>(false);
 const dataSourcesOpen = ref<boolean>(false);
 const queueStats = ref({ unclaimed: 0, claimed: 0 });
-const approverStats = ref({ total: 0, rejected: 0, skipped: 0, posted: 0 });
+const approverStats = ref({ total: 0, rejected: 0, skipped: 0, posted: 0, failed: 0 });
 const approverAvgTime = computed(() => {
   if (approverStats.value.total === 0) return '--';
   const s = approverStats.value.avgSeconds;
@@ -389,6 +390,10 @@ async function handleLogout() {
 .sidebar-stats__chip--no {
   background: rgba(245, 108, 108, 0.15);
   color: #f56c6c;
+}
+.sidebar-stats__chip--fail {
+  background: rgba(245, 108, 108, 0.3);
+  color: #ff6b6b;
 }
 .sidebar-stats__chip--skip {
   background: rgba(230, 162, 60, 0.15);

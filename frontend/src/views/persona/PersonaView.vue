@@ -99,7 +99,7 @@
             <el-button size="small" @click="openForm(p)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-popconfirm :title="$t('persona.deleteConfirm')" @confirm="handleDelete(p.id || p._id)">
+            <el-popconfirm v-if="auth.isAdmin" :title="$t('persona.deleteConfirm')" @confirm="handleDelete(p.id || p._id)">
               <template #reference>
                 <el-button size="small" type="danger" plain>{{ $t('common.delete') }}</el-button>
               </template>
