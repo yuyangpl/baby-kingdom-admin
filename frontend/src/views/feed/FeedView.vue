@@ -121,7 +121,7 @@
               <a
                 v-if="feed.threadTid || feed.postId"
                 class="feed-card__view-thread"
-                :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.postId || feed.threadTid}`"
+                :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.threadTid || feed.postId}`"
                 target="_blank"
                 rel="noopener"
                 @click.stop
