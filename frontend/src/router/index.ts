@@ -22,6 +22,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'audit', name: 'audit', component: () => import('../views/audit/AuditView.vue'), meta: { role: 'admin' } },
       { path: 'users', name: 'users', component: () => import('../views/user/UserView.vue'), meta: { role: 'admin' } },
       { path: 'profile', name: 'profile', component: () => import('../views/profile/ProfileView.vue') },
+      { path: 'guide', name: 'guide', component: () => import('../views/guide/GuideView.vue') },
     ],
   },
 ];

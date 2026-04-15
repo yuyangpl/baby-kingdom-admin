@@ -106,6 +106,7 @@ export default {
     home: '首頁',
     logout: '登出',
     profile: '個人信息',
+    guide: '使用手冊',
     poolRemaining: '待審池剩餘',
     claimed: '已認領',
     myDashboard: '我的工作台',

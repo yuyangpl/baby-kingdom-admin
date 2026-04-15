@@ -138,6 +138,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item @click="router.push('/profile')">{{ $t('nav.profile') }}</el-dropdown-item>
+                <el-dropdown-item @click="router.push('/guide')">{{ $t('nav.guide') }}</el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">{{ $t('nav.logout') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>

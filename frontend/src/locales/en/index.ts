@@ -104,6 +104,7 @@ export default {
     home: 'Home',
     logout: 'Logout',
     profile: 'Profile',
+    guide: 'User Guide',
     poolRemaining: 'Pool',
     claimed: 'Claimed',
     myDashboard: 'My Dashboard',

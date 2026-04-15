@@ -20,7 +20,7 @@
       </el-form-item>
 
       <el-form-item :label="$t('persona.username')" prop="username">
-        <el-input v-model="form.username" :placeholder="$t('persona.usernamePlaceholder')" />
+        <el-input v-model="form.username" :disabled="isEdit && !auth.isAdmin" :placeholder="$t('persona.usernamePlaceholder')" />
       </el-form-item>
 
       <el-form-item v-if="auth.isAdmin" :label="$t('persona.bkPassword')" prop="bkPassword">
