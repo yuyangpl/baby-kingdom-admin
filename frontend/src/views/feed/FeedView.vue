@@ -130,12 +130,9 @@
             <div v-if="feed.trendSummary" class="feed-card__trend-summary">
               {{ feed.trendSummary }}
             </div>
-            <div v-if="feed.draftContent" class="feed-card__preview">
+            <div v-if="feed.finalContent || feed.draftContent">
               <span class="feed-card__preview-label">{{ feed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
-              {{ truncate(feed.draftContent, 200) }}
-            </div>
-            <div v-if="feed.finalContent && feed.finalContent !== feed.draftContent" class="feed-card__draft-box">
-              {{ truncate(feed.finalContent, 200) }}
+              <div class="feed-card__draft-box">{{ feed.finalContent || feed.draftContent }}</div>
             </div>
             <div v-if="feed.failReason" class="feed-card__fail">{{ feed.failReason }}</div>
           </div>
@@ -836,9 +833,9 @@ onMounted(() => {
   padding: 8px 12px;
   font-size: 13px;
   color: var(--bk-muted-fg);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
   overflow: hidden;
 }
 

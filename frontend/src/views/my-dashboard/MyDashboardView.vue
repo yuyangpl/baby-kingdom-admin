@@ -72,13 +72,10 @@
               <span class="feed-card__original-label">{{ $t('myDashboard.originalPost') }}</span>
               <div class="feed-card__original-box">{{ currentFeed.threadContent }}</div>
             </div>
-            <!-- 生成内容 (与 FeedView 一致) -->
-            <div v-if="currentFeed.draftContent" class="feed-card__preview">
+            <!-- 将要发布的内容 -->
+            <div v-if="currentFeed.finalContent || currentFeed.draftContent">
               <span class="feed-card__preview-label">{{ currentFeed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
-              {{ currentFeed.draftContent }}
-            </div>
-            <div v-if="currentFeed.finalContent" class="feed-card__draft-box">
-              {{ currentFeed.finalContent }}
+              <div class="feed-card__draft-box">{{ currentFeed.finalContent || currentFeed.draftContent }}</div>
             </div>
           </div>
           <!-- Persona -->

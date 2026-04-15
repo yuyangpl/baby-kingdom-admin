@@ -41,16 +41,6 @@
         <div class="content-box content-box--muted">{{ editData.trendSummary }}</div>
       </div>
 
-      <!-- Draft / generated content preview -->
-      <div v-if="editData.draftContent" class="original-content">
-        <div class="section-label">{{ editData.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</div>
-        <div class="content-box content-box--preview">{{ editData.draftContent }}</div>
-      </div>
-      <div v-if="editData.finalContent && editData.finalContent !== editData.draftContent" class="original-content">
-        <div class="section-label">{{ $t('feed.finalContent') }}</div>
-        <div class="content-box content-box--preview">{{ editData.finalContent }}</div>
-      </div>
-
       <!-- Editable form -->
       <el-form ref="formRef" :model="form" label-position="top" class="edit-section">
         <el-row :gutter="16">
