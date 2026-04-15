@@ -119,7 +119,7 @@
               </el-tag>
               {{ feed.subject || feed.threadSubject }}
               <a
-                v-if="feed.threadTid || feed.postId"
+                v-if="feed.threadTid || (feed.postId && feed.postId !== 'unknown' && feed.postId !== '')"
                 class="feed-card__view-thread"
                 :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.threadTid || feed.postId}`"
                 target="_blank"
