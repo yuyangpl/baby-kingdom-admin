@@ -23,7 +23,7 @@
         <el-input v-model="form.username" :placeholder="$t('persona.usernamePlaceholder')" />
       </el-form-item>
 
-      <el-form-item :label="$t('persona.bkPassword')" prop="bkPassword">
+      <el-form-item v-if="auth.isAdmin" :label="$t('persona.bkPassword')" prop="bkPassword">
         <div style="display: flex; gap: 8px; width: 100%;">
           <el-input v-model="form.bkPassword" type="password" show-password :placeholder="hasExistingPassword ? $t('persona.bkPasswordKeep') : $t('persona.bkPasswordPlaceholder')" autocomplete="off" />
           <el-button :loading="verifying" @click="verifyBkLogin">{{ $t('persona.verifyLogin') }}</el-button>
@@ -123,6 +123,7 @@ import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '../../stores/auth'
 import api from '../../api'
 
 const props = defineProps<{
@@ -136,6 +137,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const auth = useAuthStore()
 const isEdit = computed(() => !!props.editData)
 const hasExistingPassword = computed(() => isEdit.value && !!props.editData?.bkPassword)
 const formRef = ref<FormInstance>()

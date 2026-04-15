@@ -236,7 +236,9 @@ async function loadData() {
   loading.value = true
   try {
     const res = await api.get('/v1/personas')
-    personas.value = res.data || []
+    const list = res.data || []
+    list.sort((a: any, b: any) => (b.isActive === a.isActive ? 0 : b.isActive ? 1 : -1))
+    personas.value = list
   } finally {
     loading.value = false
   }

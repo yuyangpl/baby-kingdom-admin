@@ -1,5 +1,5 @@
 <template>
-  <div v-loading="batchLoading" class="feed-view">
+  <div class="feed-view">
     <!-- Sticky top bar -->
     <div class="feed-sticky-top">
       <div class="feed-header">
@@ -9,6 +9,9 @@
           <span>{{ feedStore.newFeedCount }} {{ $t('feed.newFeeds') }}</span>
         </div>
         <div class="toolbar">
+          <el-button v-if="isApproverOnly" type="primary" :loading="startingReview" @click="startReview">
+            {{ $t('myDashboard.startReview') }}
+          </el-button>
           <el-button type="primary" @click="showCustomGenerate = true">
             {{ $t('feed.customGenerate') }}
           </el-button>
@@ -253,13 +256,13 @@
             <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" :disabled="!!actionFeedId" @click="openEdit(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" type="warning" :loading="actionFeedId === feed.feedId && !publishingId" :disabled="!!actionFeedId && actionFeedId !== feed.feedId" @click="regenerate(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" type="warning" :disabled="!!actionFeedId" @click="regenerate(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button
               v-if="canApprove && !['rejected', 'posted'].includes(feed.status)"
               class="btn-reject"
-              :disabled="!!actionFeedId && actionFeedId !== feed.feedId"
+              :disabled="!!actionFeedId"
               @click="rejectWithNotes(feed)"
             >
               {{ $t('feed.reject') }}
@@ -267,8 +270,8 @@
             <el-button
               v-if="canApprove && feed.status === 'pending'"
               type="success"
-              :loading="publishingId === feed.feedId"
-              :disabled="!!actionFeedId && actionFeedId !== feed.feedId"
+              :loading="actionFeedId === feed.feedId"
+              :disabled="!!actionFeedId"
               @click="publishFeed(feed)"
             >
               {{ $t('feed.publish') }}
@@ -326,7 +329,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { RefreshRight, ArrowDown, Edit } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import api from '../../api'
@@ -346,8 +349,8 @@ const activeTab = ref<string>('pending')
 const selectedIds = ref<Set<string>>(new Set())
 const showEditModal = ref<boolean>(false)
 const editRow = ref<Record<string, any> | null>(null)
-const publishingId = ref<string>('')
 const actionFeedId = ref<string>('')
+const startingReview = ref(false)
 const batchPublishing = ref(false)
 const batchRejecting = ref(false)
 const batchLoading = computed(() => batchPublishing.value || batchRejecting.value)
@@ -548,7 +551,6 @@ const onFeedSaved = () => {
 
 const publishFeed = async (row: any) => {
   actionFeedId.value = row.feedId
-  publishingId.value = row.feedId
   try {
     await api.post(`/v1/feeds/${row.feedId}/publish`)
     ElMessage.success(t('feed.postSuccess'))
@@ -557,12 +559,12 @@ const publishFeed = async (row: any) => {
   } catch (err: any) {
     ElMessage.error(err.error?.message || err.message || t('common.error'))
   } finally {
-    publishingId.value = ''
     actionFeedId.value = ''
   }
 }
 
 const revertToPending = async (row: any) => {
+  actionFeedId.value = row.feedId
   try {
     await api.post(`/v1/feeds/${row.feedId}/revert-pending`)
     ElMessage.success(t('common.success'))
@@ -570,6 +572,8 @@ const revertToPending = async (row: any) => {
     loadTabCounts()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    actionFeedId.value = ''
   }
 }
 
@@ -615,6 +619,7 @@ const batchPublish = async () => {
   const ids = Array.from(selectedIds.value)
   if (!ids.length) return
   batchPublishing.value = true
+  const loading = ElLoading.service({ background: 'rgba(255,255,255,0.7)' })
   try {
     await api.post('/v1/feeds/batch/publish', { feedIds: ids })
     ElMessage.success(`${ids.length} ${t('feed.postSuccess')}`)
@@ -624,6 +629,7 @@ const batchPublish = async () => {
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
   } finally {
+    loading.close()
     batchPublishing.value = false
   }
 }
@@ -643,16 +649,44 @@ const batchReject = async () => {
       }
     )
     batchRejecting.value = true
-    await api.post('/v1/feeds/batch/reject', { feedIds: ids, notes: notes || '' })
-    ElMessage.success(`${ids.length} ${t('feed.reject')}`)
-    selectedIds.value = new Set()
-    loadFeeds()
-    loadTabCounts()
+    const loading = ElLoading.service({ background: 'rgba(255,255,255,0.7)' })
+    try {
+      await api.post('/v1/feeds/batch/reject', { feedIds: ids, notes: notes || '' })
+      ElMessage.success(`${ids.length} ${t('feed.reject')}`)
+      selectedIds.value = new Set()
+      loadFeeds()
+      loadTabCounts()
+    } finally {
+      loading.close()
+    }
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
   } finally {
     batchRejecting.value = false
+  }
+}
+
+const startReview = async () => {
+  startingReview.value = true
+  try {
+    const res: any = await api.post('/v1/review-queue/claim-batch', { count: 10 })
+    const data = res.data || res
+    if (!data.claimed || data.claimed.length === 0) {
+      ElMessage.info(t('myDashboard.workbenchEmpty'))
+      return
+    }
+    ElMessage.success(t('myDashboard.startReview') + ` (${data.claimed.length})`)
+    // 切换到待审 tab 并刷新
+    activeTab.value = 'pending'
+    feedStore.setFilter('status', 'pending')
+    loadFeeds()
+    loadTabCounts()
+    window.dispatchEvent(new Event('refresh-queue-stats'))
+  } catch (err: any) {
+    ElMessage.error(err.error?.message || err.message || t('common.error'))
+  } finally {
+    startingReview.value = false
   }
 }
 
@@ -697,6 +731,8 @@ watch(() => route.query.tab, (newTab) => {
 
 <style scoped>
 .feed-view {
+  position: relative;
+  min-height: 200px;
 }
 
 /* Sticky top area */

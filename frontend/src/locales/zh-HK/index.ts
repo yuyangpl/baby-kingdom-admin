@@ -171,6 +171,8 @@ export default {
     posted: '發帖成功',
     postQueued: '已加入發帖佇列',
     postSuccess: '發佈成功',
+    batchPublishing: '正在批量發佈，請稍候...',
+    batchRejecting: '正在批量拒絕，請稍候...',
     revertToPending: '撤回待審',
     startReview: '開始審核',
     startReviewDesc: '抽取 {count} 條',

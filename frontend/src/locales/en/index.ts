@@ -166,6 +166,8 @@ export default {
     posted: 'Posted successfully',
     postQueued: 'Added to post queue',
     postSuccess: 'Published successfully',
+    batchPublishing: 'Batch publishing, please wait...',
+    batchRejecting: 'Batch rejecting, please wait...',
     revertToPending: 'Revert to Pending',
     startReview: 'Start Review',
     startReviewDesc: 'Pull {count} items',
