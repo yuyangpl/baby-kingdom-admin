@@ -119,9 +119,9 @@
               </el-tag>
               {{ feed.subject || feed.threadSubject }}
               <a
-                v-if="feed.threadTid"
+                v-if="feed.threadTid || feed.postId"
                 class="feed-card__view-thread"
-                :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.threadTid}`"
+                :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.postId || feed.threadTid}`"
                 target="_blank"
                 rel="noopener"
                 @click.stop
@@ -138,6 +138,15 @@
           </div>
           <!-- Right: Persona Info -->
           <div v-if="feed.bkUsername" class="feed-card__persona">
+            <el-button
+              v-if="feed.personaId"
+              class="feed-card__persona-edit"
+              link
+              size="small"
+              @click.stop="goEditPersona(feed.personaId)"
+            >
+              <el-icon :size="14"><Edit /></el-icon>
+            </el-button>
             <div class="avatar-gradient feed-card__avatar">
               {{ avatarInitial(feed.bkUsername) }}
             </div>
@@ -312,9 +321,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { RefreshRight, ArrowDown } from '@element-plus/icons-vue'
+import { RefreshRight, ArrowDown, Edit } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import api from '../../api'
 import { useFeedStore } from '../../stores/feed'
@@ -492,6 +502,7 @@ const onTabChange = (tab: string) => {
   feedStore.setFilter('status', tab)
   selectedIds.value = new Set()
   loadFeeds()
+  document.querySelector('.main-content')?.scrollTo(0, 0)
 }
 
 const toggleSourceFilter = (src: string) => {
@@ -637,12 +648,41 @@ const batchReject = async () => {
   }
 }
 
+const route = useRoute()
+const router = useRouter()
+
+const goEditPersona = (accountId: string) => {
+  const href = router.resolve({ path: '/personas', query: { edit: accountId } }).href
+  window.open(href, '_blank')
+}
+
 onMounted(() => {
-  feedStore.setFilter('status', 'pending')
+  const tab = (route.query.tab as string) || 'pending'
+  activeTab.value = tab
+  feedStore.setFilter('status', tab)
   loadFeeds()
   loadTabCounts()
   loadTones()
   loadBoards()
+})
+
+const onRefreshFeeds = () => {
+  loadFeeds()
+  loadTabCounts()
+}
+window.addEventListener('refresh-queue-stats', onRefreshFeeds)
+
+onUnmounted(() => {
+  window.removeEventListener('refresh-queue-stats', onRefreshFeeds)
+})
+
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && newTab !== activeTab.value) {
+    activeTab.value = newTab as string
+    feedStore.setFilter('status', newTab as string)
+    loadFeeds()
+    loadTabCounts()
+  }
 })
 
 </script>
@@ -773,6 +813,7 @@ onMounted(() => {
   display: flex;
   gap: 16px;
   margin-bottom: 12px;
+  align-items: stretch;
 }
 .feed-card__content {
   flex: 2;
@@ -852,6 +893,7 @@ onMounted(() => {
 
 /* Persona Info */
 .feed-card__persona {
+  position: relative;
   flex: 1;
   background: #EFF6FF;
   border-radius: var(--bk-radius-sm);
@@ -861,6 +903,16 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   min-width: 140px;
+}
+.feed-card__persona-edit {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: var(--el-color-primary);
+  opacity: 0.6;
+}
+.feed-card__persona-edit:hover {
+  opacity: 1;
 }
 .feed-card__avatar {
   width: 40px;

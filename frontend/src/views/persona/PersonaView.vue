@@ -2,7 +2,7 @@
   <div class="persona-view">
     <div class="persona-view__header">
       <h2 class="page-title">{{ $t('persona.title') }}</h2>
-      <el-button type="primary" @click="openForm(null)">
+      <el-button v-if="auth.isAdmin" type="primary" @click="openForm(null)">
         {{ $t('persona.addPersona') }}
       </el-button>
     </div>
@@ -117,12 +117,15 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../../api'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '../../stores/auth'
 import PersonaForm from './PersonaForm.vue'
 
 const { t } = useI18n()
+const auth = useAuthStore()
 
 const personas = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -250,9 +253,18 @@ async function handleDelete(id: string) {
   loadData()
 }
 
-onMounted(() => {
-  loadData()
+const route = useRoute()
+
+onMounted(async () => {
+  await loadData()
   loadFilterOptions()
+
+  // 支持 ?edit=accountId 自动打开编辑
+  const editAccountId = route.query.edit as string
+  if (editAccountId) {
+    const persona = personas.value.find((p: any) => p.accountId === editAccountId)
+    if (persona) openForm(persona)
+  }
 })
 </script>
 

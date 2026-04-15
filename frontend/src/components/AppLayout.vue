@@ -101,10 +101,10 @@
           <span class="sidebar-stats__value">{{ approverStats.total }} {{ $t('myDashboard.items') }}</span>
         </div>
         <div class="sidebar-stats__detail">
-          <span class="sidebar-stats__chip sidebar-stats__chip--ok">{{ $t('myDashboard.approved') }} {{ approverStats.approved }}</span>
-          <span class="sidebar-stats__chip sidebar-stats__chip--posted">{{ $t('myDashboard.posted') }} {{ approverStats.posted }}</span>
-          <span class="sidebar-stats__chip sidebar-stats__chip--no">{{ $t('myDashboard.rejected') }} {{ approverStats.rejected }}</span>
-          <span class="sidebar-stats__chip sidebar-stats__chip--skip">{{ $t('myDashboard.skipped') }} {{ approverStats.skipped }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--ok" @click="goFeedTab('approved')">{{ $t('myDashboard.approved') }} {{ approverStats.approved }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--posted" @click="goFeedTab('posted')">{{ $t('myDashboard.posted') }} {{ approverStats.posted }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--no" @click="goFeedTab('rejected')">{{ $t('myDashboard.rejected') }} {{ approverStats.rejected }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--skip" @click="goFeedTab('pending')">{{ $t('myDashboard.skipped') }} {{ approverStats.skipped }}</span>
         </div>
       </div>
     </aside>
@@ -223,6 +223,10 @@ onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer);
   window.removeEventListener('refresh-queue-stats', onRefreshStats);
 });
+
+function goFeedTab(tab: string) {
+  router.push({ path: '/feeds', query: { tab } });
+}
 
 async function handleLogout() {
   await auth.logout();
@@ -369,6 +373,11 @@ async function handleLogout() {
   border-radius: 4px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sidebar-stats__chip:hover {
+  opacity: 0.8;
 }
 .sidebar-stats__chip--ok {
   background: rgba(103, 194, 58, 0.15);

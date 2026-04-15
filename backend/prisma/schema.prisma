@@ -269,6 +269,7 @@ model Feed {
   sensitivityTier  String?   @map("sensitivity_tier") @db.VarChar(10)
   postType         String    @default("reply") @map("post_type") @db.VarChar(10)
   // postType CHECK: new-post | reply
+  geminiPrompt     Json?     @map("gemini_prompt")  // { systemPrompt, userPrompt } for debugging
   draftContent     String?   @map("draft_content") @db.Text
   finalContent     String?   @map("final_content") @db.Text
   charCount        Int?      @map("char_count")

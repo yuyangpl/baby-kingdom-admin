@@ -231,8 +231,16 @@ const teamStats = reactive({ totalPending: 0, claimed: 0, unclaimed: 0 })
 
 const loadTeamStats = async () => {
   try {
-    const res: any = await api.get('/v1/review-queue/stats', { params: { mine: 'true' } })
-    Object.assign(teamStats, res.data || res)
+    // unclaimed/totalPending 用全局数据，claimed 用个人数据
+    const [globalRes, myRes]: any[] = await Promise.all([
+      api.get('/v1/review-queue/stats'),
+      api.get('/v1/review-queue/stats', { params: { mine: 'true' } }),
+    ])
+    const global = globalRes.data || globalRes
+    const my = myRes.data || myRes
+    teamStats.totalPending = global.totalPending || 0
+    teamStats.unclaimed = global.unclaimed || 0
+    teamStats.claimed = my.claimed || 0
   } catch { /* empty */ }
 }
 

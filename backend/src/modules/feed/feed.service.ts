@@ -161,7 +161,7 @@ export async function reject(feedId: string, userId: string, notes: string | und
 }
 
 // --- Edit content ---
-export async function updateContent(feedId: string, updates: { content: string; toneMode?: string; personaId?: string; adminNotes?: string }, userId: string, ip: string) {
+export async function updateContent(feedId: string, updates: { content: string; subject?: string; toneMode?: string; personaId?: string; adminNotes?: string }, userId: string, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
 
@@ -172,6 +172,10 @@ export async function updateContent(feedId: string, updates: { content: string; 
     adminEdit: true,
     charCount: cleanContent.length,
   };
+  if (updates.subject) {
+    data.subject = xss(updates.subject);
+    data.threadSubject = data.subject;
+  }
   if (updates.toneMode) data.toneMode = updates.toneMode;
   if (updates.personaId) {
     const persona = await prisma.persona.findFirst({ where: { accountId: updates.personaId } });
@@ -212,10 +216,21 @@ export async function regenerate(feedId: string, { toneMode, personaAccountId }:
     sensitivityTier: tier,
   });
 
-  const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
+  let result;
+  try {
+    result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
+  } catch (err) {
+    await auditService.log({
+      operator: userId, eventType: 'FEED_GEN_ERROR', module: 'feed',
+      feedId: feed.feedId, targetId: feed.id, ip,
+      actionDetail: `Regenerate failed: ${feed.feedId} — ${(err as Error).message}`,
+    });
+    throw err;
+  }
   const newContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
 
   const data: Record<string, any> = {
+    geminiPrompt: { systemPrompt: promptResult.systemPrompt, userPrompt: promptResult.userPrompt },
     draftContent: newContent,
     finalContent: null,
     adminEdit: false,
@@ -270,7 +285,17 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
     postType: postType || 'new-post',
   });
 
-  const result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
+  let result;
+  try {
+    result = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
+  } catch (err) {
+    await auditService.log({
+      operator: userId, eventType: 'FEED_GEN_ERROR', module: 'feed',
+      actionDetail: `Custom generate failed: "${topic}" — ${(err as Error).message}`,
+      ip,
+    });
+    throw err;
+  }
   const rawContent = typeof result.text === 'string' ? result.text : result.text.replyText || '';
 
   let subject = '';
@@ -307,6 +332,7 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
       toneMode: promptResult.resolvedToneMode,
       sensitivityTier: `Tier ${tier}`,
       postType: postType || 'reply',
+      geminiPrompt: { systemPrompt: promptResult.systemPrompt, userPrompt: promptResult.userPrompt },
       draftContent,
       charCount: draftContent.length,
       qualityWarnings: quality.warnings,
@@ -448,6 +474,7 @@ export async function generateFromTrend(trend: any): Promise<{ feedId: string; t
         postType,
         subject,
         threadSubject: subject,
+        geminiPrompt: { systemPrompt: promptResult.systemPrompt, userPrompt: promptResult.userPrompt },
         draftContent,
         charCount: draftContent.length,
         qualityWarnings: quality.warnings,

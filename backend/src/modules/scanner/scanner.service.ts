@@ -163,6 +163,11 @@ export async function scanBoard(fid: number): Promise<ScanStats> {
       evaluation = await evaluateThread(thread.subject, content);
     } catch (err) {
       logger.warn({ err, tid: thread.tid }, 'evaluateThread failed, skipping');
+      await auditService.log({
+        operator: 'system', eventType: 'FEED_GEN_ERROR', module: 'scanner',
+        actionDetail: `Evaluate failed tid:${thread.tid} fid:${board.fid} — ${(err as Error).message}`,
+        session: 'worker',
+      });
       stats.skipped.fetchFail++;
       continue;
     }
@@ -208,7 +213,18 @@ export async function scanBoard(fid: number): Promise<ScanStats> {
       excludeRuleIds: board.excludeRuleIds,
     });
 
-    const genResult = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
+    let genResult;
+    try {
+      genResult = await callGemini(promptResult.systemPrompt, promptResult.userPrompt);
+    } catch (err) {
+      logger.warn({ err, tid: thread.tid }, 'callGemini generation failed, skipping');
+      await auditService.log({
+        operator: 'system', eventType: 'FEED_GEN_ERROR', module: 'scanner',
+        actionDetail: `Generate failed tid:${thread.tid} fid:${board.fid} — ${(err as Error).message}`,
+        session: 'worker',
+      });
+      continue;
+    }
     const replyText = typeof genResult.text === 'string' ? genResult.text : genResult.text.replyText || '';
 
     // Quality check
@@ -246,6 +262,7 @@ export async function scanBoard(fid: number): Promise<ScanStats> {
         toneMode: promptResult.resolvedToneMode,
         sensitivityTier: `Tier ${tier}`,
         postType: 'reply',
+        geminiPrompt: { systemPrompt: promptResult.systemPrompt, userPrompt: promptResult.userPrompt },
         draftContent: replyText,
         charCount: replyText.length,
         relevanceScore: evaluation.relevanceScore,
