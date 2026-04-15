@@ -101,7 +101,6 @@
           <span class="sidebar-stats__value">{{ approverStats.total }} {{ $t('myDashboard.items') }}</span>
         </div>
         <div class="sidebar-stats__detail">
-          <span class="sidebar-stats__chip sidebar-stats__chip--ok" @click="goFeedTab('approved')">{{ $t('myDashboard.approved') }} {{ approverStats.approved }}</span>
           <span class="sidebar-stats__chip sidebar-stats__chip--posted" @click="goFeedTab('posted')">{{ $t('myDashboard.posted') }} {{ approverStats.posted }}</span>
           <span class="sidebar-stats__chip sidebar-stats__chip--no" @click="goFeedTab('rejected')">{{ $t('myDashboard.rejected') }} {{ approverStats.rejected }}</span>
           <span class="sidebar-stats__chip sidebar-stats__chip--skip" @click="goFeedTab('pending')">{{ $t('myDashboard.skipped') }} {{ approverStats.skipped }}</span>
@@ -170,7 +169,7 @@ const { locale } = useI18n();
 const isCollapsed = ref<boolean>(false);
 const dataSourcesOpen = ref<boolean>(false);
 const queueStats = ref({ unclaimed: 0, claimed: 0 });
-const approverStats = ref({ total: 0, approved: 0, rejected: 0, skipped: 0, posted: 0, avgSeconds: 0 });
+const approverStats = ref({ total: 0, rejected: 0, skipped: 0, posted: 0 });
 const approverAvgTime = computed(() => {
   if (approverStats.value.total === 0) return '--';
   const s = approverStats.value.avgSeconds;

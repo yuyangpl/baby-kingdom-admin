@@ -15,9 +15,9 @@
           <el-button
             type="success"
             :disabled="!selectedIds.size"
-            @click="batchApprove"
+            @click="batchPublish"
           >
-            {{ $t('feed.batchApprove') }} ({{ selectedIds.size }})
+            {{ $t('feed.batchPublish') }} ({{ selectedIds.size }})
           </el-button>
           <el-button
             type="danger"
@@ -31,7 +31,7 @@
 
       <!-- Status Tabs -->
       <el-tabs v-model="activeTab" @tab-change="onTabChange" class="feed-tabs">
-        <el-tab-pane v-for="tab in ['pending', 'approved', 'posted', 'rejected', 'failed']" :key="tab" :name="tab">
+        <el-tab-pane v-for="tab in ['pending', 'posted', 'rejected', 'failed']" :key="tab" :name="tab">
           <template #label>
             {{ $t(`feed.tabs.${tab}`) }}
             <el-badge
@@ -262,11 +262,18 @@
               {{ $t('feed.reject') }}
             </el-button>
             <el-button
-              v-if="canApprove && ['pending', 'failed'].includes(feed.status)"
-              class="btn-approve"
-              @click="approve(feed)"
+              v-if="canApprove && feed.status === 'pending'"
+              type="success"
+              @click="publishFeed(feed)"
             >
-              {{ feed.status === 'failed' ? $t('myDashboard.reApprove') : $t('feed.approve') }}
+              {{ $t('feed.publish') }}
+            </el-button>
+            <el-button
+              v-if="canApprove && feed.status === 'failed'"
+              class="btn-approve"
+              @click="revertToPending(feed)"
+            >
+              {{ $t('feed.revertToPending') }}
             </el-button>
             <el-button
               v-if="canApprove && feed.status === 'rejected'"
@@ -274,13 +281,6 @@
               @click="revertToPending(feed)"
             >
               {{ $t('feed.revertToPending') }}
-            </el-button>
-            <el-button
-              v-if="feed.status === 'approved'"
-              type="success"
-              @click="postNow(feed)"
-            >
-              {{ $t('feed.postNow') }}
             </el-button>
           </div>
         </div>
@@ -341,7 +341,7 @@ const showEditModal = ref<boolean>(false)
 const editRow = ref<Record<string, any> | null>(null)
 const showCustomGenerate = ref<boolean>(false)
 const pendingCount = ref<number>(0)
-const tabCounts = ref<Record<string, number>>({ pending: 0, approved: 0, posted: 0, rejected: 0, failed: 0 })
+const tabCounts = ref<Record<string, number>>({ pending: 0, posted: 0, rejected: 0, failed: 0 })
 const tones = ref<{ toneId: string; displayName: string }[]>([])
 const personaCache = ref<Record<string, any>>({})
 const boards = ref<{ fid: number; name: string }[]>([])
@@ -414,7 +414,6 @@ const archetypeColor: Record<string, string> = {
 const statusType = (status: string): string => {
   const map: Record<string, string> = {
     pending: 'warning',
-    approved: 'success',
     rejected: 'danger',
     posted: 'info',
     failed: 'danger',
@@ -475,7 +474,7 @@ const loadFeeds = async () => {
 }
 
 const loadTabCounts = async () => {
-  const statuses = ['pending', 'approved', 'posted', 'rejected', 'failed']
+  const statuses = ['pending', 'posted', 'rejected', 'failed']
   const userId = authStore.user?.id || ''
   await Promise.all(statuses.map(async (s) => {
     try {
@@ -535,14 +534,14 @@ const onFeedSaved = () => {
   loadTabCounts()
 }
 
-const approve = async (row: any) => {
+const publishFeed = async (row: any) => {
   try {
-    await api.post(`/v1/feeds/${row.feedId}/approve`)
-    ElMessage.success(t('feed.approve'))
+    await api.post(`/v1/feeds/${row.feedId}/publish`)
+    ElMessage.success(t('feed.postSuccess'))
     loadFeeds()
     loadTabCounts()
   } catch (err: any) {
-    ElMessage.error(err.message || t('common.error'))
+    ElMessage.error(err.error?.message || err.message || t('common.error'))
   }
 }
 
@@ -579,22 +578,6 @@ const rejectWithNotes = async (row: any) => {
   }
 }
 
-const postNow = async (row: any) => {
-  try {
-    await ElMessageBox.confirm(
-      t('feed.postNowConfirm'),
-      t('feed.postNow'),
-      { confirmButtonText: t('feed.postNow'), cancelButtonText: t('common.cancel'), type: 'warning' }
-    )
-    await api.post(`/v1/poster/${row.id || row._id}/post`)
-    ElMessage.success(t('feed.postSuccess'))
-    loadFeeds()
-  } catch (err: any) {
-    if (err === 'cancel') return
-    ElMessage.error(err.message || t('common.error'))
-  }
-}
-
 const regenerate = async (row: any) => {
   try {
     await api.post(`/v1/feeds/${row.feedId}/regenerate`)
@@ -605,12 +588,12 @@ const regenerate = async (row: any) => {
   }
 }
 
-const batchApprove = async () => {
+const batchPublish = async () => {
   const ids = Array.from(selectedIds.value)
   if (!ids.length) return
   try {
-    await api.post('/v1/feeds/batch/approve', { feedIds: ids })
-    ElMessage.success(`${ids.length} ${t('feed.approve')}`)
+    await api.post('/v1/feeds/batch/publish', { feedIds: ids })
+    ElMessage.success(`${ids.length} ${t('feed.postSuccess')}`)
     selectedIds.value = new Set()
     loadFeeds()
     loadTabCounts()

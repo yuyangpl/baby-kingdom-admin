@@ -353,7 +353,7 @@ const scanRecordStatusLabel = (row: any): string => {
 }
 
 const feedStatusType = (status: string): string => {
-  const map: Record<string, string> = { pending: 'warning', approved: 'success', rejected: 'danger', posted: 'info', failed: 'danger' }
+  const map: Record<string, string> = { pending: 'warning', rejected: 'danger', posted: 'info', failed: 'danger' }
   return map[status] || ''
 }
 

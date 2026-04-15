@@ -2,15 +2,14 @@ import { getPrisma } from '../../shared/database.js';
 
 export async function getRealtime() {
   const prisma = getPrisma();
-  const [pending, approved, posted, rejected, failed] = await Promise.all([
+  const [pending, posted, rejected, failed] = await Promise.all([
     prisma.feed.count({ where: { status: 'pending' } }),
-    prisma.feed.count({ where: { status: 'approved' } }),
     prisma.feed.count({ where: { status: 'posted' } }),
     prisma.feed.count({ where: { status: 'rejected' } }),
     prisma.feed.count({ where: { status: 'failed' } }),
   ]);
 
-  return { pendingFeeds: pending, approved, posted, rejected, failed };
+  return { pendingFeeds: pending, posted, rejected, failed };
 }
 
 export async function getToday() {
@@ -48,9 +47,8 @@ export async function getToday() {
     }
   }
 
-  const [generated, approved, rejected, posted, failed, threads, replies] = await Promise.all([
+  const [generated, rejected, posted, failed, threads, replies] = await Promise.all([
     prisma.feed.count({ where: dayFilter }),
-    prisma.feed.count({ where: { status: 'approved', reviewedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'rejected', reviewedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'posted', postedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'failed', updatedAt: { gte: startOfDay, lte: endOfDay } } }),
@@ -58,15 +56,14 @@ export async function getToday() {
     prisma.feed.count({ where: { ...dayFilter, type: 'reply' } }),
   ]);
 
-  const totalReviewed = approved + rejected;
-  // 命中率 = 插入待审池的 feed 数 / 总扫描帖子数
+  const totalReviewed = posted + rejected;
   return {
     date: today,
     scanner: { totalScanned, totalHit, totalFeeds, hitRate: totalScanned > 0 ? Math.round(totalFeeds / totalScanned * 100) / 100 : 0 },
-    feeds: { generated, approved, rejected, posted, failed },
+    feeds: { generated, rejected, posted, failed },
     trends: { pulled: trendsFeedsGenerated },
     posts: { threads, replies },
-    quality: { approvalRate: totalReviewed > 0 ? Math.round(approved / totalReviewed * 100) / 100 : 0 },
+    quality: { publishRate: totalReviewed > 0 ? Math.round(posted / totalReviewed * 100) / 100 : 0 },
   };
 }
 
@@ -136,7 +133,6 @@ export async function aggregateDailyStats(): Promise<void> {
 
   const [
     generatedCount,
-    approvedCount,
     rejectedCount,
     postedCount,
     failedCount,
@@ -145,7 +141,6 @@ export async function aggregateDailyStats(): Promise<void> {
     replyCount,
   ] = await Promise.all([
     prisma.feed.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay } } }),
-    prisma.feed.count({ where: { status: 'approved', reviewedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'rejected', reviewedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'posted', postedAt: { gte: startOfDay, lte: endOfDay } } }),
     prisma.feed.count({ where: { status: 'failed', updatedAt: { gte: startOfDay, lte: endOfDay } } }),
@@ -154,15 +149,15 @@ export async function aggregateDailyStats(): Promise<void> {
     prisma.feed.count({ where: { createdAt: { gte: startOfDay, lte: endOfDay }, type: 'reply' } }),
   ]);
 
-  const totalReviewed = approvedCount + rejectedCount;
-  const approvalRate = totalReviewed > 0 ? approvedCount / totalReviewed : 0;
+  const totalReviewed = postedCount + rejectedCount;
+  const publishRate = totalReviewed > 0 ? postedCount / totalReviewed : 0;
 
   const data = {
     scanner: { totalScanned, totalHit, totalFeeds, hitRate: Math.round(hitRate * 100) / 100 },
-    feeds: { generated: generatedCount, approved: approvedCount, rejected: rejectedCount, posted: postedCount, failed: failedCount },
+    feeds: { generated: generatedCount, rejected: rejectedCount, posted: postedCount, failed: failedCount },
     trends: { pulled: trendsFeedsGenerated },
     posts: { threads: threadCount, replies: replyCount },
-    quality: { approvalRate: Math.round(approvalRate * 100) / 100, duplicateCount },
+    quality: { publishRate: Math.round(publishRate * 100) / 100, duplicateCount },
   };
 
   await prisma.dailyStats.upsert({

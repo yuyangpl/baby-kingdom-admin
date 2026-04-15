@@ -25,8 +25,8 @@ export async function getById(req: Request, res: Response): Promise<void> {
   success(res, feed);
 }
 
-export async function approve(req: Request, res: Response): Promise<void> {
-  const feed = await feedService.approve(req.params.id as string, (req as any).user.id, req.ip ?? '');
+export async function publish(req: Request, res: Response): Promise<void> {
+  const feed = await feedService.publish(req.params.id as string, (req as any).user.id, req.ip ?? '');
   success(res, feed);
 }
 
@@ -64,12 +64,12 @@ export async function customGenerate(req: Request, res: Response): Promise<void>
   success(res, feed);
 }
 
-export async function batchApprove(req: Request, res: Response): Promise<void> {
+export async function batchPublish(req: Request, res: Response): Promise<void> {
   const { feedIds } = req.body;
   if (!Array.isArray(feedIds) || feedIds.length === 0) throw new ValidationError('feedIds array is required');
-  if (feedIds.length > 50) throw new ValidationError('Cannot batch approve more than 50 feeds at once');
+  if (feedIds.length > 10) throw new ValidationError('Cannot batch publish more than 10 feeds at once');
   const user = (req as any).user;
-  const result = await feedService.batchApprove(feedIds, user.id, req.ip ?? '');
+  const result = await feedService.batchPublish(feedIds, user.id, req.ip ?? '');
   success(res, result);
 }
 

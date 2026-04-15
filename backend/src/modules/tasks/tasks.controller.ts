@@ -123,37 +123,8 @@ export async function posterTask(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // 批量模式（定时任务）：查找所有 approved 的 feed，逐个发布
-  const intervalSec = parseInt(await configService.getValue('BK_POST_INTERVAL_SEC') || '35', 10);
-  const approvedFeeds = await prisma.feed.findMany({
-    where: { status: 'approved', postId: null },
-    orderBy: { createdAt: 'asc' },
-    take: 5, // 每次最多处理 5 条，避免超时
-  });
-
-  if (approvedFeeds.length === 0) {
-    res.json({ success: true, posted: 0, reason: 'no approved feeds' });
-    return;
-  }
-
-  let posted = 0;
-  const errors: string[] = [];
-  for (const feed of approvedFeeds) {
-    try {
-      await postFeed(feed.id, undefined, '');
-      posted++;
-      // 遵守 BK 论坛限频
-      if (posted < approvedFeeds.length) {
-        await new Promise(r => setTimeout(r, intervalSec * 1000));
-      }
-    } catch (err: any) {
-      logger.error({ err, feedId: feed.id }, 'Poster batch: single feed failed');
-      errors.push(`${feed.feedId}: ${err.message}`);
-    }
-  }
-
-  await logTask('poster', { status: errors.length > 0 ? 'failed' : 'completed', duration: Date.now() - startedAt, result: { posted, total: approvedFeeds.length, errors }, triggeredBy });
-  res.json({ success: true, posted, total: approvedFeeds.length, errors: errors.length > 0 ? errors : undefined });
+  // 不再有 approved 状态，批量定时发布已移除（发布在审核时同步完成）
+  res.json({ success: true, posted: 0, reason: 'batch posting removed — publish happens at review time' });
 }
 
 export async function gtrendsTask(req: Request, res: Response): Promise<void> {

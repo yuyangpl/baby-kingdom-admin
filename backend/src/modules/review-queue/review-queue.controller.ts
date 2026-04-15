@@ -13,8 +13,8 @@ export async function getMyWorkbench(req: Request, res: Response): Promise<void>
   success(res, result);
 }
 
-export async function approve(req: Request, res: Response): Promise<void> {
-  const feed = await service.approve(req.params.id as string, req.user!.id, (req.ip ?? '') as string);
+export async function publish(req: Request, res: Response): Promise<void> {
+  const feed = await service.publish(req.params.id as string, req.user!.id, (req.ip ?? '') as string);
   success(res, feed);
 }
 

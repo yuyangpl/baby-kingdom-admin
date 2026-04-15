@@ -15,7 +15,7 @@ router.get('/my-stats', authenticate, wrap(ctrl.getMyStats));
 router.get('/stats', authenticate, wrap(ctrl.getStats));
 
 // Parameterized routes
-router.post('/:id/approve', authenticate, authorize('admin', 'approver'), wrap(ctrl.approve));
+router.post('/:id/publish', authenticate, authorize('admin', 'approver'), wrap(ctrl.publish));
 router.post('/:id/reject', authenticate, authorize('admin', 'approver'), wrap(ctrl.reject));
 router.post('/:id/skip', authenticate, authorize('admin', 'approver'), wrap(ctrl.skip));
 

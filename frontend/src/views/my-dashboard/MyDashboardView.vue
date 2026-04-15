@@ -45,7 +45,7 @@
             <span v-if="currentFeed.threadTid" class="feed-card__meta">tid:{{ currentFeed.threadTid }}</span>
           </div>
           <div class="feed-card__header-right">
-            <el-tag :type="currentFeed.status === 'approved' ? 'success' : 'warning'" size="small">{{ currentFeed.status }}</el-tag>
+            <el-tag :type="currentFeed.status === 'failed' ? 'danger' : 'warning'" size="small">{{ currentFeed.status }}</el-tag>
             <el-tag v-for="s in normSources(currentFeed)" :key="s" size="small" effect="plain" style="margin-left: 2px;">{{ $t(`feed.sources.${s}`) }}</el-tag>
           </div>
         </div>
@@ -161,23 +161,15 @@
           <div class="feed-card__footer-right">
             <el-button :disabled="actionLoading" @click="openEdit">{{ $t('common.edit') }}</el-button>
             <el-button type="warning" :loading="regenerateLoading" :disabled="actionLoading" @click="doRegenerate">{{ $t('feed.regenerate') }}</el-button>
-            <template v-if="currentFeed.status === 'approved'">
-              <!-- 已通过：显示发布按钮 -->
-              <el-button type="success" :loading="postLoading" :disabled="actionLoading" @click="doPost">{{ $t('myDashboard.publish') }}</el-button>
-              <el-button :disabled="actionLoading" @click="advanceToNext">{{ $t('myDashboard.next') }}</el-button>
-            </template>
-            <template v-else-if="currentFeed.status === 'failed'">
-              <!-- 发布失败：重新通过 + 发布 -->
+            <template v-if="currentFeed.status === 'failed'">
               <div class="feed-card__fail">{{ currentFeed.failReason }}</div>
-              <el-button class="btn-approve" :loading="approveLoading" :disabled="actionLoading" @click="doApprove">{{ $t('myDashboard.reApprove') }}</el-button>
+              <el-button class="btn-approve" :disabled="actionLoading" @click="revertCurrentToPending">{{ $t('feed.revertToPending') }}</el-button>
               <el-button :disabled="actionLoading" @click="advanceToNext">{{ $t('myDashboard.next') }}</el-button>
             </template>
             <template v-else>
-              <!-- pending：显示审核按钮 -->
               <el-button :loading="skipLoading" :disabled="actionLoading" @click="doSkip">↷ {{ $t('myDashboard.skip') }} (S)</el-button>
               <el-button class="btn-reject" :loading="rejectLoading" :disabled="actionLoading" @click="doReject">✗ {{ $t('myDashboard.reject') }} (K)</el-button>
-              <el-button class="btn-approve" :loading="approveLoading" :disabled="actionLoading" @click="doApprove">✓ {{ $t('myDashboard.approve') }} (J)</el-button>
-              <el-button type="success" :loading="approveAndPostLoading" :disabled="actionLoading" @click="doApproveAndPost">{{ $t('myDashboard.approveAndPublish') }}</el-button>
+              <el-button type="success" :loading="publishLoading" :disabled="actionLoading" @click="doPublish">{{ $t('myDashboard.publish') }} (J)</el-button>
             </template>
           </div>
         </div>
@@ -313,12 +305,10 @@ const archetypeColor: Record<string, string> = {
 const showEditModal = ref(false)
 const editRow = ref<Record<string, any> | null>(null)
 const regenerateLoading = ref(false)
-const approveLoading = ref(false)
+const publishLoading = ref(false)
 const rejectLoading = ref(false)
 const skipLoading = ref(false)
-const postLoading = ref(false)
-const approveAndPostLoading = ref(false)
-const actionLoading = computed(() => regenerateLoading.value || approveLoading.value || rejectLoading.value || skipLoading.value || postLoading.value || approveAndPostLoading.value)
+const actionLoading = computed(() => regenerateLoading.value || publishLoading.value || rejectLoading.value || skipLoading.value)
 
 const openEdit = () => {
   if (!currentFeed.value) return
@@ -393,21 +383,21 @@ const advance = () => {
   }
 }
 
-const doApprove = async () => {
+const doPublish = async () => {
   const feed = currentFeed.value
   if (!feed) return
-  approveLoading.value = true
+  publishLoading.value = true
   try {
-    await api.post(`/v1/review-queue/${feed.id}/approve`)
-    ElMessage.success(t('myDashboard.approved'))
-    // 通过后保留在工作台，状态变为 approved
-    feeds.value[workbenchIndex.value] = { ...feed, status: 'approved' }
-    feeds.value = [...feeds.value]
-    window.dispatchEvent(new Event('refresh-queue-stats'))
+    await api.post(`/v1/review-queue/${feed.id}/publish`)
+    ElMessage.success(t('myDashboard.posted'))
+    advance()
   } catch (err: any) {
-    ElMessage.error(err.error?.message || err.message || t('common.error'))
+    const msg = err.error?.message || err.message || t('common.error')
+    ElMessage.error(msg)
+    feeds.value[workbenchIndex.value] = { ...feed, status: 'failed', failReason: msg }
+    feeds.value = [...feeds.value]
   } finally {
-    approveLoading.value = false
+    publishLoading.value = false
   }
 }
 
@@ -446,45 +436,16 @@ const doSkip = async () => {
   }
 }
 
-const doPost = async () => {
+const revertCurrentToPending = async () => {
   const feed = currentFeed.value
   if (!feed) return
-  postLoading.value = true
   try {
-    await api.post(`/v1/poster/${feed.id}/post`)
-    ElMessage.success(t('myDashboard.posted'))
-    advance()
-  } catch (err: any) {
-    const msg = err.error?.message || err.message || t('common.error')
-    ElMessage.error(msg)
-    // 发布失败，更新本地状态
-    feeds.value[workbenchIndex.value] = { ...feed, status: 'failed', failReason: msg }
+    await api.post(`/v1/feeds/${feed.feedId}/revert-pending`)
+    feeds.value[workbenchIndex.value] = { ...feed, status: 'pending', failReason: null }
     feeds.value = [...feeds.value]
-  } finally {
-    postLoading.value = false
-  }
-}
-
-const doApproveAndPost = async () => {
-  const feed = currentFeed.value
-  if (!feed) return
-  approveAndPostLoading.value = true
-  try {
-    await api.post(`/v1/review-queue/${feed.id}/approve`)
-    try {
-      await api.post(`/v1/poster/${feed.id}/post`)
-      ElMessage.success(t('myDashboard.posted'))
-      advance()
-    } catch (postErr: any) {
-      const msg = postErr.error?.message || postErr.message || t('common.error')
-      ElMessage.error(msg)
-      feeds.value[workbenchIndex.value] = { ...feed, status: 'failed', failReason: msg }
-      feeds.value = [...feeds.value]
-    }
+    window.dispatchEvent(new Event('refresh-queue-stats'))
   } catch (err: any) {
     ElMessage.error(err.error?.message || err.message || t('common.error'))
-  } finally {
-    approveAndPostLoading.value = false
   }
 }
 
@@ -535,7 +496,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   if (!currentFeed.value) return
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
   switch (e.key.toLowerCase()) {
-    case 'j': e.preventDefault(); doApprove(); break
+    case 'j': e.preventDefault(); doPublish(); break
     case 'k': e.preventDefault(); doReject(); break
     case 's': e.preventDefault(); doSkip(); break
     case 'o':

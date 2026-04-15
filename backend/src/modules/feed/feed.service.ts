@@ -71,17 +71,17 @@ export async function getById(id: string) {
   return feed;
 }
 
-// --- Approve / Reject ---
-export async function approve(feedId: string, userId: string, ip: string) {
+// --- Publish / Reject ---
+export async function publish(feedId: string, userId: string, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
-  if (!['pending', 'failed'].includes(feed.status)) throw new BusinessError('Can only approve pending or failed feeds');
+  if (!['pending', 'failed'].includes(feed.status)) throw new BusinessError('Can only publish pending or failed feeds');
 
   const prisma = getPrisma();
-  const updated = await prisma.feed.update({
+  // 设置审核信息
+  await prisma.feed.update({
     where: { id: feed.id },
     data: {
-      status: 'approved',
       reviewedBy: userId,
       reviewedAt: new Date(),
       failReason: null,
@@ -90,22 +90,17 @@ export async function approve(feedId: string, userId: string, ip: string) {
     },
   });
 
+  // 直接发布（成功→posted，失败→failed，postFeed 内部处理）
+  const { postFeed } = await import('../poster/poster.service.js');
+  const result = await postFeed(feed.id, userId, ip);
+
   await auditService.log({
-    operator: userId, eventType: 'FEED_APPROVED', module: 'feed',
+    operator: userId, eventType: 'FEED_PUBLISHED', module: 'feed',
     feedId: feed.feedId, targetId: feed.id, ip,
-    actionDetail: `Approved feed ${feed.feedId}`,
+    actionDetail: `Published feed ${feed.feedId}`,
   });
 
-  // Dispatch to poster task endpoint
-  const port = process.env.PORT || 8080;
-  fetch(`http://localhost:${port}/tasks/poster`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feedId: feed.id, triggeredBy: 'approve' }),
-    signal: AbortSignal.timeout(30000),
-  }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
-
-  return updated;
+  return result;
 }
 
 export async function revertToPending(feedId: string, userId: string, ip: string) {
@@ -136,7 +131,7 @@ export async function revertToPending(feedId: string, userId: string, ip: string
 export async function reject(feedId: string, userId: string, notes: string | undefined, ip: string) {
   const feed = await findFeed(feedId);
   if (!feed) throw new NotFoundError('Feed');
-  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only reject pending or approved feeds');
+  if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
 
   const prisma = getPrisma();
   const updated = await prisma.feed.update({
@@ -348,11 +343,11 @@ export async function customGenerate({ topic, personaAccountId, toneMode, postTy
 }
 
 // --- Batch ---
-export async function batchApprove(feedIds: string[], userId: string, ip: string) {
+export async function batchPublish(feedIds: string[], userId: string, ip: string) {
   const results: { succeeded: string[]; failed: { id: string; reason: string }[] } = { succeeded: [], failed: [] };
   for (const id of feedIds) {
     try {
-      await approve(id, userId, ip);
+      await publish(id, userId, ip);
       results.succeeded.push(id);
     } catch (err: any) {
       results.failed.push({ id, reason: err.message });

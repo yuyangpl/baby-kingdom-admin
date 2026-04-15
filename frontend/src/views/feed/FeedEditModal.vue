@@ -90,10 +90,7 @@
         <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
         <el-button type="warning" :loading="regenerating" @click="handleRegenerate">{{ $t('feed.regenerate') }}</el-button>
         <el-button :loading="savingDraft" @click="handleSaveDraft">{{ $t('common.save') }}</el-button>
-        <el-button v-if="!isApproved" type="success" :loading="savingApprove" @click="handleSaveAndApprove">
-          {{ $t('common.save') }} &amp; {{ $t('feed.approve') }}
-        </el-button>
-        <el-button v-if="isApproved" type="success" :loading="savingApprove" @click="handleSaveAndPost">
+        <el-button type="success" :loading="savingApprove" @click="handleSaveAndPublish">
           {{ $t('common.save') }} &amp; {{ $t('myDashboard.publish') }}
         </el-button>
       </div>
@@ -166,7 +163,6 @@ const form = reactive({
   adminNotes: '',
 })
 
-const isApproved = computed(() => props.editData?.status === 'approved')
 const isNewPost = computed(() => props.editData?.postType === 'new-post')
 
 const tierType = (tier: string | number): string => {
@@ -238,33 +234,17 @@ const handleRegenerate = async () => {
   }
 }
 
-const handleSaveAndPost = async () => {
+const handleSaveAndPublish = async () => {
   savingApprove.value = true
   try {
     await saveContent()
-    const id = props.editData?.id || props.editData?._id
-    await api.post(`/v1/poster/${id}/post`)
+    const feedId = props.editData?.feedId
+    await api.post(`/v1/feeds/${feedId}/publish`)
     ElMessage.success(t('feed.postSuccess'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
     ElMessage.error(err.error?.message || err.message || t('common.error'))
-  } finally {
-    savingApprove.value = false
-  }
-}
-
-const handleSaveAndApprove = async () => {
-  savingApprove.value = true
-  try {
-    await saveContent()
-    const feedId = props.editData?.feedId
-    await api.post(`/v1/feeds/${feedId}/approve`)
-    ElMessage.success(t('common.success'))
-    emit('saved')
-    emit('update:modelValue', false)
-  } catch (err: any) {
-    ElMessage.error(err.message || t('common.error'))
   } finally {
     savingApprove.value = false
   }

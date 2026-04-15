@@ -240,7 +240,7 @@ model Feed {
   type             String    @default("reply") @db.VarChar(10)
   // type CHECK: thread | reply
   status           String    @default("pending") @db.VarChar(10)
-  // status CHECK: pending | approved | rejected | posted | failed
+  // status CHECK: pending | rejected | posted | failed
   source           String[]  @default([])
   // source values: scanner | trends | custom
 

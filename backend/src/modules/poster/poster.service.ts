@@ -53,7 +53,7 @@ export async function postFeed(feedId: string, userId?: string, ip?: string) {
 
   const feed = await prisma.feed.findUnique({ where: { id: feedId } });
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
+  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only post pending or approved feeds');
 
   const content = feed.finalContent || feed.draftContent;
   if (!content) throw new BusinessError('Feed has no content to post');

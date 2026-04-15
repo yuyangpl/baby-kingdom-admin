@@ -85,22 +85,19 @@ export async function myWorkbench(userId: string) {
 }
 
 /**
- * Approve a claimed feed. Requires claimedBy = userId.
+ * Publish a claimed feed — directly post to BK Forum.
  */
-export async function approve(feedId: string, userId: string, ip: string) {
+export async function publish(feedId: string, userId: string, ip: string) {
   const prisma = getPrisma();
-  const feed = await prisma.feed.findFirst({
-    where: { id: feedId },
-  });
+  const feed = await prisma.feed.findFirst({ where: { id: feedId } });
   if (!feed) throw new NotFoundError('Feed');
-  if (!['pending', 'failed'].includes(feed.status)) throw new BusinessError('Can only approve pending or failed feeds');
-  // pending 需要认领检查，failed 允许直接重新通过
-  if (feed.status === 'pending' && feed.claimedBy !== userId) throw new ForbiddenError('You can only approve feeds you have claimed');
+  if (!['pending', 'failed'].includes(feed.status)) throw new BusinessError('Can only publish pending or failed feeds');
+  if (feed.status === 'pending' && feed.claimedBy !== userId) throw new ForbiddenError('You can only publish feeds you have claimed');
 
-  const updated = await prisma.feed.update({
+  // 设置审核信息，清除 claim
+  await prisma.feed.update({
     where: { id: feed.id },
     data: {
-      status: 'approved',
       reviewedBy: userId,
       reviewedAt: new Date(),
       failReason: null,
@@ -110,22 +107,17 @@ export async function approve(feedId: string, userId: string, ip: string) {
     },
   });
 
+  // 直接调用 poster 发布（成功→posted，失败→failed，内部处理）
+  const { postFeed } = await import('../poster/poster.service.js');
+  const result = await postFeed(feed.id, userId, ip);
+
   await auditService.log({
-    operator: userId, eventType: 'FEED_APPROVED', module: 'feed',
+    operator: userId, eventType: 'FEED_PUBLISHED', module: 'feed',
     feedId: feed.feedId, targetId: feed.id, ip,
-    actionDetail: `Approved feed ${feed.feedId}`,
+    actionDetail: `Published feed ${feed.feedId}`,
   });
 
-  // Dispatch to poster
-  const port = process.env.PORT || 8080;
-  fetch(`http://localhost:${port}/tasks/poster`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feedId: feed.id, triggeredBy: 'approve' }),
-    signal: AbortSignal.timeout(30000),
-  }).catch(err => logger.warn({ err }, 'Poster task dispatch failed'));
-
-  return updated;
+  return result;
 }
 
 /**
@@ -135,7 +127,7 @@ export async function reject(feedId: string, userId: string, notes: string | und
   const prisma = getPrisma();
   const feed = await prisma.feed.findFirst({ where: { id: feedId } });
   if (!feed) throw new NotFoundError('Feed');
-  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only reject pending or approved feeds');
+  if (feed.status !== 'pending') throw new BusinessError('Can only reject pending feeds');
   if (feed.claimedBy !== userId) throw new ForbiddenError('You can only reject feeds you have claimed');
 
   const updated = await prisma.feed.update({
@@ -227,13 +219,11 @@ export async function myStats(userId: string) {
 
   const dayRange = { gte: startOfDay, lte: endOfDay };
 
-  const [approved, rejected, posted] = await Promise.all([
-    prisma.feed.count({ where: { reviewedBy: userId, status: 'approved', reviewedAt: dayRange } }),
-    prisma.feed.count({ where: { reviewedBy: userId, status: 'rejected', reviewedAt: dayRange } }),
+  const [posted, rejected] = await Promise.all([
     prisma.feed.count({ where: { reviewedBy: userId, status: 'posted', reviewedAt: dayRange } }),
+    prisma.feed.count({ where: { reviewedBy: userId, status: 'rejected', reviewedAt: dayRange } }),
   ]);
 
-  // 跳过数：今天由该用户认领但释放的（audit log SKIP）
   const skipped = await prisma.auditLog.count({
     where: {
       operator: userId,
@@ -242,7 +232,7 @@ export async function myStats(userId: string) {
     },
   });
 
-  const total = approved + rejected + skipped;
+  const total = posted + rejected + skipped;
 
   // 平均用时：从 claimedAt 到 reviewedAt 的秒数
   const reviewedFeeds = await prisma.feed.findMany({
@@ -264,7 +254,7 @@ export async function myStats(userId: string) {
     avgSeconds = Math.round(totalMs / reviewedFeeds.length / 1000);
   }
 
-  return { total, approved, rejected, skipped, posted, avgSeconds };
+  return { total, posted, rejected, skipped, avgSeconds };
 }
 
 /**
