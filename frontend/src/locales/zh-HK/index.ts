@@ -21,7 +21,7 @@ export default {
     deleted: '已刪除',
     created: '已建立',
     updated: '已更新',
-    failed: '操作失敗',
+    failed: '失敗',
     saveFailed: '儲存失敗',
     deleteFailed: '刪除失敗',
     loadFailed: '載入失敗',

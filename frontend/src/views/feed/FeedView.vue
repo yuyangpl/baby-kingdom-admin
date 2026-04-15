@@ -9,8 +9,11 @@
           <span>{{ feedStore.newFeedCount }} {{ $t('feed.newFeeds') }}</span>
         </div>
         <div class="toolbar">
-          <el-button v-if="isApproverOnly" type="primary" :loading="startingReview" @click="startReview">
+          <el-button v-if="isApproverOnly && tabCountsLoaded && !hasClaimed" type="warning" :loading="startingReview" @click="startReview">
             {{ $t('myDashboard.startReview') }}
+          </el-button>
+          <el-button v-if="isApproverOnly && tabCountsLoaded && hasClaimed" plain @click="endReview" :loading="endingReview">
+            {{ $t('myDashboard.exitWorkbench') }}
           </el-button>
           <el-button type="primary" @click="showCustomGenerate = true">
             {{ $t('feed.customGenerate') }}
@@ -351,6 +354,9 @@ const showEditModal = ref<boolean>(false)
 const editRow = ref<Record<string, any> | null>(null)
 const actionFeedId = ref<string>('')
 const startingReview = ref(false)
+const endingReview = ref(false)
+const hasClaimed = computed(() => isApproverOnly.value && tabCounts.value.pending > 0)
+const tabCountsLoaded = ref(false)
 const batchPublishing = ref(false)
 const batchRejecting = ref(false)
 const batchLoading = computed(() => batchPublishing.value || batchRejecting.value)
@@ -506,6 +512,7 @@ const loadTabCounts = async () => {
     } catch { /* ignore */ }
   }))
   pendingCount.value = tabCounts.value.pending
+  tabCountsLoaded.value = true
 }
 
 const onTabChange = (tab: string) => {
@@ -687,6 +694,21 @@ const startReview = async () => {
     ElMessage.error(err.error?.message || err.message || t('common.error'))
   } finally {
     startingReview.value = false
+  }
+}
+
+const endReview = async () => {
+  endingReview.value = true
+  try {
+    await api.post('/v1/review-queue/release-claims')
+    ElMessage.success(t('common.success'))
+    loadFeeds()
+    loadTabCounts()
+    window.dispatchEvent(new Event('refresh-queue-stats'))
+  } catch (err: any) {
+    ElMessage.error(err.error?.message || err.message || t('common.error'))
+  } finally {
+    endingReview.value = false
   }
 }
 

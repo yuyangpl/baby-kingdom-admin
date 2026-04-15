@@ -388,12 +388,12 @@ async function handleLogout() {
   color: #409eff;
 }
 .sidebar-stats__chip--no {
-  background: rgba(245, 108, 108, 0.15);
-  color: #f56c6c;
+  background: rgba(144, 147, 153, 0.15);
+  color: #909399;
 }
 .sidebar-stats__chip--fail {
-  background: rgba(245, 108, 108, 0.3);
-  color: #ff6b6b;
+  background: rgba(245, 108, 108, 0.15);
+  color: #f56c6c;
 }
 .sidebar-stats__chip--skip {
   background: rgba(230, 162, 60, 0.15);

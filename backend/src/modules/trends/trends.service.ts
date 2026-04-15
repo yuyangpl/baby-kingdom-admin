@@ -94,6 +94,28 @@ async function getEnabledSources(): Promise<string[]> {
   return sources;
 }
 
+async function refreshMlToken(baseUrl: string, currentToken: string): Promise<string | null> {
+  try {
+    const resp = await fetch(`${baseUrl}/auth/refresh-token`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${currentToken}` },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json() as any;
+    const newToken = data.token || data.data?.token || data.accessToken || data.data?.accessToken;
+    if (!newToken) return null;
+    await configService.updateValue('MEDIALENS_JWT_TOKEN', newToken, 'system', '');
+    const expiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString();
+    await configService.updateValue('MEDIALENS_JWT_TOKEN_EXPIRY', expiresAt, 'system', '');
+    logger.info({ expiresAt }, 'MediaLens token refreshed automatically');
+    return newToken;
+  } catch (err) {
+    logger.warn({ err }, 'MediaLens token refresh failed');
+    return null;
+  }
+}
+
 async function fetchFromSource(baseUrl: string, token: string, source: string, country: string, limit: number, lookbackDays: number): Promise<RawTrend[]> {
   const endpoints: Record<string, string> = {
     medialens: '/buzz/viral-topics',
@@ -103,14 +125,38 @@ async function fetchFromSource(baseUrl: string, token: string, source: string, c
 
   const url = `${baseUrl}${endpoints[source]}?country=${country}&limit=${limit}&lookback_days=${lookbackDays}`;
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(15000),
   });
 
+  // 401 -> 自动 refresh token 后重试一次
   if (response.status === 401) {
-    logger.warn('MediaLens JWT expired, needs reauthentication');
-    return [];
+    logger.warn('MediaLens JWT expired, attempting auto refresh');
+    const newToken = await refreshMlToken(baseUrl, token);
+    if (newToken) {
+      response = await fetch(url, {
+        headers: { Authorization: `Bearer ${newToken}` },
+        signal: AbortSignal.timeout(15000),
+      });
+    }
+    if (!newToken || response.status === 401) {
+      logger.warn('MediaLens JWT refresh failed, needs reauthentication');
+      // 发送邮件通知
+      try {
+        const { sendAlert } = await import('../../shared/email.js');
+        const adminEmails = await configService.getValue('ADMIN_EMAILS');
+        if (adminEmails) {
+          for (const email of adminEmails.split(',').map((e: string) => e.trim()).filter(Boolean)) {
+            await sendAlert(email,
+              '[BK Admin] MediaLens Token 过期且刷新失败',
+              `<h3>MediaLens Token 过期</h3><p>自动刷新失败，需要手动重新 OTP 验证。</p><p>时间：${new Date().toISOString()}</p>`
+            );
+          }
+        }
+      } catch { /* ignore email errors */ }
+      return [];
+    }
   }
 
   if (!response.ok) {
