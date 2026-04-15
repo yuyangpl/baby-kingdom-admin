@@ -248,15 +248,14 @@
             </span>
           </div>
           <div class="feed-card__footer-right">
-            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" @click="openEdit(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" @click="openEdit(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" type="warning" @click="regenerate(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" type="warning" @click="regenerate(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button
               v-if="canApprove && !['rejected', 'posted'].includes(feed.status)"
-              size="small"
               class="btn-reject"
               @click="rejectWithNotes(feed)"
             >
@@ -264,7 +263,6 @@
             </el-button>
             <el-button
               v-if="canApprove && ['pending', 'failed'].includes(feed.status)"
-              size="small"
               class="btn-approve"
               @click="approve(feed)"
             >
@@ -272,7 +270,6 @@
             </el-button>
             <el-button
               v-if="canApprove && feed.status === 'rejected'"
-              size="small"
               class="btn-approve"
               @click="revertToPending(feed)"
             >
@@ -280,7 +277,6 @@
             </el-button>
             <el-button
               v-if="feed.status === 'approved'"
-              size="small"
               type="success"
               @click="postNow(feed)"
             >
