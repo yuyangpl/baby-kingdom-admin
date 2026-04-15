@@ -87,7 +87,7 @@ export default {
     overview: '總覽',
     dashboard: '儀表板',
     content: '內容管理',
-    feedQueue: '發布佇列',
+    feedQueue: '發佈隊列',
     scanner: '掃描器',
     trends: '熱門趨勢',
     poster: '發帖器',
@@ -146,7 +146,7 @@ export default {
 
   // Feed
   feed: {
-    title: 'Feed 隊列',
+    title: '發佈隊列',
     newFeeds: '條新 Feed 可用',
     loadNew: '載入新 Feed',
     customGenerate: '生成新貼文草稿',

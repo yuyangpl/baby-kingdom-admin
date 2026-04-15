@@ -393,6 +393,7 @@ async function handleLogout() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 600px;
 }
 
 /* Header */
