@@ -101,10 +101,10 @@
           <span class="sidebar-stats__value">{{ approverStats.total }} {{ $t('myDashboard.items') }}</span>
         </div>
         <div class="sidebar-stats__detail">
-          <span class="sidebar-stats__chip sidebar-stats__chip--ok">{{ $t('myDashboard.approved') }} {{ approverStats.approved }}</span>
-          <span class="sidebar-stats__chip sidebar-stats__chip--posted">{{ $t('myDashboard.posted') }} {{ approverStats.posted }}</span>
-          <span class="sidebar-stats__chip sidebar-stats__chip--no">{{ $t('myDashboard.rejected') }} {{ approverStats.rejected }}</span>
-          <span class="sidebar-stats__chip sidebar-stats__chip--skip">{{ $t('myDashboard.skipped') }} {{ approverStats.skipped }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--posted" @click="goFeedTab('posted')">{{ $t('myDashboard.posted') }} {{ approverStats.posted }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--no" @click="goFeedTab('rejected')">{{ $t('myDashboard.rejected') }} {{ approverStats.rejected }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--fail" @click="goFeedTab('failed')">{{ $t('common.failed') }} {{ approverStats.failed }}</span>
+          <span class="sidebar-stats__chip sidebar-stats__chip--skip" @click="goFeedTab('pending')">{{ $t('myDashboard.skipped') }} {{ approverStats.skipped }}</span>
         </div>
       </div>
     </aside>
@@ -138,6 +138,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item @click="router.push('/profile')">{{ $t('nav.profile') }}</el-dropdown-item>
+                <el-dropdown-item @click="router.push('/guide')">{{ $t('nav.guide') }}</el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">{{ $t('nav.logout') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -170,7 +171,7 @@ const { locale } = useI18n();
 const isCollapsed = ref<boolean>(false);
 const dataSourcesOpen = ref<boolean>(false);
 const queueStats = ref({ unclaimed: 0, claimed: 0 });
-const approverStats = ref({ total: 0, approved: 0, rejected: 0, skipped: 0, posted: 0, avgSeconds: 0 });
+const approverStats = ref({ total: 0, rejected: 0, skipped: 0, posted: 0, failed: 0 });
 const approverAvgTime = computed(() => {
   if (approverStats.value.total === 0) return '--';
   const s = approverStats.value.avgSeconds;
@@ -223,6 +224,10 @@ onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer);
   window.removeEventListener('refresh-queue-stats', onRefreshStats);
 });
+
+function goFeedTab(tab: string) {
+  router.push({ path: '/feeds', query: { tab } });
+}
 
 async function handleLogout() {
   await auth.logout();
@@ -369,6 +374,11 @@ async function handleLogout() {
   border-radius: 4px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sidebar-stats__chip:hover {
+  opacity: 0.8;
 }
 .sidebar-stats__chip--ok {
   background: rgba(103, 194, 58, 0.15);
@@ -379,6 +389,10 @@ async function handleLogout() {
   color: #409eff;
 }
 .sidebar-stats__chip--no {
+  background: rgba(144, 147, 153, 0.15);
+  color: #909399;
+}
+.sidebar-stats__chip--fail {
   background: rgba(245, 108, 108, 0.15);
   color: #f56c6c;
 }

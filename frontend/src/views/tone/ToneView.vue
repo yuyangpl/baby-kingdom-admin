@@ -2,7 +2,7 @@
   <div class="tone-view">
     <div class="page-header">
       <h1 class="page-title">{{ $t('tone.title') }}</h1>
-      <el-button type="primary" @click="openAdd">
+      <el-button v-if="auth.isAdmin" type="primary" @click="openAdd">
         {{ $t('tone.addTone') }}
       </el-button>
     </div>
@@ -72,7 +72,7 @@
               @confirm="handleDelete(row)"
             >
               <template #reference>
-                <el-button type="danger" size="small" plain>{{ $t('common.delete') }}</el-button>
+                <el-button v-if="auth.isAdmin" type="danger" size="small" plain>{{ $t('common.delete') }}</el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -91,10 +91,12 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '../../stores/auth'
 import api from '../../api'
 import ToneForm from './ToneForm.vue'
 
 const { t } = useI18n()
+const auth = useAuthStore()
 
 const tones = ref<any[]>([])
 const loading = ref(false)

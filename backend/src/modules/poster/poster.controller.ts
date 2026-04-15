@@ -9,7 +9,7 @@ export async function postFeed(req: Request, res: Response): Promise<void> {
   const prisma = getPrisma();
   const feed = await prisma.feed.findUnique({ where: { id: req.params.id as string } });
   if (!feed) throw new BusinessError('Feed not found');
-  if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
+  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only post pending or approved feeds');
 
   await posterService.postFeed(feed.id, req.user?.id, req.ip || '');
   success(res, { posted: true, feedId: feed.feedId });

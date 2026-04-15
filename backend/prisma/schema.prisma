@@ -240,7 +240,7 @@ model Feed {
   type             String    @default("reply") @db.VarChar(10)
   // type CHECK: thread | reply
   status           String    @default("pending") @db.VarChar(10)
-  // status CHECK: pending | approved | rejected | posted | failed
+  // status CHECK: pending | rejected | posted | failed
   source           String[]  @default([])
   // source values: scanner | trends | custom
 
@@ -269,6 +269,7 @@ model Feed {
   sensitivityTier  String?   @map("sensitivity_tier") @db.VarChar(10)
   postType         String    @default("reply") @map("post_type") @db.VarChar(10)
   // postType CHECK: new-post | reply
+  geminiPrompt     Json?     @map("gemini_prompt")  // { systemPrompt, userPrompt } for debugging
   draftContent     String?   @map("draft_content") @db.Text
   finalContent     String?   @map("final_content") @db.Text
   charCount        Int?      @map("char_count")

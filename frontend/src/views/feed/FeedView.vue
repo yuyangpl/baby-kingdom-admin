@@ -9,19 +9,27 @@
           <span>{{ feedStore.newFeedCount }} {{ $t('feed.newFeeds') }}</span>
         </div>
         <div class="toolbar">
+          <el-button v-if="isApproverOnly && tabCountsLoaded && !hasClaimed" type="warning" :loading="startingReview" @click="startReview">
+            {{ $t('myDashboard.startReview') }}
+          </el-button>
+          <el-button v-if="isApproverOnly && tabCountsLoaded && hasClaimed" plain @click="endReview" :loading="endingReview">
+            {{ $t('myDashboard.exitWorkbench') }}
+          </el-button>
           <el-button type="primary" @click="showCustomGenerate = true">
             {{ $t('feed.customGenerate') }}
           </el-button>
           <el-button
             type="success"
-            :disabled="!selectedIds.size"
-            @click="batchApprove"
+            :disabled="!selectedIds.size || batchPublishing"
+            :loading="batchPublishing"
+            @click="batchPublish"
           >
-            {{ $t('feed.batchApprove') }} ({{ selectedIds.size }})
+            {{ $t('feed.batchPublish') }} ({{ selectedIds.size }})
           </el-button>
           <el-button
             type="danger"
-            :disabled="!selectedIds.size"
+            :disabled="!selectedIds.size || batchRejecting"
+            :loading="batchRejecting"
             @click="batchReject"
           >
             {{ $t('feed.batchReject') }} ({{ selectedIds.size }})
@@ -31,7 +39,7 @@
 
       <!-- Status Tabs -->
       <el-tabs v-model="activeTab" @tab-change="onTabChange" class="feed-tabs">
-        <el-tab-pane v-for="tab in ['pending', 'approved', 'posted', 'rejected', 'failed']" :key="tab" :name="tab">
+        <el-tab-pane v-for="tab in ['pending', 'posted', 'rejected', 'failed']" :key="tab" :name="tab">
           <template #label>
             {{ $t(`feed.tabs.${tab}`) }}
             <el-badge
@@ -119,9 +127,9 @@
               </el-tag>
               {{ feed.subject || feed.threadSubject }}
               <a
-                v-if="feed.threadTid"
+                v-if="feed.threadTid || (feed.postId && feed.postId !== 'unknown' && feed.postId !== '')"
                 class="feed-card__view-thread"
-                :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.threadTid}`"
+                :href="`https://www.baby-kingdom.com/forum.php?mod=viewthread&tid=${feed.threadTid || feed.postId}`"
                 target="_blank"
                 rel="noopener"
                 @click.stop
@@ -130,17 +138,23 @@
             <div v-if="feed.trendSummary" class="feed-card__trend-summary">
               {{ feed.trendSummary }}
             </div>
-            <div v-if="feed.draftContent" class="feed-card__preview">
+            <div v-if="feed.finalContent || feed.draftContent">
               <span class="feed-card__preview-label">{{ feed.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</span>
-              {{ truncate(feed.draftContent, 200) }}
-            </div>
-            <div v-if="feed.finalContent && feed.finalContent !== feed.draftContent" class="feed-card__draft-box">
-              {{ truncate(feed.finalContent, 200) }}
+              <div class="feed-card__draft-box">{{ feed.finalContent || feed.draftContent }}</div>
             </div>
             <div v-if="feed.failReason" class="feed-card__fail">{{ feed.failReason }}</div>
           </div>
           <!-- Right: Persona Info -->
           <div v-if="feed.bkUsername" class="feed-card__persona">
+            <el-button
+              v-if="feed.personaId"
+              class="feed-card__persona-edit"
+              link
+              size="small"
+              @click.stop="goEditPersona(feed.personaId)"
+            >
+              <el-icon :size="14"><Edit /></el-icon>
+            </el-button>
             <div class="avatar-gradient feed-card__avatar">
               {{ avatarInitial(feed.bkUsername) }}
             </div>
@@ -242,43 +256,44 @@
             </span>
           </div>
           <div class="feed-card__footer-right">
-            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" @click="openEdit(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" :disabled="!!actionFeedId" @click="openEdit(feed)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" size="small" type="warning" @click="regenerate(feed)">
+            <el-button v-if="authStore.isApprover && !['posted', 'rejected'].includes(feed.status)" type="warning" :disabled="!!actionFeedId" @click="regenerate(feed)">
               {{ $t('feed.regenerate') }}
             </el-button>
             <el-button
               v-if="canApprove && !['rejected', 'posted'].includes(feed.status)"
-              size="small"
               class="btn-reject"
+              :disabled="!!actionFeedId"
               @click="rejectWithNotes(feed)"
             >
               {{ $t('feed.reject') }}
             </el-button>
             <el-button
-              v-if="canApprove && ['pending', 'failed'].includes(feed.status)"
-              size="small"
-              class="btn-approve"
-              @click="approve(feed)"
+              v-if="canApprove && feed.status === 'pending'"
+              type="success"
+              :loading="actionFeedId === feed.feedId"
+              :disabled="!!actionFeedId"
+              @click="publishFeed(feed)"
             >
-              {{ feed.status === 'failed' ? $t('myDashboard.reApprove') : $t('feed.approve') }}
+              {{ $t('feed.publish') }}
             </el-button>
             <el-button
-              v-if="canApprove && feed.status === 'rejected'"
-              size="small"
+              v-if="canApprove && feed.status === 'failed'"
               class="btn-approve"
+              :disabled="!!actionFeedId"
               @click="revertToPending(feed)"
             >
               {{ $t('feed.revertToPending') }}
             </el-button>
             <el-button
-              v-if="feed.status === 'approved'"
-              size="small"
-              type="success"
-              @click="postNow(feed)"
+              v-if="canApprove && feed.status === 'rejected'"
+              class="btn-approve"
+              :disabled="!!actionFeedId"
+              @click="revertToPending(feed)"
             >
-              {{ $t('feed.postNow') }}
+              {{ $t('feed.revertToPending') }}
             </el-button>
           </div>
         </div>
@@ -315,9 +330,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { RefreshRight, ArrowDown } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
+import { RefreshRight, ArrowDown, Edit } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import api from '../../api'
 import { useFeedStore } from '../../stores/feed'
@@ -336,9 +352,17 @@ const activeTab = ref<string>('pending')
 const selectedIds = ref<Set<string>>(new Set())
 const showEditModal = ref<boolean>(false)
 const editRow = ref<Record<string, any> | null>(null)
+const actionFeedId = ref<string>('')
+const startingReview = ref(false)
+const endingReview = ref(false)
+const hasClaimed = computed(() => isApproverOnly.value && tabCounts.value.pending > 0)
+const tabCountsLoaded = ref(false)
+const batchPublishing = ref(false)
+const batchRejecting = ref(false)
+const batchLoading = computed(() => batchPublishing.value || batchRejecting.value)
 const showCustomGenerate = ref<boolean>(false)
 const pendingCount = ref<number>(0)
-const tabCounts = ref<Record<string, number>>({ pending: 0, approved: 0, posted: 0, rejected: 0, failed: 0 })
+const tabCounts = ref<Record<string, number>>({ pending: 0, posted: 0, rejected: 0, failed: 0 })
 const tones = ref<{ toneId: string; displayName: string }[]>([])
 const personaCache = ref<Record<string, any>>({})
 const boards = ref<{ fid: number; name: string }[]>([])
@@ -411,7 +435,6 @@ const archetypeColor: Record<string, string> = {
 const statusType = (status: string): string => {
   const map: Record<string, string> = {
     pending: 'warning',
-    approved: 'success',
     rejected: 'danger',
     posted: 'info',
     failed: 'danger',
@@ -472,7 +495,7 @@ const loadFeeds = async () => {
 }
 
 const loadTabCounts = async () => {
-  const statuses = ['pending', 'approved', 'posted', 'rejected', 'failed']
+  const statuses = ['pending', 'posted', 'rejected', 'failed']
   const userId = authStore.user?.id || ''
   await Promise.all(statuses.map(async (s) => {
     try {
@@ -489,12 +512,14 @@ const loadTabCounts = async () => {
     } catch { /* ignore */ }
   }))
   pendingCount.value = tabCounts.value.pending
+  tabCountsLoaded.value = true
 }
 
 const onTabChange = (tab: string) => {
   feedStore.setFilter('status', tab)
   selectedIds.value = new Set()
   loadFeeds()
+  document.querySelector('.main-content')?.scrollTo(0, 0)
 }
 
 const toggleSourceFilter = (src: string) => {
@@ -531,18 +556,22 @@ const onFeedSaved = () => {
   loadTabCounts()
 }
 
-const approve = async (row: any) => {
+const publishFeed = async (row: any) => {
+  actionFeedId.value = row.feedId
   try {
-    await api.post(`/v1/feeds/${row.feedId}/approve`)
-    ElMessage.success(t('feed.approve'))
+    await api.post(`/v1/feeds/${row.feedId}/publish`)
+    ElMessage.success(t('feed.postSuccess'))
     loadFeeds()
     loadTabCounts()
   } catch (err: any) {
-    ElMessage.error(err.message || t('common.error'))
+    ElMessage.error(err.error?.message || err.message || t('common.error'))
+  } finally {
+    actionFeedId.value = ''
   }
 }
 
 const revertToPending = async (row: any) => {
+  actionFeedId.value = row.feedId
   try {
     await api.post(`/v1/feeds/${row.feedId}/revert-pending`)
     ElMessage.success(t('common.success'))
@@ -550,6 +579,8 @@ const revertToPending = async (row: any) => {
     loadTabCounts()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    actionFeedId.value = ''
   }
 }
 
@@ -565,6 +596,7 @@ const rejectWithNotes = async (row: any) => {
         inputPlaceholder: t('feed.placeholder.notes'),
       }
     )
+    actionFeedId.value = row.feedId
     await api.post(`/v1/feeds/${row.feedId}/reject`, { notes: notes || '' })
     ElMessage.success(t('feed.reject'))
     loadFeeds()
@@ -572,46 +604,40 @@ const rejectWithNotes = async (row: any) => {
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
-  }
-}
-
-const postNow = async (row: any) => {
-  try {
-    await ElMessageBox.confirm(
-      t('feed.postNowConfirm'),
-      t('feed.postNow'),
-      { confirmButtonText: t('feed.postNow'), cancelButtonText: t('common.cancel'), type: 'warning' }
-    )
-    await api.post(`/v1/poster/${row.id || row._id}/post`)
-    ElMessage.success(t('feed.postSuccess'))
-    loadFeeds()
-  } catch (err: any) {
-    if (err === 'cancel') return
-    ElMessage.error(err.message || t('common.error'))
+  } finally {
+    actionFeedId.value = ''
   }
 }
 
 const regenerate = async (row: any) => {
+  actionFeedId.value = row.feedId
   try {
     await api.post(`/v1/feeds/${row.feedId}/regenerate`)
     ElMessage.success(t('feed.regenerate'))
     loadFeeds()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    actionFeedId.value = ''
   }
 }
 
-const batchApprove = async () => {
+const batchPublish = async () => {
   const ids = Array.from(selectedIds.value)
   if (!ids.length) return
+  batchPublishing.value = true
+  const loading = ElLoading.service({ background: 'rgba(255,255,255,0.7)' })
   try {
-    await api.post('/v1/feeds/batch/approve', { feedIds: ids })
-    ElMessage.success(`${ids.length} ${t('feed.approve')}`)
+    await api.post('/v1/feeds/batch/publish', { feedIds: ids })
+    ElMessage.success(`${ids.length} ${t('feed.postSuccess')}`)
     selectedIds.value = new Set()
     loadFeeds()
     loadTabCounts()
   } catch (err: any) {
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    loading.close()
+    batchPublishing.value = false
   }
 }
 
@@ -629,29 +655,106 @@ const batchReject = async () => {
         inputPlaceholder: t('feed.placeholder.notes'),
       }
     )
-    await api.post('/v1/feeds/batch/reject', { feedIds: ids, notes: notes || '' })
-    ElMessage.success(`${ids.length} ${t('feed.reject')}`)
-    selectedIds.value = new Set()
-    loadFeeds()
-    loadTabCounts()
+    batchRejecting.value = true
+    const loading = ElLoading.service({ background: 'rgba(255,255,255,0.7)' })
+    try {
+      await api.post('/v1/feeds/batch/reject', { feedIds: ids, notes: notes || '' })
+      ElMessage.success(`${ids.length} ${t('feed.reject')}`)
+      selectedIds.value = new Set()
+      loadFeeds()
+      loadTabCounts()
+    } finally {
+      loading.close()
+    }
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
+  } finally {
+    batchRejecting.value = false
   }
 }
 
+const startReview = async () => {
+  startingReview.value = true
+  try {
+    const res: any = await api.post('/v1/review-queue/claim-batch', { count: 10 })
+    const data = res.data || res
+    if (!data.claimed || data.claimed.length === 0) {
+      ElMessage.info(t('myDashboard.workbenchEmpty'))
+      return
+    }
+    ElMessage.success(t('myDashboard.startReview') + ` (${data.claimed.length})`)
+    // 切换到待审 tab 并刷新
+    activeTab.value = 'pending'
+    feedStore.setFilter('status', 'pending')
+    loadFeeds()
+    loadTabCounts()
+    window.dispatchEvent(new Event('refresh-queue-stats'))
+  } catch (err: any) {
+    ElMessage.error(err.error?.message || err.message || t('common.error'))
+  } finally {
+    startingReview.value = false
+  }
+}
+
+const endReview = async () => {
+  endingReview.value = true
+  try {
+    await api.post('/v1/review-queue/release-claims')
+    ElMessage.success(t('common.success'))
+    loadFeeds()
+    loadTabCounts()
+    window.dispatchEvent(new Event('refresh-queue-stats'))
+  } catch (err: any) {
+    ElMessage.error(err.error?.message || err.message || t('common.error'))
+  } finally {
+    endingReview.value = false
+  }
+}
+
+const route = useRoute()
+const router = useRouter()
+
+const goEditPersona = (accountId: string) => {
+  const href = router.resolve({ path: '/personas', query: { edit: accountId } }).href
+  window.open(href, '_blank')
+}
+
 onMounted(() => {
-  feedStore.setFilter('status', 'pending')
+  const tab = (route.query.tab as string) || 'pending'
+  activeTab.value = tab
+  feedStore.setFilter('status', tab)
   loadFeeds()
   loadTabCounts()
   loadTones()
   loadBoards()
 })
 
+const onRefreshFeeds = () => {
+  loadFeeds()
+  loadTabCounts()
+}
+window.addEventListener('refresh-queue-stats', onRefreshFeeds)
+
+onUnmounted(() => {
+  window.removeEventListener('refresh-queue-stats', onRefreshFeeds)
+})
+
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && newTab !== activeTab.value) {
+    activeTab.value = newTab as string
+    feedStore.setFilter('status', newTab as string)
+    loadFeeds()
+    loadTabCounts()
+  }
+})
+
 </script>
 
 <style scoped>
 .feed-view {
+  position: relative;
+  min-height: 200px;
 }
 
 /* Sticky top area */
@@ -776,6 +879,7 @@ onMounted(() => {
   display: flex;
   gap: 16px;
   margin-bottom: 12px;
+  align-items: stretch;
 }
 .feed-card__content {
   flex: 2;
@@ -836,9 +940,9 @@ onMounted(() => {
   padding: 8px 12px;
   font-size: 13px;
   color: var(--bk-muted-fg);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
   overflow: hidden;
 }
 
@@ -855,6 +959,7 @@ onMounted(() => {
 
 /* Persona Info */
 .feed-card__persona {
+  position: relative;
   flex: 1;
   background: #EFF6FF;
   border-radius: var(--bk-radius-sm);
@@ -864,6 +969,16 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   min-width: 140px;
+}
+.feed-card__persona-edit {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: var(--el-color-primary);
+  opacity: 0.6;
+}
+.feed-card__persona-edit:hover {
+  opacity: 1;
 }
 .feed-card__avatar {
   width: 40px;

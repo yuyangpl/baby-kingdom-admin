@@ -2,7 +2,7 @@
   <div class="topic-rules-view">
     <div class="topic-rules-view__header">
       <h2 class="page-title">{{ $t('topicRules.title') }}</h2>
-      <el-button type="primary" @click="openAdd">
+      <el-button v-if="auth.isAdmin" type="primary" @click="openAdd">
         {{ $t('topicRules.addRule') }}
       </el-button>
     </div>
@@ -103,7 +103,7 @@
             @confirm="handleDelete(row)"
           >
             <template #reference>
-              <el-button type="danger" size="small" plain>
+              <el-button v-if="auth.isAdmin" type="danger" size="small" plain>
                 {{ $t('common.delete') }}
               </el-button>
             </template>
@@ -124,10 +124,12 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '../../stores/auth'
 import api from '../../api'
 import TopicRuleForm from './TopicRuleForm.vue'
 
 const { t } = useI18n()
+const auth = useAuthStore()
 
 const rules = ref<any[]>([])
 const loading = ref<boolean>(false)

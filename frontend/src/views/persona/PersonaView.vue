@@ -2,7 +2,7 @@
   <div class="persona-view">
     <div class="persona-view__header">
       <h2 class="page-title">{{ $t('persona.title') }}</h2>
-      <el-button type="primary" @click="openForm(null)">
+      <el-button v-if="auth.isAdmin" type="primary" @click="openForm(null)">
         {{ $t('persona.addPersona') }}
       </el-button>
     </div>
@@ -99,7 +99,7 @@
             <el-button size="small" @click="openForm(p)">
               {{ $t('common.edit') }}
             </el-button>
-            <el-popconfirm :title="$t('persona.deleteConfirm')" @confirm="handleDelete(p.id || p._id)">
+            <el-popconfirm v-if="auth.isAdmin" :title="$t('persona.deleteConfirm')" @confirm="handleDelete(p.id || p._id)">
               <template #reference>
                 <el-button size="small" type="danger" plain>{{ $t('common.delete') }}</el-button>
               </template>
@@ -117,12 +117,15 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../../api'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '../../stores/auth'
 import PersonaForm from './PersonaForm.vue'
 
 const { t } = useI18n()
+const auth = useAuthStore()
 
 const personas = ref<any[]>([])
 const loading = ref<boolean>(false)
@@ -233,7 +236,9 @@ async function loadData() {
   loading.value = true
   try {
     const res = await api.get('/v1/personas')
-    personas.value = res.data || []
+    const list = res.data || []
+    list.sort((a: any, b: any) => (b.isActive === a.isActive ? 0 : b.isActive ? 1 : -1))
+    personas.value = list
   } finally {
     loading.value = false
   }
@@ -250,9 +255,18 @@ async function handleDelete(id: string) {
   loadData()
 }
 
-onMounted(() => {
-  loadData()
+const route = useRoute()
+
+onMounted(async () => {
+  await loadData()
   loadFilterOptions()
+
+  // 支持 ?edit=accountId 自动打开编辑
+  const editAccountId = route.query.edit as string
+  if (editAccountId) {
+    const persona = personas.value.find((p: any) => p.accountId === editAccountId)
+    if (persona) openForm(persona)
+  }
 })
 </script>
 

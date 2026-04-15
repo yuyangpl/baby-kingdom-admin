@@ -53,7 +53,7 @@ export async function postFeed(feedId: string, userId?: string, ip?: string) {
 
   const feed = await prisma.feed.findUnique({ where: { id: feedId } });
   if (!feed) throw new NotFoundError('Feed');
-  if (feed.status !== 'approved') throw new BusinessError('Can only post approved feeds');
+  if (!['pending', 'approved'].includes(feed.status)) throw new BusinessError('Can only post pending or approved feeds');
 
   const content = feed.finalContent || feed.draftContent;
   if (!content) throw new BusinessError('Feed has no content to post');
@@ -258,8 +258,11 @@ async function postNewThread(baseUrl: string, token: string, feed: any, content:
     });
     const respBody = await resp.json() as BkApiResponse;
 
+    logger.info({ bkResponse: respBody }, 'postNewThread BK API response');
+
     if (respBody.status === 1) {
-      return { success: true, postId: respBody.data?.tid || 'unknown', postUrl: '' };
+      const tid = respBody.data?.tid || respBody.data?.thread?.tid || (respBody as any).tid || '';
+      return { success: true, postId: tid ? String(tid) : '', postUrl: '' };
     }
 
     // Rate limit retry (max 2 retries, 32s sleep -- matches GAS)
@@ -292,9 +295,11 @@ async function postReply(baseUrl: string, token: string, feed: any, content: str
       signal: AbortSignal.timeout(15000),
     });
     const respBody = await resp.json() as BkApiResponse;
+    logger.info({ bkResponse: respBody }, 'postReply BK API response');
 
     if (respBody.status === 1) {
-      return { success: true, postId: respBody.data?.pid || 'unknown', postUrl: '' };
+      const pid = respBody.data?.pid || (respBody as any).pid || '';
+      return { success: true, postId: pid ? String(pid) : '', postUrl: '' };
     }
 
     // Rate limit retry (max 2 retries, 32s sleep)

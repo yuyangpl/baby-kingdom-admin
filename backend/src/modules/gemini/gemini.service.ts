@@ -27,8 +27,7 @@ export async function callGemini(systemPrompt: string, userPrompt: string, optio
   const apiKey = await configService.getValue('GEMINI_API_KEY');
 
   if (!apiKey) {
-    logger.warn('GEMINI_API_KEY not configured, using mock response');
-    return mockGeminiResponse(userPrompt, options);
+    throw new Error('GEMINI_API_KEY not configured');
   }
 
   try {

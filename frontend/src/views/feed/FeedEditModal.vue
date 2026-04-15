@@ -41,18 +41,12 @@
         <div class="content-box content-box--muted">{{ editData.trendSummary }}</div>
       </div>
 
-      <!-- Draft / generated content preview -->
-      <div v-if="editData.draftContent" class="original-content">
-        <div class="section-label">{{ editData.postType === 'new-post' ? $t('feed.newPostContent') : $t('feed.replyContent') }}</div>
-        <div class="content-box content-box--preview">{{ editData.draftContent }}</div>
-      </div>
-      <div v-if="editData.finalContent && editData.finalContent !== editData.draftContent" class="original-content">
-        <div class="section-label">{{ $t('feed.finalContent') }}</div>
-        <div class="content-box content-box--preview">{{ editData.finalContent }}</div>
-      </div>
-
       <!-- Editable form -->
       <el-form ref="formRef" :model="form" label-position="top" class="edit-section">
+        <el-form-item v-if="isNewPost" :label="$t('feed.threadSubject')" prop="subject">
+          <el-input v-model="form.subject" :placeholder="$t('feed.threadSubject')" />
+        </el-form-item>
+
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item :label="$t('feed.persona')">
@@ -96,8 +90,8 @@
         <el-button @click="$emit('update:modelValue', false)">{{ $t('common.cancel') }}</el-button>
         <el-button type="warning" :loading="regenerating" @click="handleRegenerate">{{ $t('feed.regenerate') }}</el-button>
         <el-button :loading="savingDraft" @click="handleSaveDraft">{{ $t('common.save') }}</el-button>
-        <el-button type="success" :loading="savingApprove" @click="handleSaveAndApprove">
-          {{ $t('common.save') }} &amp; {{ $t('feed.approve') }}
+        <el-button type="success" :loading="savingApprove" @click="handleSaveAndPublish">
+          {{ $t('common.save') }} &amp; {{ $t('myDashboard.publish') }}
         </el-button>
       </div>
     </template>
@@ -105,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useI18n } from 'vue-i18n'
@@ -162,11 +156,14 @@ const toneLabel = (toneId: string): string => {
 }
 
 const form = reactive({
+  subject: '',
   content: '',
   toneMode: '',
   personaId: '',
   adminNotes: '',
 })
+
+const isNewPost = computed(() => props.editData?.postType === 'new-post')
 
 const tierType = (tier: string | number): string => {
   const s = String(tier || '')
@@ -181,6 +178,7 @@ watch(
     if (open && props.editData) {
       loadTones()
       loadPersonas()
+      form.subject = props.editData.subject || props.editData.threadSubject || ''
       form.content = props.editData.finalContent || props.editData.draftContent || ''
       form.toneMode = props.editData.toneMode || ''
       form.personaId = props.editData.personaId || ''
@@ -191,6 +189,7 @@ watch(
 
 const buildPayload = (): Record<string, any> => {
   const payload: Record<string, any> = { content: form.content }
+  if (isNewPost.value && form.subject) payload.subject = form.subject
   if (form.toneMode) payload.toneMode = form.toneMode
   if (form.personaId && form.personaId !== props.editData?.personaId) payload.personaId = form.personaId
   if (form.adminNotes) payload.adminNotes = form.adminNotes
@@ -235,17 +234,17 @@ const handleRegenerate = async () => {
   }
 }
 
-const handleSaveAndApprove = async () => {
+const handleSaveAndPublish = async () => {
   savingApprove.value = true
   try {
     await saveContent()
     const feedId = props.editData?.feedId
-    await api.post(`/v1/feeds/${feedId}/approve`)
-    ElMessage.success(t('common.success'))
+    await api.post(`/v1/feeds/${feedId}/publish`)
+    ElMessage.success(t('feed.postSuccess'))
     emit('saved')
     emit('update:modelValue', false)
   } catch (err: any) {
-    ElMessage.error(err.message || t('common.error'))
+    ElMessage.error(err.error?.message || err.message || t('common.error'))
   } finally {
     savingApprove.value = false
   }

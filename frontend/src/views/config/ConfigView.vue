@@ -44,6 +44,13 @@
               >
                 {{ $t('trends.requestOtp') }}
               </el-button>
+              <el-button
+                v-if="!otpRequested"
+                @click="refreshMlToken"
+                :loading="refreshingToken"
+              >
+                Refresh Token
+              </el-button>
               <template v-else>
                 <div class="otp-section__input">
                   <el-input
@@ -337,6 +344,21 @@ const resetDefaults = async () => {
   } catch (err: any) {
     if (err === 'cancel') return
     ElMessage.error(err.message || t('common.error'))
+  }
+}
+
+const refreshingToken = ref(false)
+const refreshMlToken = async () => {
+  refreshingToken.value = true
+  try {
+    await api.post('/v1/trends/medialens/refresh-token')
+    ElMessage.success('Token refreshed')
+    loadConfigs()
+    loadTokenStatus()
+  } catch (err: any) {
+    ElMessage.error(err.error?.message || err.message || 'Refresh failed')
+  } finally {
+    refreshingToken.value = false
   }
 }
 
