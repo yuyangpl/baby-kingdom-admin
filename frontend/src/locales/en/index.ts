@@ -280,6 +280,8 @@ export default {
     toneMode: 'Tone Mode',
     feedIds: 'Feed IDs',
     tier: 'Tier',
+    tierTooltip: '<strong>T1</strong> — General topics (parenting, shopping, school, etc.)<br/><strong>T2</strong> — Sensitive topics (birth, breastfeeding, eczema, age, etc.)<br/><strong>T3</strong> — Highly sensitive topics (depression, divorce, single parent, ADHD, etc.)',
+    sentimentTooltip: '<strong>positive</strong> — Score ≥ 60, positive emotion<br/><strong>neutral</strong> — Score 41–59, neutral<br/><strong>negative</strong> — Score ≤ 40, negative emotion',
     dataSources: 'Data Sources',
     summary: 'Summary',
     engagements: 'Engagements',

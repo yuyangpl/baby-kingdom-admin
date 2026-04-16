@@ -287,6 +287,8 @@ export default {
     toneMode: '語氣模式',
     feedIds: 'Feed IDs',
     tier: '等級',
+    tierTooltip: '<strong>T1</strong> — 一般話題（育兒、購物、學校等）<br/><strong>T2</strong> — 敏感話題（分娩、母乳、濕疹、高齡等）<br/><strong>T3</strong> — 高敏感話題（抑鬱、離婚、單親、ADHD等）',
+    sentimentTooltip: '<strong>positive</strong> — 情感分數 ≥ 60，正面情緒<br/><strong>neutral</strong> — 情感分數 41–59，中性<br/><strong>negative</strong> — 情感分數 ≤ 40，負面情緒',
     dataSources: '數據來源',
     summary: '摘要',
     engagements: '互動量',

@@ -1,38 +1,13 @@
 <template>
   <div class="trends-view">
-    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px;">
       <div>
         <h1 class="page-title" style="margin: 0;">{{ $t('trends.title') }}</h1>
         <p style="margin: 4px 0 0; font-size: 13px; color: #909399;">
           {{ $t('trends.desc') }}
           <span v-if="pullIntervalMin" style="margin-left: 4px;">{{ $t('trends.pullInterval', { minutes: pullIntervalMin }) }}</span>
         </p>
-      </div>
-      <el-button type="primary" :loading="pulling" :disabled="queuePaused" @click="triggerPull">
-        {{ $t('trends.triggerPull') }}
-      </el-button>
-    </div>
-    <el-alert v-if="queuePaused" :title="$t('trends.queuePaused')" type="warning" show-icon :closable="false" style="margin-bottom: 16px;" />
-
-    <!-- Data Source Toggles + Token Status -->
-    <el-card class="source-card" shadow="never">
-      <div class="source-row">
-        <div class="source-toggles">
-          <span class="card-header-title" style="margin-right: 16px;">{{ $t('trends.dataSources') }}</span>
-          <div class="source-toggle-item">
-            <span>MediaLens</span>
-            <el-switch v-model="sources.mediaLens" disabled />
-          </div>
-          <div class="source-toggle-item">
-            <span>LIHKG</span>
-            <el-switch v-model="sources.lihkg" @change="(val: boolean) => updateSourceConfig('ENABLE_LIHKG', val)" />
-          </div>
-          <div class="source-toggle-item">
-            <span>Facebook</span>
-            <el-switch v-model="sources.facebook" @change="(val: boolean) => updateSourceConfig('ENABLE_FB_VIRAL', val)" />
-          </div>
-        </div>
-        <div class="token-status-inline" :class="tokenValid ? 'token--valid' : 'token--expired'">
+        <div class="token-status-inline" :class="tokenValid ? 'token--valid' : 'token--expired'" style="margin-top: 6px;">
           <el-icon :size="14" :color="tokenValid ? 'var(--bk-success)' : 'var(--bk-danger)'">
             <CircleCheckFilled v-if="tokenValid" />
             <WarningFilled v-else />
@@ -40,7 +15,18 @@
           <span>{{ tokenValid ? $t('trends.tokenValidUntil', { date: tokenExpiry }) : $t('trends.tokenExpiredOrMissing') }}</span>
         </div>
       </div>
-    </el-card>
+      <el-button type="primary" :loading="pulling" :disabled="queuePaused" @click="triggerPull">
+        {{ $t('trends.triggerPull') }}
+      </el-button>
+    </div>
+    <el-alert v-if="queuePaused" :title="$t('trends.queuePaused')" type="warning" show-icon :closable="false" style="margin-bottom: 16px;" />
+
+    <!-- Source Tabs -->
+    <el-tabs v-model="activeSource" @tab-change="onSourceChange" class="trends-tabs">
+      <el-tab-pane v-for="tab in sourceTabs" :key="tab.value" :name="tab.value">
+        <template #label>{{ tab.label }}</template>
+      </el-tab-pane>
+    </el-tabs>
 
     <!-- Trends Table -->
     <el-card shadow="never" class="table-card">
@@ -48,7 +34,6 @@
         :data="trends"
         v-loading="loading"
         style="width: 100%"
-        :row-class-name="sentimentRowClass"
         highlight-current-row
       >
         <el-table-column type="expand">
@@ -81,30 +66,34 @@
             {{ row.createdAt ? new Date(row.createdAt).toLocaleString() : '--' }}
           </template>
         </el-table-column>
-        <el-table-column prop="source" :label="$t('trends.source')" width="120">
-          <template #default="{ row }">
-            <el-tag
-              :type="sourceTagType(row.source)"
-              size="small"
-              effect="light"
-            >
-              {{ row.source }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="rank" :label="$t('trends.rank')" width="70" align="center" />
         <el-table-column prop="topicLabel" :label="$t('trends.topicLabel')" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="sentimentScore" :label="$t('trends.sentiment')" width="120">
+        <el-table-column prop="sentimentScore" width="120">
+          <template #header>
+            {{ $t('trends.sentiment') }}
+            <el-tooltip placement="top">
+              <template #content>
+                <div style="line-height: 1.6;" v-html="$t('trends.sentimentTooltip')"></div>
+              </template>
+              <el-icon :size="14" style="margin-left: 4px; vertical-align: middle; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </template>
           <template #default="{ row }">
-            <el-tag
-              :type="sentimentTagType(row.sentimentScore)"
-              size="small"
-            >
+            <el-tag :type="sentimentTagType(row.sentimentScore)" size="small">
               {{ sentimentLabel(row.sentimentScore) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="sensitivityTier" :label="$t('trends.tier')" width="80" align="center">
+        <el-table-column prop="sensitivityTier" width="80" align="center">
+          <template #header>
+            {{ $t('trends.tier') }}
+            <el-tooltip placement="top">
+              <template #content>
+                <div style="line-height: 1.6;" v-html="$t('trends.tierTooltip')"></div>
+              </template>
+              <el-icon :size="14" style="margin-left: 4px; vertical-align: middle; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </template>
           <template #default="{ row }">
             <span
               v-if="row.sensitivityTier"
@@ -150,7 +139,7 @@ import { ref, reactive, onMounted } from 'vue'
 
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
+import { CircleCheckFilled, WarningFilled, QuestionFilled } from '@element-plus/icons-vue'
 import api from '../../api'
 
 const { t } = useI18n()
@@ -165,42 +154,25 @@ const tokenExpiry = ref('')
 
 const pagination = reactive({ page: 1, limit: 20, total: 0, pages: 0 })
 
-const sources = reactive({
-  mediaLens: true,
-  lihkg: true,
-  facebook: true,
-})
+const activeSource = ref('fb')
+const sourceTabs = [
+  { value: 'fb', label: 'Facebook / Instagram' },
+  { value: 'lihkg', label: 'LIHKG' },
+]
+
+const onSourceChange = () => {
+  pagination.page = 1
+  loadTrends()
+}
 
 const loadSourceConfig = async () => {
   try {
     const res = await api.get('/v1/configs/medialens')
     const configs = res.data || res
     for (const c of configs) {
-      if (c.key === 'ENABLE_LIHKG') sources.lihkg = c.value === 'true'
-      if (c.key === 'ENABLE_FB_VIRAL') sources.facebook = c.value === 'true'
       if (c.key === 'TREND_PULL_INTERVAL_MIN') pullIntervalMin.value = parseInt(c.value, 10) || 60
     }
   } catch { /* keep defaults */ }
-}
-
-const updateSourceConfig = async (key: string, val: boolean) => {
-  try {
-    await api.put(`/v1/configs/${key}`, { value: String(val) })
-  } catch {
-    ElMessage.error('Failed to update config')
-  }
-}
-
-const sourceTagType = (source: string): string => {
-  const map: Record<string, string> = {
-    medialens: 'primary',
-    MediaLens: 'primary',
-    lihkg: 'warning',
-    LIHKG: 'warning',
-    facebook: 'info',
-    Facebook: 'info',
-  }
-  return map[source] ?? 'info'
 }
 
 const sentimentTagType = (score: number | undefined): string => {
@@ -212,23 +184,21 @@ const sentimentTagType = (score: number | undefined): string => {
 
 const sentimentLabel = (score: number | undefined): string => {
   if (score == null) return 'neutral'
-  if (score > 0) return 'positive'
-  if (score < 0) return 'negative'
+  if (score >= 60) return 'positive'
+  if (score <= 40) return 'negative'
   return 'neutral'
-}
-
-const sentimentRowClass = ({ row }: { row: any }): string => {
-  if (row.sentimentScore > 0) return 'row-positive'
-  if (row.sentimentScore < 0) return 'row-negative'
-  return ''
 }
 
 const loadTrends = async () => {
   loading.value = true
   try {
-    const res: any = await api.get('/v1/trends', {
-      params: { page: pagination.page, limit: pagination.limit }
-    })
+    const params: Record<string, any> = { page: pagination.page, limit: pagination.limit }
+    if (activeSource.value === 'fb') {
+      params.source = 'medialens,facebook'
+    } else {
+      params.source = activeSource.value
+    }
+    const res: any = await api.get('/v1/trends', { params })
     const payload = res.data ?? res
     trends.value = Array.isArray(payload) ? payload : (payload.data ?? [])
     if (res.pagination) {
@@ -283,33 +253,8 @@ onMounted(() => {
 .trends-view {
 }
 
-.source-card {
-  margin-bottom: 20px;
-  border-radius: var(--bk-radius);
-}
-
-.source-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.card-header-title {
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.source-toggles {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.source-toggle-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
+.trends-tabs {
+  margin-bottom: 16px;
 }
 
 .token-status-inline {
@@ -372,12 +317,3 @@ onMounted(() => {
 }
 </style>
 
-<style>
-/* Row sentiment background - unscoped to reach el-table internals */
-.trends-view .el-table .row-positive td {
-  background-color: #F0FDF4 !important;
-}
-.trends-view .el-table .row-negative td {
-  background-color: #FEF2F2 !important;
-}
-</style>

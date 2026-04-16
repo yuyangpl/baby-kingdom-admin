@@ -264,8 +264,11 @@ async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string)
 
 export async function list({ source, page = 1, limit = 20, sort = '-createdAt' }: { source?: string; page?: number; limit?: number; sort?: string }) {
   const prisma = getPrisma();
-  const where: Record<string, string> = {};
-  if (source) where.source = source;
+  const where: Record<string, any> = {};
+  if (source) {
+    const sources = source.split(',').map(s => s.trim()).filter(Boolean);
+    where.source = sources.length > 1 ? { in: sources } : sources[0];
+  }
 
   const skip = (page - 1) * limit;
 
