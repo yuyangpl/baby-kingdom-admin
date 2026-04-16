@@ -90,6 +90,84 @@ router.get('/:id', authenticate, wrap(async (req, res) => {
   return success(res, maskPersona(persona));
 }));
 
+// Batch verify all active personas' BK Forum login
+router.post('/verify-all', authenticate, authorize('admin'), wrap(async (req, res) => {
+  const prisma = getPrisma();
+  const { decrypt } = await import('../../shared/encryption.js');
+  const configService = await import('../config/config.service.js');
+  const baseUrl = await configService.getValue('BK_BASE_URL') || 'https://bapi.baby-kingdom.com/index.php';
+  const bkApp = await configService.getValue('BK_APP') || 'android';
+  const bkVer = await configService.getValue('BK_VER') || '3.11.11';
+
+  const personas = await prisma.persona.findMany({
+    where: { isActive: true },
+    orderBy: { accountId: 'asc' },
+  });
+
+  type VerifyResult = { accountId: string; username: string; status: 'ok' | 'fail' | 'no_password'; uid?: number; error?: string };
+
+  async function verifyOne(p: typeof personas[number]): Promise<VerifyResult> {
+    if (!p.bkPassword) return { accountId: p.accountId, username: p.username, status: 'no_password' };
+
+    let password: string;
+    try {
+      password = decrypt(p.bkPassword);
+    } catch {
+      return { accountId: p.accountId, username: p.username, status: 'fail', error: 'decrypt failed' };
+    }
+
+    try {
+      const qs = new URLSearchParams({ mod: 'member', op: 'login', app: bkApp, ver: bkVer });
+      const resp = await fetch(`${baseUrl}?${qs.toString()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username: p.username, password }).toString(),
+        signal: AbortSignal.timeout(15000),
+      });
+      const body = await resp.json() as any;
+
+      if (body.status === 1 && body.data?.token) {
+        await prisma.persona.update({
+          where: { id: p.id },
+          data: {
+            bkToken: body.data.token,
+            bkUid: body.data.uid ? parseInt(String(body.data.uid), 10) : p.bkUid,
+            bkTokenExpiry: new Date(Date.now() + 24 * 3600 * 1000),
+            tokenStatus: 'active',
+          },
+        });
+        return { accountId: p.accountId, username: p.username, status: 'ok', uid: body.data.uid };
+      }
+      return { accountId: p.accountId, username: p.username, status: 'fail', error: body.message || 'login failed' };
+    } catch (err: any) {
+      return { accountId: p.accountId, username: p.username, status: 'fail', error: err.message };
+    }
+  }
+
+  // 5 concurrent batches
+  const results: VerifyResult[] = [];
+  const BATCH = 5;
+  for (let i = 0; i < personas.length; i += BATCH) {
+    const batch = personas.slice(i, i + BATCH);
+    const batchResults = await Promise.all(batch.map(verifyOne));
+    results.push(...batchResults);
+  }
+
+  const ok = results.filter(r => r.status === 'ok').length;
+  const fail = results.filter(r => r.status === 'fail').length;
+  const noPassword = results.filter(r => r.status === 'no_password').length;
+
+  await auditService.log({
+    operator: (req as any).user?.id || 'system',
+    eventType: 'PERSONA_VERIFY_ALL',
+    module: 'persona',
+    actionDetail: `Batch verify: ${ok} ok, ${fail} fail, ${noPassword} no password`,
+    ip: req.ip || '',
+  });
+
+  return success(res, { total: results.length, ok, fail, noPassword, results });
+}));
+
 // Verify BK Forum login with username + password
 router.post('/verify-bk-login', authenticate, authorize('admin', 'approver'), wrap(async (req, res) => {
   const { username, password } = req.body;

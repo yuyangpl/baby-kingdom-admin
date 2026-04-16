@@ -320,6 +320,8 @@ export default {
   persona: {
     title: 'Personas',
     addPersona: 'Add Persona',
+    verifyAll: 'Verify All Logins',
+    verifyResult: 'Done: {ok} passed, {fail} failed, {noPassword} no password',
     accountId: 'Account ID',
     username: 'Username',
     archetype: 'Archetype',

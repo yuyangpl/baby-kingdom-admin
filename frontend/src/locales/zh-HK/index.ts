@@ -329,6 +329,8 @@ export default {
   persona: {
     title: '人設管理',
     addPersona: '新增人設',
+    verifyAll: '一鍵檢測登入',
+    verifyResult: '檢測完成：{ok} 通過，{fail} 失敗，{noPassword} 未設密碼',
     accountId: '帳號 ID',
     username: '用戶名',
     archetype: '角色類型',
