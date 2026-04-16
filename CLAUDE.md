@@ -81,7 +81,7 @@ app.use('/api/v1/xxx', xxxRoutes);
 使用 `buildCrud()` 工厂函数的模块自动记录。
 
 ### Config
-业务配置存 MongoDB `configs` 集合（46 项预置），通过 `configService.getValue(key)` 读取。
+业务配置存 PostgreSQL `configs` 表（57 项预置），通过 `configService.getValue(key)` 读取。
 敏感配置 (`isSecret: true`) AES 加密存储。
 基础设施配置在 `.env` 文件中（`.env.development` 为开发环境默认）。
 
@@ -120,8 +120,8 @@ cd backend && npm test    # 108 integration tests, Jest
 ## Data Seeding
 
 ```bash
-# 首次启动自动 seed 46 项 config + admin 用户
-# 手动导入 30 Persona + 5 Tone + 12 Rules + 34 Boards:
+# 首次启动自动 seed 57 项 config + admin 用户 + 5 Tone + 30 Persona + 22 Rules + 34 Boards
+# 也可手动运行:
 cd backend && npx tsx src/seeds/import-data.ts
 ```
 

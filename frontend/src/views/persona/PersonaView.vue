@@ -2,9 +2,14 @@
   <div class="persona-view">
     <div class="persona-view__header">
       <h2 class="page-title">{{ $t('persona.title') }}</h2>
-      <el-button v-if="auth.isAdmin" type="primary" @click="openForm(null)">
-        {{ $t('persona.addPersona') }}
-      </el-button>
+      <div style="display: flex; gap: 8px;">
+        <el-button v-if="auth.isAdmin" @click="verifyAll" :loading="verifying" type="warning">
+          {{ $t('persona.verifyAll') }}
+        </el-button>
+        <el-button v-if="auth.isAdmin" type="primary" @click="openForm(null)">
+          {{ $t('persona.addPersona') }}
+        </el-button>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -129,6 +134,7 @@ const auth = useAuthStore()
 
 const personas = ref<any[]>([])
 const loading = ref<boolean>(false)
+const verifying = ref<boolean>(false)
 const showForm = ref<boolean>(false)
 const editData = ref<Record<string, any> | null>(null)
 
@@ -247,6 +253,27 @@ async function loadData() {
 function openForm(data: Record<string, any> | null) {
   editData.value = data
   showForm.value = true
+}
+
+async function verifyAll() {
+  verifying.value = true
+  try {
+    const res: any = await api.post('/v1/personas/verify-all', {}, { timeout: 120000 })
+    const data = res.data ?? res
+    const msg = t('persona.verifyResult', { ok: data.ok, fail: data.fail, noPassword: data.noPassword })
+    if (data.fail > 0) {
+      const failList = (data.results || []).filter((r: any) => r.status === 'fail').map((r: any) => `${r.accountId} (${r.username}): ${r.error}`).join('\n')
+      ElMessage({ type: 'warning', message: msg, duration: 5000 })
+      console.warn('Verify failures:\n' + failList)
+    } else {
+      ElMessage.success(msg)
+    }
+    loadData()
+  } catch (err: any) {
+    ElMessage.error(err.message || 'Verify failed')
+  } finally {
+    verifying.value = false
+  }
 }
 
 async function handleDelete(id: string) {

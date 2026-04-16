@@ -46,9 +46,14 @@ export const CONFIG_PRESETS: ConfigPreset[] = [
 
   // -- General --
   { key: 'ADMIN_EMAILS', value: 'yu.yang@mintinglabs.com', category: 'general', description: 'Admin email addresses' },
-  { key: 'LOG_RETENTION_DAYS', value: '90', category: 'general', description: 'Audit log retention days' },
-  { key: 'MAX_POSTS_PER_DAY', value: '3', category: 'general', description: 'Global max posts per day' },
+  { key: 'LOG_RETENTION_DAYS', value: '15', category: 'general', description: 'Audit log retention days' },
+  { key: 'MAX_POSTS_PER_DAY', value: '300', category: 'general', description: 'Global max posts per day' },
   { key: 'TIMEZONE', value: 'Asia/Hong_Kong', category: 'general', description: 'System timezone' },
+  // -- Task Pause Controls (放在 General tab 末尾) --
+  { key: 'SCANNER_PAUSED', value: 'false', category: 'general', description: 'Pause scanner task' },
+  { key: 'TRENDS_PAUSED', value: 'false', category: 'general', description: 'Pause trends pull task' },
+  { key: 'POSTER_PAUSED', value: 'true', category: 'general', description: 'Pause poster task' },
+  { key: 'GTRENDS_PAUSED', value: 'false', category: 'general', description: 'Pause Google Trends pull task' },
 
   // -- Google Trends --
   { key: 'GOOGLE_TRENDS_API_KEY', value: '', category: 'google-trends', description: 'Google Trends self-hosted API key', isSecret: true },
@@ -58,15 +63,15 @@ export const CONFIG_PRESETS: ConfigPreset[] = [
   { key: 'GOOGLE_TRENDS_PULL_INTERVAL', value: '30', category: 'google-trends', description: 'Pull interval in minutes' },
   { key: 'GOOGLE_TRENDS_REGION', value: 'HK', category: 'google-trends', description: 'Trends region' },
   { key: 'GTRENDS_GEO', value: 'HK', category: 'google-trends', description: 'Google Trends geo' },
-  { key: 'GTRENDS_LOOKBACK_HOURS', value: '24', category: 'google-trends', description: 'Trends lookback hours' },
+  { key: 'GTRENDS_LOOKBACK_DAYS', value: '1', category: 'google-trends', description: 'Trends lookback days' },
   { key: 'GTRENDS_TOP_N', value: '10', category: 'google-trends', description: 'Top N trends' },
 
   // -- MediaLens API --
   { key: 'DEFAULT_TREND_FID', value: '162', category: 'medialens', description: 'Default board FID for trend-generated threads (自由講場)' },
-  { key: 'ENABLE_FB_VIRAL', value: 'false', category: 'medialens', description: 'Include FB viral posts' },
-  { key: 'ENABLE_LIHKG', value: 'false', category: 'medialens', description: 'Include LIHKG in trend pulls' },
+  { key: 'ENABLE_FB_VIRAL', value: 'true', category: 'medialens', description: 'Include MediaLens-FB viral posts' },
+  { key: 'ENABLE_LIHKG', value: 'true', category: 'medialens', description: 'Include MediaLens-LIHKG in trend pulls' },
   { key: 'FEEDS_PER_TREND_PULL', value: '5', category: 'medialens', description: 'Max new drafts per hourly run' },
-  { key: 'MAX_PENDING_QUEUE', value: '100', category: 'medialens', description: 'Pause generation above this' },
+  { key: 'MAX_PENDING_QUEUE', value: '300', category: 'medialens', description: 'Pause generation above this' },
   { key: 'MEDIALENS_AUTH_EMAIL', value: 'yu.yang@mintinglabs.com', category: 'medialens', description: 'MediaLens OTP auth email' },
   { key: 'MEDIALENS_BASE_URL', value: 'https://medialens-skills-api-1012814233357.asia-east1.run.app/api/v1', category: 'medialens', description: 'MediaLens API base URL' },
   { key: 'MEDIALENS_COUNTRY', value: 'HK', category: 'medialens', description: 'MediaLens country filter' },
@@ -74,6 +79,9 @@ export const CONFIG_PRESETS: ConfigPreset[] = [
   { key: 'MEDIALENS_JWT_TOKEN_EXPIRY', value: '', category: 'medialens', description: 'JWT expiry time (auto-set on OTP verify)' },
   { key: 'TREND_LOOKBACK_DAYS', value: '1', category: 'medialens', description: 'Trend lookback days' },
   { key: 'TREND_PULL_INTERVAL_MIN', value: '60', category: 'medialens', description: 'Trend pull interval (minutes)' },
+
+  // -- Poster --
+  { key: 'AUTO_POST_THRESHOLD', value: '80', category: 'bk-forum', description: 'Auto-post when relevanceScore >= this value' },
 
   // -- Scanner --
   { key: 'SCANNER_RELEVANCE_THRESHOLD', value: '35', category: 'scanner', description: 'Gemini relevance score threshold' },

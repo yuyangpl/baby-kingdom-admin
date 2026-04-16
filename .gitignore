@@ -24,6 +24,7 @@ Thumbs.db
 # Logs
 logs/
 *.log
+.dev-logs/
 
 # Docker
 mongo-data/

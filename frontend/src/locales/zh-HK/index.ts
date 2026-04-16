@@ -287,6 +287,8 @@ export default {
     toneMode: '語氣模式',
     feedIds: 'Feed IDs',
     tier: '等級',
+    tierTooltip: '<strong>T1</strong> — 一般話題（育兒、購物、學校等）<br/><strong>T2</strong> — 敏感話題（分娩、母乳、濕疹、高齡等）<br/><strong>T3</strong> — 高敏感話題（抑鬱、離婚、單親、ADHD等）',
+    sentimentTooltip: '<strong>positive</strong> — 情感分數 ≥ 60，正面情緒<br/><strong>neutral</strong> — 情感分數 41–59，中性<br/><strong>negative</strong> — 情感分數 ≤ 40，負面情緒',
     dataSources: '數據來源',
     summary: '摘要',
     engagements: '互動量',
@@ -327,6 +329,8 @@ export default {
   persona: {
     title: '人設管理',
     addPersona: '新增人設',
+    verifyAll: '一鍵檢測登入',
+    verifyResult: '檢測完成：{ok} 通過，{fail} 失敗，{noPassword} 未設密碼',
     accountId: '帳號 ID',
     username: '用戶名',
     archetype: '角色類型',
@@ -490,6 +494,7 @@ export default {
     BK_POST_INTERVAL_SEC: '發帖間隔秒數',
     BK_RATE_LIMIT_SECONDS: '寫入操作最小間隔秒數',
     BK_VER: 'BK 版本參數',
+    AUTO_POST_THRESHOLD: '自動發帖評分閾值（relevanceScore ≥ 此值自動發帖）',
     // email
     SMTP_FROM: '告警郵件發件人地址',
     SMTP_HOST: 'SMTP 伺服器主機名',
@@ -525,11 +530,11 @@ export default {
     GOOGLE_TRENDS_REGION: '趨勢地區',
     GOOGLE_TRENDS_PULL_INTERVAL: '拉取間隔（分鐘）',
     GTRENDS_GEO: 'Google Trends 地區代碼',
-    GTRENDS_LOOKBACK_HOURS: '趨勢回顧小時數',
+    GTRENDS_LOOKBACK_DAYS: 'Google Trends 回顧天數',
     GTRENDS_TOP_N: '拉取 Top N 條趨勢',
     // medialens
-    ENABLE_FB_VIRAL: '包含 Facebook 熱門帖子',
-    ENABLE_LIHKG: '包含 LIHKG 熱門話題',
+    ENABLE_FB_VIRAL: '包含 MediaLens-FB 熱門帖子',
+    ENABLE_LIHKG: '包含 MediaLens-LIHKG 熱門話題',
     FEEDS_PER_TREND_PULL: '每次拉取最大生成 Feed 數',
     DEFAULT_TREND_FID: '趨勢新帖默認版塊 FID',
     MAX_PENDING_QUEUE: '待審隊列超過此數量暫停生成',
@@ -538,11 +543,16 @@ export default {
     MEDIALENS_COUNTRY: 'MediaLens 國家/地區篩選',
     MEDIALENS_JWT_TOKEN: 'MediaLens JWT Token（自動緩存）',
     MEDIALENS_JWT_TOKEN_EXPIRY: 'JWT 有效期至（OTP 驗證時自動設置）',
-    TREND_LOOKBACK_DAYS: '趨勢回顧天數',
+    TREND_LOOKBACK_DAYS: 'MediaLens 趨勢回顧天數',
     TREND_PULL_INTERVAL_MIN: '趨勢拉取間隔（分鐘）',
     // scanner
     SCANNER_RELEVANCE_THRESHOLD: 'Gemini 相關性評分閾值',
     SCANNER_TIMEOUT_MINUTES: '掃描器超時分鐘數',
+    // task pause controls
+    SCANNER_PAUSED: '暫停掃描任務',
+    TRENDS_PAUSED: '暫停趨勢拉取任務',
+    POSTER_PAUSED: '暫停發帖任務',
+    GTRENDS_PAUSED: '暫停 Google Trends 拉取任務',
   },
 
   // Queue

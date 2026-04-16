@@ -539,6 +539,7 @@ const clearSourceFilter = () => {
 const onPageChange = (page: number) => {
   feedStore.setPage(page)
   loadFeeds()
+  document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const refreshNewFeeds = () => {

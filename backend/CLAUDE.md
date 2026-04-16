@@ -67,8 +67,8 @@ Cron via node-cron with Redis leader election (only 1 worker runs cron).
 
 ## Seeds
 
-- `src/seeds/config.seeds.ts` — 46 config presets, auto-seeded in server.ts
-- `src/seeds/import-data.ts` — 30 Personas + 5 Tones + 12 Rules + 34 Boards, run manually once
+- `src/seeds/config.seeds.ts` — 57 config presets, auto-seeded in server.ts
+- `src/seeds/import-data.ts` — 5 Tones + 30 Personas + 22 Rules + 34 Boards, auto-seeded on startup
 
 ```bash
 npx tsx src/seeds/import-data.ts
