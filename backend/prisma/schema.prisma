@@ -335,6 +335,7 @@ model Trend {
   sentimentScore  Float?   @map("sentiment_score")
   sentimentLabel  String?  @map("sentiment_label") @db.VarChar(20)
   // sentimentLabel CHECK: positive | negative | neutral
+  sourceUrl       String?  @map("source_url") @db.Text  // lihkg_url or facebook_url
   rawData         Json?    @map("raw_data")
   feedIds         String[] @default([]) @map("feed_ids")
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz()

@@ -234,6 +234,11 @@ const configsByCategory = (cat: string) => {
     const rest = items.filter(c => !MEDIALENS_TOP_KEYS.includes(c.key))
     return [...top, ...rest]
   }
+  if (cat === 'general') {
+    const normal = items.filter(c => !c.key.endsWith('_PAUSED'))
+    const paused = items.filter(c => c.key.endsWith('_PAUSED'))
+    return [...normal, ...paused]
+  }
   return items
 }
 

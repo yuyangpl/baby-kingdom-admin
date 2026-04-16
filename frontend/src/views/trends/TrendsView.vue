@@ -21,7 +21,7 @@
           <span class="card-header-title" style="margin-right: 16px;">{{ $t('trends.dataSources') }}</span>
           <div class="source-toggle-item">
             <span>MediaLens</span>
-            <el-switch v-model="sources.mediaLens" />
+            <el-switch v-model="sources.mediaLens" disabled />
           </div>
           <div class="source-toggle-item">
             <span>LIHKG</span>
@@ -167,8 +167,8 @@ const pagination = reactive({ page: 1, limit: 20, total: 0, pages: 0 })
 
 const sources = reactive({
   mediaLens: true,
-  lihkg: false,
-  facebook: false,
+  lihkg: true,
+  facebook: true,
 })
 
 const loadSourceConfig = async () => {
@@ -234,6 +234,7 @@ const loadTrends = async () => {
     if (res.pagination) {
       Object.assign(pagination, res.pagination)
     }
+    document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'smooth' })
   } finally {
     loading.value = false
   }

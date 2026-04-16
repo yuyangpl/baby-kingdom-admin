@@ -525,11 +525,11 @@ export default {
     GOOGLE_TRENDS_REGION: '趨勢地區',
     GOOGLE_TRENDS_PULL_INTERVAL: '拉取間隔（分鐘）',
     GTRENDS_GEO: 'Google Trends 地區代碼',
-    GTRENDS_LOOKBACK_HOURS: '趨勢回顧小時數',
+    GTRENDS_LOOKBACK_DAYS: 'Google Trends 回顧天數',
     GTRENDS_TOP_N: '拉取 Top N 條趨勢',
     // medialens
-    ENABLE_FB_VIRAL: '包含 Facebook 熱門帖子',
-    ENABLE_LIHKG: '包含 LIHKG 熱門話題',
+    ENABLE_FB_VIRAL: '包含 MediaLens-FB 熱門帖子',
+    ENABLE_LIHKG: '包含 MediaLens-LIHKG 熱門話題',
     FEEDS_PER_TREND_PULL: '每次拉取最大生成 Feed 數',
     DEFAULT_TREND_FID: '趨勢新帖默認版塊 FID',
     MAX_PENDING_QUEUE: '待審隊列超過此數量暫停生成',
@@ -538,11 +538,16 @@ export default {
     MEDIALENS_COUNTRY: 'MediaLens 國家/地區篩選',
     MEDIALENS_JWT_TOKEN: 'MediaLens JWT Token（自動緩存）',
     MEDIALENS_JWT_TOKEN_EXPIRY: 'JWT 有效期至（OTP 驗證時自動設置）',
-    TREND_LOOKBACK_DAYS: '趨勢回顧天數',
+    TREND_LOOKBACK_DAYS: 'MediaLens 趨勢回顧天數',
     TREND_PULL_INTERVAL_MIN: '趨勢拉取間隔（分鐘）',
     // scanner
     SCANNER_RELEVANCE_THRESHOLD: 'Gemini 相關性評分閾值',
     SCANNER_TIMEOUT_MINUTES: '掃描器超時分鐘數',
+    // task pause controls
+    SCANNER_PAUSED: '暫停掃描任務',
+    TRENDS_PAUSED: '暫停趨勢拉取任務',
+    POSTER_PAUSED: '暫停發帖任務',
+    GTRENDS_PAUSED: '暫停 Google Trends 拉取任務',
   },
 
   // Queue

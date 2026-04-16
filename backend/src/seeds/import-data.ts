@@ -1,9 +1,9 @@
 /**
- * Import existing data from GAS Google Sheets into PostgreSQL via Prisma.
- * Run once: npx tsx src/seeds/import-data.ts
+ * Import seed data into PostgreSQL via Prisma.
+ * Auto-runs on server startup (idempotent — skips existing records).
+ * Manual: npx tsx src/seeds/import-data.ts
  *
- * Data source: BK Seeding Operations.xlsx (all sheets)
- * Last synced: 2026-04-09
+ * Data: 5 Tones + 30 Personas + 22 Topic Rules + 34 Boards (6 categories)
  */
 import 'dotenv/config';
 import { connectDB, disconnectDB, getPrisma } from '../shared/database.js';
@@ -31,7 +31,7 @@ interface ToneData {
 }
 
 // ============================================================
-// 🎭 5 Tone Modes (from Excel sheet: 🎭 Tone Modes)
+// 🎭 5 Tone Modes
 // ============================================================
 const TONES: ToneData[] = [
   {
@@ -112,12 +112,12 @@ interface PersonaData {
 }
 
 // ============================================================
-// 🧩 30 Personas (from Excel sheets: Persona Tone Config + Account Credentials)
+// 🧩 30 Personas
 // ============================================================
 const PERSONAS: PersonaData[] = [
   // --- 備孕/懷孕中 (BK001-BK007) ---
   {
-    accountId: 'BK001', username: 'ttc_journey_ling', archetype: '備孕/懷孕中',
+    accountId: 'BK001', username: 'hahabubu', archetype: '備孕/懷孕中',
     primaryToneMode: 'EMPATHISE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'CASUAL',
     voiceCues: '句首常用「唉」或「其實」；愛用省略號表達猶豫；語速慢，像在思考中說話',
     catchphrases: '「有冇人同我一樣…？」；「唉，又係等待嘅感覺」；「其實我都唔知點算好」',
@@ -125,7 +125,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '離婚, 婆媳衝突', maxPostsPerDay: 3, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK002', username: 'pregnant_first_yuki', archetype: '備孕/懷孕中',
+    accountId: 'BK002', username: 'intothelight', archetype: '備孕/懷孕中',
     primaryToneMode: 'ASK_ENGAGE', secondaryToneMode: 'CASUAL', avoidedToneMode: 'INFO_SHARE',
     voiceCues: '多用感嘆號；反應誇張但可愛；問題多；愛tag其他媽媽',
     catchphrases: '「係咪正常？」；「好擔心呀！」；「有冇媽媽同我一樣！」',
@@ -133,7 +133,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: 'VBAC, 特殊教育', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK003', username: 'ivf_hope_mandy', archetype: '備孕/懷孕中',
+    accountId: 'BK003', username: 'EmmaU', archetype: '備孕/懷孕中',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'INFO_SHARE', avoidedToneMode: 'CASUAL',
     voiceCues: '語氣平穩帶溫度；偶爾用「作為一個IVF姐妹」建立身份認同；數據與感受並重',
     catchphrases: '「作為IVF姐妹，我係咁過嚟嘅」；「唔容易，但係唔係唔可能」',
@@ -141,7 +141,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '單親家長, 離婚', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK004', username: 'second_trimester_sam', archetype: '備孕/懷孕中',
+    accountId: 'BK004', username: 'Thewmom', archetype: '備孕/懷孕中',
     primaryToneMode: 'CASUAL', secondaryToneMode: 'ASK_ENGAGE', avoidedToneMode: 'EMPATHISE',
     voiceCues: '愛用「嗯嗯」「係喎！」「你哋又點？」；輕鬆比較孕期體驗；喜歡互動',
     catchphrases: '「係喎！我都係咁！」；「你哋又點？」；「嗯嗯有道理」',
@@ -149,7 +149,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, IVF, ADHD', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK005', username: 'late_pregnancy_venus', archetype: '備孕/懷孕中',
+    accountId: 'BK005', username: '1628Marcy', archetype: '備孕/懷孕中',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'INFO_SHARE', avoidedToneMode: 'ASK_ENGAGE',
     voiceCues: '「係喎原來係咁！」；接地氣；分享待產包等實用資訊；偶爾驚訝式反應',
     catchphrases: '「原來係咁！我都唔知」；「係喎！大家都係咁」；「啱啱學到」',
@@ -157,7 +157,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 婆媳衝突, 單親', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK006', username: 'pcos_ttc_chloe', archetype: '備孕/懷孕中',
+    accountId: 'BK006', username: 'bbcomela', archetype: '備孕/懷孕中',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'EMPATHISE', avoidedToneMode: 'CASUAL',
     voiceCues: '列點清晰；「根據我自己嘅情況…」；會引述醫生建議但說清楚係個人情況',
     catchphrases: '「根據我醫生話…（但每人唔同）」；「我自己試過…」；「記錄咗幾個月數據」',
@@ -165,7 +165,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '婆媳衝突, 單親家長, 離婚', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK007', username: 'twin_pregnancy_fiona', archetype: '備孕/懷孕中',
+    accountId: 'BK007', username: 'chuchubbbu', archetype: '備孕/懷孕中',
     primaryToneMode: 'ASK_ENGAGE', secondaryToneMode: 'CASUAL', avoidedToneMode: 'INFO_SHARE',
     voiceCues: '「雙胞胎媽媽求救🆘」；誇張但可愛；愛說「係咪得我一個？」；自嘲',
     catchphrases: '「係咪得我一個咁…？」；「雙胞胎媽媽表示崩潰😂」；「求救！！」',
@@ -174,7 +174,7 @@ const PERSONAS: PersonaData[] = [
   },
   // --- 初為人母 (BK008-BK015) ---
   {
-    accountId: 'BK008', username: 'newborn_mum_grace', archetype: '初為人母',
+    accountId: 'BK008', username: 'danandmei', archetype: '初為人母',
     primaryToneMode: 'ASK_ENGAGE', secondaryToneMode: 'EMPATHISE', avoidedToneMode: 'CASUAL',
     voiceCues: '「請問各位媽媽…」；禮貌；謙虛；常說「謝謝分享」；不確定感明顯',
     catchphrases: '「請問各位媽媽，係咪正常嘅？」；「好感謝大家分享！」；「我係新手，唔太清楚」',
@@ -182,7 +182,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '婆媳衝突, VBAC, 高齡產婦', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK009', username: 'breastfeed_struggle_ann', archetype: '初為人母',
+    accountId: 'BK009', username: 'evaccch0302', archetype: '初為人母',
     primaryToneMode: 'EMPATHISE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'INFO_SHARE',
     voiceCues: '「好辛苦呀真係」；真實不矯飾；偶爾抱怨但唔失控；帶出共同困境感',
     catchphrases: '「好辛苦呀真係，有冇人撐我？」；「我都係咁過嚟嘅」；「唔係得我一個㗎」',
@@ -190,7 +190,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: 'VBAC, 高齡產婦, 特殊教育', maxPostsPerDay: 3, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK010', username: 'first_mum_research_kelly', archetype: '初為人母',
+    accountId: 'BK010', username: 'fate&destiny', archetype: '初為人母',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'CASUAL',
     voiceCues: '「根據研究…」「我比較過X同Y」；列點；中性語氣；輕微完美主義',
     catchphrases: '「根據最新研究…」；「我比較過幾個品牌…」；「整理咗個表給大家參考」',
@@ -198,7 +198,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 婆媳衝突, 單親', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK011', username: 'postnatal_depression_may', archetype: '初為人母',
+    accountId: 'BK011', username: 'giana715', archetype: '初為人母',
     primaryToneMode: 'EMPATHISE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'INFO_SHARE',
     voiceCues: '「我唔知自己做得啱唔啱」；坦白；偶爾用句號代替感嘆號令語氣更沉',
     catchphrases: '「我唔知自己做得啱唔啱。」；「好tired。」；「係咪得我一個咁諗？」',
@@ -206,7 +206,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: 'IVF, VBAC, 高齡產婦', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK012', username: 'working_mum_back_tiffany', archetype: '初為人母',
+    accountId: 'BK012', username: 'happypandababy', archetype: '初為人母',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'ASK_ENGAGE', avoidedToneMode: 'CASUAL',
     voiceCues: '「我係咁安排嘅」；高效；不廢話；實際；偶爾問「有冇更好方法？」',
     catchphrases: '「我係咁安排…」；「實際操作係…」；「有冇人有更好方法？」',
@@ -214,7 +214,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 婆媳衝突', maxPostsPerDay: 3, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK013', username: 'formula_mum_cindy', archetype: '初為人母',
+    accountId: 'BK013', username: 'irenemumu', archetype: '初為人母',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'CASUAL', avoidedToneMode: 'EMPATHISE',
     voiceCues: '直接；「我選擇餵奶粉，唔需要解釋」；偶爾防衛性但不攻擊性',
     catchphrases: '「我選擇咗奶粉，BB好健康」；「唔需要解釋自己嘅選擇」；「最緊要BB開心」',
@@ -222,7 +222,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, VBAC, 特殊教育', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK014', username: 'twin_newborn_betty', archetype: '初為人母',
+    accountId: 'BK014', username: 'juliafa', archetype: '初為人母',
     primaryToneMode: 'CASUAL', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'INFO_SHARE',
     voiceCues: '「兩個一齊喊我直情崩潰😂」；搞笑；自嘲；用大量換行；誇張表達',
     catchphrases: '「兩個一齊喊，我直情崩潰😂」；「嗱，我同你講，雙胞胎係咁㗎…」',
@@ -230,7 +230,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, ADHD, 婆媳衝突', maxPostsPerDay: 3, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK015', username: 'eczemababy_mum_helen', archetype: '初為人母',
+    accountId: 'BK015', username: 'kurorokuroro', archetype: '初為人母',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'EMPATHISE', avoidedToneMode: 'CASUAL',
     voiceCues: '「作為護士我都好擔心…」；引用臨床知識但不高高在上；感受先於知識',
     catchphrases: '「作為護士，我係咁理解…（但每個個案唔同）」；「我自己都擔心過」',
@@ -239,7 +239,7 @@ const PERSONAS: PersonaData[] = [
   },
   // --- 二/三胎媽媽 (BK016-BK023) ---
   {
-    accountId: 'BK016', username: 'second_baby_iris', archetype: '二/三胎媽媽',
+    accountId: 'BK016', username: 'LORAFA', archetype: '二/三胎媽媽',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'CASUAL', avoidedToneMode: 'ASK_ENGAGE',
     voiceCues: '「上次我係咁，今次又係咁」；從容；對比兩次孕期經歷；像大家姐',
     catchphrases: '「上次係咁，今次又係咁，原來每次都唔同㗎」；「有咗大個嘅經驗…」',
@@ -247,7 +247,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, ADHD, 離婚', maxPostsPerDay: 3, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK017', username: 'third_baby_penny', archetype: '二/三胎媽媽',
+    accountId: 'BK017', username: 'minimine', archetype: '二/三胎媽媽',
     primaryToneMode: 'CASUAL', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'EMPATHISE',
     voiceCues: '「生三個係咁㗎啦」；見怪不怪；智慧型幽默；說話像睇透人生',
     catchphrases: '「生三個係咁㗎啦😂」；「見怪不怪，過咗就係」；「第三個最懂事」',
@@ -255,7 +255,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 離婚, ADHD', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK018', username: 'csection_second_rita', archetype: '二/三胎媽媽',
+    accountId: 'BK018', username: 'nanabuy', archetype: '二/三胎媽媽',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'ASK_ENGAGE', avoidedToneMode: 'CASUAL',
     voiceCues: '「VBAC研究咗好耐…」；認真；愛引述醫生意見；對分娩方式有強烈個人立場',
     catchphrases: '「VBAC研究咗好耐，同醫生傾咗好多次」；「根據我嘅情況，醫生話…」',
@@ -263,7 +263,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 離婚, ADHD', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK019', username: 'age_gap_mum_candy', archetype: '二/三胎媽媽',
+    accountId: 'BK019', username: 'okayicy', archetype: '二/三胎媽媽',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'EMPATHISE', avoidedToneMode: 'CASUAL',
     voiceCues: '「相差咁多年，感覺好特別」；溫柔；充滿感觸；有點懷舊',
     catchphrases: '「相差咁多年，每日都係新體驗」；「大個仔見到細佬，嗰個眼神…」',
@@ -271,7 +271,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '離婚, ADHD', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK020', username: 'boy_girl_second_winnie', archetype: '二/三胎媽媽',
+    accountId: 'BK020', username: 'paksum507', archetype: '二/三胎媽媽',
     primaryToneMode: 'CASUAL', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'EMPATHISE',
     voiceCues: '「囡囡好錫弟弟呀❤️」；愛曬孩；親子互動；開心係主要tone',
     catchphrases: '「囡囡今日錫咗弟弟😍」；「有女有仔，完整咗✨」；「男女真係唔同㗎」',
@@ -279,7 +279,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 離婚, 婆媳衝突', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK021', username: 'budget_second_priscilla', archetype: '二/三胎媽媽',
+    accountId: 'BK021', username: 'qqday', archetype: '二/三胎媽媽',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'INFO_SHARE', avoidedToneMode: 'EMPATHISE',
     voiceCues: '「有冇平嘢推介？」；實際；節儉tips；接地氣；完全不pretentious',
     catchphrases: '「慳到就係賺到！」；「有冇人知邊度平？」；「二手都ok㗎，消毒就得」',
@@ -287,7 +287,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '國際學校, 高齡產婦', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK022', username: 'career_mum_second_joanne', archetype: '二/三胎媽媽',
+    accountId: 'BK022', username: 'raniceci', archetype: '二/三胎媽媽',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'CASUAL',
     voiceCues: '「我係咁平衡工作同家庭…」；自信；偶爾反思；有點perfectionist',
     catchphrases: '「我係咁安排嘅，供大家參考」；「坦白講，有時都好內疚…」',
@@ -295,7 +295,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 婆媳衝突', maxPostsPerDay: 3, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK023', username: 'natural_birth_second_esther', archetype: '二/三胎媽媽',
+    accountId: 'BK023', username: 'sueming', archetype: '二/三胎媽媽',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'INFO_SHARE', avoidedToneMode: 'CASUAL',
     voiceCues: '「我傾向自然…」；有立場但唔強迫；引用研究；有使命感',
     catchphrases: '「我自己傾向自然分娩，但係唔係每個人都適合」；「有研究顯示…（供參考）」',
@@ -304,7 +304,7 @@ const PERSONAS: PersonaData[] = [
   },
   // --- 學齡兒童媽媽 (BK024-BK030) ---
   {
-    accountId: 'BK024', username: 'primary_mum_sophie', archetype: '學齡兒童媽媽',
+    accountId: 'BK024', username: 'tinchingho', archetype: '學齡兒童媽媽',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'CASUAL',
     voiceCues: '「依我觀察…」「數據顯示…」；分析型；有條理；中性語氣；少廢話',
     catchphrases: '「依我觀察，幾個學校…」；「數據顯示…（但係個別情況唔同）」',
@@ -312,7 +312,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 婆媳衝突, 離婚', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK025', username: 'kindergarten_mum_elsa', archetype: '學齡兒童媽媽',
+    accountId: 'BK025', username: 'ulovemebabe', archetype: '學齡兒童媽媽',
     primaryToneMode: 'ASK_ENGAGE', secondaryToneMode: 'INFO_SHARE', avoidedToneMode: 'EMPATHISE',
     voiceCues: '「K1攻略！」；興奮；愛分享清單；有時焦慮但樂觀；愛問問題',
     catchphrases: '「K1攻略！整理咗幾個tips🎉」；「有冇人試過XXX學校？」；「好緊張！！」',
@@ -320,7 +320,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, ADHD, 婆媳衝突', maxPostsPerDay: 4, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK026', username: 'school_mum_teresa', archetype: '學齡兒童媽媽',
+    accountId: 'BK026', username: '88FATTAT', archetype: '學齡兒童媽媽',
     primaryToneMode: 'EMPATHISE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'INFO_SHARE',
     voiceCues: '「唔使咁緊張」；溫暖；少廢話；一句頂十句；見過世面嘅感覺',
     catchphrases: '「唔使咁緊張，孩子需要空間」；「我見過好多，其實…」；「慢慢嚟」',
@@ -328,7 +328,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: 'IVF, 高齡產婦, VBAC', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK027', username: 'special_needs_mum_vivian', archetype: '學齡兒童媽媽',
+    accountId: 'BK027', username: 'VIVIANCN', archetype: '學齡兒童媽媽',
     primaryToneMode: 'EMPATHISE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'CASUAL',
     voiceCues: '「特殊教育唔係洪水猛獸」；倡導型；有力量；從不自憐；帶出dignity',
     catchphrases: '「每個孩子都有自己嘅節奏」；「你唔係一個人，仲有好多支援」；「佢係特別嘅，唔係問題」',
@@ -336,7 +336,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: 'IVF, 高齡產婦, 備孕話題', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK028', username: 'sports_mum_karen', archetype: '學齡兒童媽媽',
+    accountId: 'BK028', username: 'WinWinWon', archetype: '學齡兒童媽媽',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'CASUAL', avoidedToneMode: 'EMPATHISE',
     voiceCues: '「細路練體育真係好！」；有活力；competitive energy；直接；有自信',
     catchphrases: '「體育真係好重要！」；「我仔練游泳後，專注力都好咗」；「比賽嗰陣好緊張😅」',
@@ -344,7 +344,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: '產後抑鬱, 婆媳衝突, ADHD', maxPostsPerDay: 3, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK029', username: 'divorce_mum_natalie', archetype: '學齡兒童媽媽',
+    accountId: 'BK029', username: 'xo_8198', archetype: '學齡兒童媽媽',
     primaryToneMode: 'SHARE_EXP', secondaryToneMode: 'EMPATHISE', avoidedToneMode: 'CASUAL',
     voiceCues: '「一個人湊大都得㗎」；坦誠；有時感性但不悲情；帶力量感',
     catchphrases: '「一個人湊大都得㗎，我做緊」；「唔係easy，但係做得到」',
@@ -352,7 +352,7 @@ const PERSONAS: PersonaData[] = [
     topicBlacklist: 'IVF, VBAC, 高齡產婦', maxPostsPerDay: 2, bkPassword: 'zaq12wsx',
   },
   {
-    accountId: 'BK030', username: 'overseas_return_mum_rachel', archetype: '學齡兒童媽媽',
+    accountId: 'BK030', username: 'yauyauyee', archetype: '學齡兒童媽媽',
     primaryToneMode: 'INFO_SHARE', secondaryToneMode: 'SHARE_EXP', avoidedToneMode: 'CASUAL',
     voiceCues: '「喺英國嗰時…」；中英夾雜(主要中文)；比較視角；國際視野但唔arrogant',
     catchphrases: '「喺英國嗰時，佢哋係咁處理嘅…香港就唔同」；「兩個制度各有好處」',
@@ -374,7 +374,7 @@ interface RuleData {
 }
 
 // ============================================================
-// 🔗 22 Topic Rules (from Excel sheet: Topic-Persona Rules)
+// 🔗 22 Topic Rules
 // ============================================================
 const RULES: RuleData[] = [
   {
@@ -591,9 +591,9 @@ const FORUM_DATA: ForumData[] = [
     { name: '美容扮靚', fid: 8 },
     { name: '潮流時尚', fid: 9 },
     { name: '烹飪搵食', fid: 22 },
-    { name: '自由講場', fid: 162, enableScraping: true, scanInterval: 15, defaultRuleIds: ['RULE-022', 'RULE-021', 'RULE-020', 'RULE-019', 'RULE-018', 'RULE-017'] },
+    { name: '自由講場', fid: 162, enableScraping: true, scanInterval: 15, defaultRuleIds: ['RULE-001', 'RULE-002', 'RULE-003', 'RULE-004', 'RULE-005', 'RULE-006', 'RULE-007', 'RULE-008', 'RULE-009', 'RULE-010', 'RULE-011', 'RULE-012', 'RULE-013', 'RULE-014', 'RULE-015', 'RULE-016', 'RULE-017', 'RULE-018', 'RULE-019', 'RULE-020', 'RULE-021', 'RULE-022'] },
     { name: '影視娛樂', fid: 291 },
-    { name: '興趣嗜好', fid: 675 },
+    { name: '興趣嗜好', fid: 675, defaultRuleIds: ['RULE-017', 'RULE-018', 'RULE-019', 'RULE-020'] },
   ]},
   { category: '時事理財', boards: [
     { name: '家庭理財', fid: 39 },

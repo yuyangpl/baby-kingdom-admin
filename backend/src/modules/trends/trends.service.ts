@@ -5,8 +5,8 @@ import * as auditService from '../audit/audit.service.js';
 import logger from '../../shared/logger.js';
 
 interface RawTrend {
+  // viral-topics (medialens)
   topic_label?: string;
-  title?: string;
   topic?: string;
   summary?: string;
   description?: string;
@@ -16,6 +16,17 @@ interface RawTrend {
   posts?: number;
   sentiment_score?: number;
   sentiment?: number;
+  rank?: number;
+  // lihkg
+  title?: string;
+  category?: string;
+  replies?: number;
+  total_engagement?: number;
+  lihkg_url?: string;
+  // facebook
+  message_preview?: string;
+  facebook_url?: string;
+  posted_by?: string;
   [key: string]: any;
 }
 
@@ -42,7 +53,9 @@ export async function pullTrends(): Promise<{ trends: any[]; feedsGenerated: num
   for (const source of sources) {
     try {
       const trends = await fetchFromSource(baseUrl, jwtToken, source, country, limit, lookbackDays);
+      logger.info({ source, fetched: trends.length }, 'pullTrends: fetched from source');
       const saved = await saveTrends(trends, source, pullId);
+      logger.info({ source, saved: saved.length, skippedDupes: trends.length - saved.length }, 'pullTrends: saved trends');
       allTrends.push(...saved);
     } catch (err) {
       logger.error({ err, source }, 'Failed to pull trends from source');
@@ -117,13 +130,15 @@ async function refreshMlToken(baseUrl: string, currentToken: string): Promise<st
 }
 
 async function fetchFromSource(baseUrl: string, token: string, source: string, country: string, limit: number, lookbackDays: number): Promise<RawTrend[]> {
-  const endpoints: Record<string, string> = {
-    medialens: '/buzz/viral-topics',
-    lihkg: '/buzz/lihkg/viral-topics',
-    facebook: '/buzz/fb/viral-posts',
-  };
-
-  const url = `${baseUrl}${endpoints[source]}?country=${country}&limit=${limit}&lookback_days=${lookbackDays}`;
+  // Each endpoint has different query params — mirrors GAS TrendPuller.js
+  let url: string;
+  if (source === 'lihkg') {
+    url = `${baseUrl}/buzz/lihkg/viral-topics?days=${lookbackDays}&limit=${limit}`;
+  } else if (source === 'facebook') {
+    url = `${baseUrl}/buzz/fb/viral-posts?days=${lookbackDays}&countries=${country}&limit=${Math.ceil(limit / 2)}`;
+  } else {
+    url = `${baseUrl}/buzz/viral-topics?days=${lookbackDays}&countries=${country}&limit=${limit}`;
+  }
 
   let response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -166,7 +181,46 @@ async function fetchFromSource(baseUrl: string, token: string, source: string, c
 
   const data = await response.json() as any;
   const inner = data.data || data;
-  return Array.isArray(inner) ? inner : inner.viral_topics || inner.topics || inner.posts || data.topics || data.posts || [];
+  const result = Array.isArray(inner) ? inner : inner.viral_topics || inner.viral_posts || inner.topics || inner.posts || data.topics || data.posts || [];
+  return result;
+}
+
+/**
+ * Source-specific field mapping — mirrors GAS TrendPuller.js
+ * Each MediaLens endpoint returns different field names.
+ */
+function normalizeTrend(raw: RawTrend, source: string, index: number): {
+  topicLabel: string; summary: string; engagements: number; postCount: number; sentimentScore: number; sourceUrl: string | null;
+} {
+  if (source === 'lihkg') {
+    return {
+      topicLabel: raw.title || '',
+      summary: `LIHKG ${raw.category || '吹水台'} — ${raw.replies || 0} 回覆`,
+      engagements: raw.total_engagement || 0,
+      postCount: raw.replies || 0,
+      sentimentScore: 50, // LIHKG doesn't return sentiment
+      sourceUrl: raw.lihkg_url || null,
+    };
+  }
+  if (source === 'facebook') {
+    return {
+      topicLabel: raw.title || raw.message_preview || '(FB viral post)',
+      summary: raw.message_preview || '',
+      engagements: raw.engagements || raw.engagement || 0,
+      postCount: 1,
+      sentimentScore: 50, // FB doesn't return sentiment from this endpoint
+      sourceUrl: raw.facebook_url || null,
+    };
+  }
+  // medialens (viral-topics) — default
+  return {
+    topicLabel: raw.topic_label || raw.topic || raw.title || '',
+    summary: raw.summary || raw.description || '',
+    engagements: raw.engagements || raw.engagement || 0,
+    postCount: raw.post_count || raw.posts || 0,
+    sentimentScore: raw.sentiment_score ?? raw.sentiment ?? 50,
+    sourceUrl: null,
+  };
 }
 
 async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string) {
@@ -175,28 +229,29 @@ async function saveTrends(rawTrends: RawTrend[], source: string, pullId: string)
 
   for (let i = 0; i < rawTrends.length; i++) {
     const raw = rawTrends[i];
-    const topicLabel = raw.topic_label || raw.title || raw.topic || '';
-    if (!topicLabel) continue;
+    const normalized = normalizeTrend(raw, source, i);
+    if (!normalized.topicLabel) continue;
 
     // Skip if already exists (unique index on source + topicLabel)
-    const exists = await prisma.trend.findFirst({ where: { source, topicLabel } });
+    const exists = await prisma.trend.findFirst({ where: { source, topicLabel: normalized.topicLabel } });
     if (exists) continue;
 
-    const sentimentScore = raw.sentiment_score ?? raw.sentiment ?? null;
-    const tier = autoAssignTier(topicLabel);
+    const tier = autoAssignTier(normalized.topicLabel);
+    const score = normalized.sentimentScore;
 
     const trend = await prisma.trend.create({
       data: {
         pullId,
         source,
-        rank: i + 1,
-        topicLabel,
-        summary: raw.summary || raw.description || '',
-        engagements: raw.engagements || raw.engagement || 0,
-        postCount: raw.post_count || raw.posts || 0,
+        rank: raw.rank ?? i + 1,
+        topicLabel: normalized.topicLabel,
+        summary: normalized.summary,
+        engagements: normalized.engagements,
+        postCount: normalized.postCount,
         sensitivityTier: tier,
-        sentimentScore,
-        sentimentLabel: sentimentScore != null && sentimentScore > 55 ? 'positive' : sentimentScore != null && sentimentScore < 45 ? 'negative' : 'neutral',
+        sentimentScore: score,
+        sentimentLabel: score > 55 ? 'positive' : score < 45 ? 'negative' : 'neutral',
+        sourceUrl: normalized.sourceUrl,
         rawData: raw,
       },
     });

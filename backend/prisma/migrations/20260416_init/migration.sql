@@ -199,6 +199,7 @@ CREATE TABLE "feeds" (
     "tone_mode" VARCHAR(50),
     "sensitivity_tier" VARCHAR(10),
     "post_type" VARCHAR(10) NOT NULL DEFAULT 'reply',
+    "gemini_prompt" JSONB,
     "draft_content" TEXT,
     "final_content" TEXT,
     "char_count" INTEGER,
@@ -212,6 +213,7 @@ CREATE TABLE "feeds" (
     "fail_reason" TEXT,
     "claimed_by" UUID,
     "claimed_at" TIMESTAMPTZ,
+    "claim_expires_at" TIMESTAMPTZ,
     "reviewed_by" UUID,
     "reviewed_at" TIMESTAMPTZ,
     "admin_notes" TEXT,
@@ -236,6 +238,7 @@ CREATE TABLE "trends" (
     "sensitivity_tier" INTEGER NOT NULL DEFAULT 1,
     "sentiment_score" DOUBLE PRECISION,
     "sentiment_label" VARCHAR(20),
+    "source_url" TEXT,
     "raw_data" JSONB,
     "feed_ids" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -244,21 +247,17 @@ CREATE TABLE "trends" (
 );
 
 -- CreateTable
-CREATE TABLE "queue_jobs" (
+CREATE TABLE "task_logs" (
     "id" UUID NOT NULL,
-    "queue_name" VARCHAR(30) NOT NULL,
-    "job_id" VARCHAR(100),
-    "status" VARCHAR(10) NOT NULL DEFAULT 'waiting',
-    "started_at" TIMESTAMPTZ,
-    "completed_at" TIMESTAMPTZ,
+    "task_name" VARCHAR(30) NOT NULL,
+    "status" VARCHAR(10) NOT NULL DEFAULT 'running',
     "duration" INTEGER,
     "result" JSONB,
     "error" TEXT,
     "triggered_by" VARCHAR(10) NOT NULL DEFAULT 'cron',
-    "triggered_by_user" VARCHAR(100),
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "queue_jobs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "task_logs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -358,6 +357,9 @@ CREATE INDEX "feeds_thread_fid_status_idx" ON "feeds"("thread_fid", "status");
 CREATE INDEX "feeds_claimed_by_claimed_at_idx" ON "feeds"("claimed_by", "claimed_at");
 
 -- CreateIndex
+CREATE INDEX "feeds_status_claim_expires_at_created_at_idx" ON "feeds"("status", "claim_expires_at", "created_at");
+
+-- CreateIndex
 CREATE INDEX "feeds_source_idx" ON "feeds" USING GIN ("source");
 
 -- CreateIndex
@@ -370,7 +372,7 @@ CREATE INDEX "trends_source_created_at_idx" ON "trends"("source", "created_at" D
 CREATE UNIQUE INDEX "trends_source_topic_label_key" ON "trends"("source", "topic_label");
 
 -- CreateIndex
-CREATE INDEX "queue_jobs_queue_name_status_created_at_idx" ON "queue_jobs"("queue_name", "status", "created_at" DESC);
+CREATE INDEX "task_logs_task_name_created_at_idx" ON "task_logs"("task_name", "created_at" DESC);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "daily_stats_date_key" ON "daily_stats"("date");
