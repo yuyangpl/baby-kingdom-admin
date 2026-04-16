@@ -217,6 +217,55 @@
         </el-table>
       </el-card>
 
+      <!-- Cloud Scheduler 调度配置 -->
+      <el-card v-if="auth.isAdmin" shadow="never" class="guide-section">
+        <template #header><h2>Cloud Scheduler 定时调度</h2></template>
+        <p>系统通过 Google Cloud Scheduler 定时触发后端任务接口，所有接口均为 <code>POST</code> 方法，无需认证（内网调用）。</p>
+
+        <h3>调度任务列表</h3>
+        <el-table :data="schedulerData" border stripe size="small" style="margin-top: 12px;">
+          <el-table-column prop="name" label="任务名" width="140" />
+          <el-table-column prop="endpoint" label="接口地址" width="200">
+            <template #default="{ row }">
+              <code>{{ row.endpoint }}</code>
+            </template>
+          </el-table-column>
+          <el-table-column prop="schedule" label="建议频率" width="120" />
+          <el-table-column prop="pause" label="暂停开关" width="180">
+            <template #default="{ row }">
+              <code>{{ row.pause }}</code>
+            </template>
+          </el-table-column>
+          <el-table-column prop="desc" label="说明" />
+        </el-table>
+
+        <h3>Poster 自动发帖流程</h3>
+        <p>Poster 定时任务会遍历所有待审 Feed，根据 AI 评估的 <code>relevanceScore</code> 与阈值 <code>AUTO_POST_THRESHOLD</code>（默认 80）比较：</p>
+        <ol>
+          <li><strong>首次扫到</strong>（autoPostAttempts=0）— 评分达标直接发帖，不达标标记 +1 留待下次</li>
+          <li><strong>再次扫到</strong>（autoPostAttempts≥1）— 先重新生成内容，再看新评分是否达标</li>
+          <li><strong>发帖失败</strong> — 不重试，标记为 failed</li>
+          <li><strong>安全检查</strong> — 回帖需 board.enableAutoReply=true，人设需 isActive 且未超日限额</li>
+        </ol>
+
+        <h3>Cloud Scheduler 配置示例（GCP Console）</h3>
+        <el-table :data="schedulerConfigData" border stripe size="small" style="margin-top: 12px;">
+          <el-table-column prop="field" label="配置项" width="140" />
+          <el-table-column prop="value" label="参考值" />
+        </el-table>
+
+        <h3>相关系统配置项</h3>
+        <el-table :data="schedulerRelatedConfigs" border stripe size="small" style="margin-top: 12px;">
+          <el-table-column prop="key" label="配置 Key" width="220">
+            <template #default="{ row }">
+              <code>{{ row.key }}</code>
+            </template>
+          </el-table-column>
+          <el-table-column prop="category" label="分类" width="120" />
+          <el-table-column prop="desc" label="说明" />
+        </el-table>
+      </el-card>
+
       <!-- 快捷键 -->
       <el-card shadow="never" class="guide-section">
         <template #header><h2>键盘快捷键（工作台）</h2></template>
@@ -283,6 +332,34 @@ const promptBlocks = [
   { block: '额外写作指引', source: '话题规则', content: '规则中的 geminiPromptHint（仅命中规则时出现）' },
   { block: 'Google 热点', source: 'Google Trends', content: '热搜标题、热度（仅匹配时出现）' },
   { block: '任务模板', source: '系统配置', content: '字数限制、输出格式要求。新帖时额外要求生成标题' },
+]
+
+const schedulerData = [
+  { name: 'Scanner', endpoint: 'POST /tasks/scanner', schedule: '每 15–30 分钟', pause: 'SCANNER_PAUSED', desc: '扫描 BK 论坛低回复帖子，AI 评估后生成回复 Feed' },
+  { name: 'Trends', endpoint: 'POST /tasks/trends', schedule: '每 60 分钟', pause: 'TRENDS_PAUSED', desc: '从 MediaLens 拉取热门话题，生成新帖 Feed' },
+  { name: 'Poster', endpoint: 'POST /tasks/poster', schedule: '每 30–60 分钟', pause: 'POSTER_PAUSED', desc: '遍历待审 Feed，评分达标自动发帖，不达标重新生成' },
+  { name: 'Google Trends', endpoint: 'POST /tasks/gtrends', schedule: '每 30 分钟', pause: 'GTRENDS_PAUSED', desc: '拉取 Google 香港热搜，Scanner 扫描时用于增强匹配' },
+]
+
+const schedulerConfigData = [
+  { field: '目标类型', value: 'HTTP' },
+  { field: 'URL', value: 'https://<your-domain>/tasks/scanner（各任务替换路径）' },
+  { field: '方法', value: 'POST' },
+  { field: '频率 (cron)', value: '*/15 * * * *（Scanner 示例，每 15 分钟）' },
+  { field: '时区', value: 'Asia/Hong_Kong' },
+  { field: '重试次数', value: '0（不重试，下次调度会自动补偿）' },
+  { field: '超时', value: '300s（Scanner/Poster 可能耗时较长）' },
+]
+
+const schedulerRelatedConfigs = [
+  { key: 'SCANNER_PAUSED', category: 'General', desc: '暂停 Scanner 扫描任务' },
+  { key: 'TRENDS_PAUSED', category: 'General', desc: '暂停 MediaLens 趋势拉取' },
+  { key: 'POSTER_PAUSED', category: 'General', desc: '暂停自动发帖任务' },
+  { key: 'GTRENDS_PAUSED', category: 'General', desc: '暂停 Google Trends 拉取' },
+  { key: 'AUTO_POST_THRESHOLD', category: 'BK Forum', desc: '自动发帖评分阈值（默认 80），relevanceScore ≥ 此值才发帖' },
+  { key: 'SCANNER_RELEVANCE_THRESHOLD', category: 'Scanner', desc: 'AI 评估相关性阈值（默认 35），低于此值不生成 Feed' },
+  { key: 'MAX_PENDING_QUEUE', category: 'MediaLens', desc: '待审队列上限（默认 300），超过后暂停生成' },
+  { key: 'BK_RATE_LIMIT_SECONDS', category: 'BK Forum', desc: '发帖最小间隔秒数（默认 35s）' },
 ]
 
 const shortcutData = [

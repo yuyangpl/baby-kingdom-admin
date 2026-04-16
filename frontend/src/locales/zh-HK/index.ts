@@ -494,6 +494,7 @@ export default {
     BK_POST_INTERVAL_SEC: '發帖間隔秒數',
     BK_RATE_LIMIT_SECONDS: '寫入操作最小間隔秒數',
     BK_VER: 'BK 版本參數',
+    AUTO_POST_THRESHOLD: '自動發帖評分閾值（relevanceScore ≥ 此值自動發帖）',
     // email
     SMTP_FROM: '告警郵件發件人地址',
     SMTP_HOST: 'SMTP 伺服器主機名',

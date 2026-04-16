@@ -123,8 +123,82 @@ export async function posterTask(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // 不再有 approved 状态，批量定时发布已移除（发布在审核时同步完成）
-  res.json({ success: true, posted: 0, reason: 'batch posting removed — publish happens at review time' });
+  // 批量自动发帖：遍历所有 pending feed
+  // - 首次扫到(attempts=0)：评分达标 → 直接发帖，不达标 → attempts+1
+  // - 再次扫到(attempts>=1)：重新生成内容 → 评分达标 → 发帖，不达标 → attempts+1 留待下次
+  const threshold = parseInt(await configService.getValue('AUTO_POST_THRESHOLD') || '80', 10);
+  const { regenerate } = await import('../feed/feed.service.js');
+
+  const allPending = await prisma.feed.findMany({
+    where: { status: 'pending', postId: null },
+    orderBy: [{ createdAt: 'asc' }],
+  });
+
+  if (allPending.length === 0) {
+    res.json({ success: true, posted: 0, scanned: 0, regenerated: 0, reason: 'no pending feeds' });
+    return;
+  }
+
+  let posted = 0, skipped = 0, regenerated = 0;
+  const details: Array<{ feedId: string; action: string }> = [];
+
+  for (const feed of allPending) {
+    // Check board enableAutoReply for replies
+    if (feed.postType === 'reply' && feed.threadFid) {
+      const board = await prisma.forumBoard.findFirst({ where: { fid: feed.threadFid } });
+      if (!board?.enableAutoReply) { skipped++; continue; }
+    }
+
+    // Check persona active + daily limit
+    const persona = feed.personaId
+      ? await prisma.persona.findFirst({ where: { accountId: feed.personaId, isActive: true } })
+      : null;
+    if (!persona) { skipped++; continue; }
+    if ((persona.postsToday || 0) >= persona.maxPostsPerDay) { skipped++; continue; }
+
+    let currentFeed = feed;
+
+    // Already scanned before → regenerate content first
+    if (feed.autoPostAttempts > 0) {
+      try {
+        currentFeed = await regenerate(feed.id, {}, 'system', '');
+        regenerated++;
+        logger.info({ feedId: feed.feedId, attempt: feed.autoPostAttempts + 1 }, 'poster: regenerated content');
+      } catch (err) {
+        logger.warn({ err, feedId: feed.feedId }, 'poster: regenerate failed, skip');
+        await prisma.feed.update({ where: { id: feed.id }, data: { autoPostAttempts: feed.autoPostAttempts + 1 } });
+        details.push({ feedId: feed.feedId, action: 'regen_failed' });
+        continue;
+      }
+    }
+
+    // Check score
+    const score = currentFeed.relevanceScore ?? 0;
+    if (score >= threshold) {
+      try {
+        await postFeed(feed.id, undefined, '');
+        posted++;
+        details.push({ feedId: feed.feedId, action: 'posted' });
+        logger.info({ feedId: feed.feedId, score, threshold }, 'poster: auto-posted');
+      } catch (err: any) {
+        // 发帖失败不重试，标记 failed
+        logger.error({ err, feedId: feed.feedId }, 'poster: post failed');
+        details.push({ feedId: feed.feedId, action: `post_failed: ${err.message}` });
+      }
+    } else {
+      // 不达标，+1 attempts，留待下次扫描
+      await prisma.feed.update({ where: { id: feed.id }, data: { autoPostAttempts: feed.autoPostAttempts + 1 } });
+      details.push({ feedId: feed.feedId, action: `below_threshold(${score}<${threshold})` });
+    }
+  }
+
+  await logTask('poster', {
+    status: 'completed', duration: Date.now() - startedAt,
+    result: { posted, scanned: allPending.length, regenerated, skipped, threshold },
+    triggeredBy,
+  });
+
+  res.json({ success: true, posted, scanned: allPending.length, regenerated, skipped, threshold, details });
 }
 
 export async function gtrendsTask(req: Request, res: Response): Promise<void> {

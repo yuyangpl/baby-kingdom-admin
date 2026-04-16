@@ -304,6 +304,9 @@ model Feed {
   qualityWarnings  String[]  @default([]) @map("quality_warnings")
   isDuplicate      Boolean   @default(false) @map("is_duplicate")
 
+  // Auto-post tracking
+  autoPostAttempts Int       @default(0) @map("auto_post_attempts")
+
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
 

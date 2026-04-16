@@ -480,6 +480,7 @@ export default {
     BK_POST_INTERVAL_SEC: 'Post interval seconds',
     BK_RATE_LIMIT_SECONDS: 'Min seconds between write ops',
     BK_VER: 'BK version param',
+    AUTO_POST_THRESHOLD: 'Auto-post relevance score threshold',
     SMTP_FROM: 'Sender address for alert emails',
     SMTP_HOST: 'SMTP server hostname',
     SMTP_PASS: 'SMTP authentication password',

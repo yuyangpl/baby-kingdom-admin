@@ -80,6 +80,9 @@ export const CONFIG_PRESETS: ConfigPreset[] = [
   { key: 'TREND_LOOKBACK_DAYS', value: '1', category: 'medialens', description: 'Trend lookback days' },
   { key: 'TREND_PULL_INTERVAL_MIN', value: '60', category: 'medialens', description: 'Trend pull interval (minutes)' },
 
+  // -- Poster --
+  { key: 'AUTO_POST_THRESHOLD', value: '80', category: 'bk-forum', description: 'Auto-post when relevanceScore >= this value' },
+
   // -- Scanner --
   { key: 'SCANNER_RELEVANCE_THRESHOLD', value: '35', category: 'scanner', description: 'Gemini relevance score threshold' },
   { key: 'SCANNER_TIMEOUT_MINUTES', value: '15', category: 'scanner', description: 'Scanner timeout minutes' },
