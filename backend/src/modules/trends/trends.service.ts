@@ -130,6 +130,20 @@ async function refreshMlToken(baseUrl: string, currentToken: string): Promise<st
 }
 
 async function fetchFromSource(baseUrl: string, token: string, source: string, country: string, limit: number, lookbackDays: number): Promise<RawTrend[]> {
+  // 请求前先检查本地 expiry，超过 1 小时就主动刷新 token
+  let activeToken = token;
+  const expiryStr = await configService.getValue('MEDIALENS_JWT_TOKEN_EXPIRY');
+  const tokenAge = expiryStr ? Date.now() - (new Date(expiryStr).getTime() - 23 * 60 * 60 * 1000) : Infinity;
+  if (tokenAge > 60 * 60 * 1000) {
+    logger.info({ tokenAgeHours: Math.round(tokenAge / 3600000) }, 'MediaLens token older than 1h, proactively refreshing');
+    const newToken = await refreshMlToken(baseUrl, token);
+    if (newToken) {
+      activeToken = newToken;
+    } else {
+      logger.warn('MediaLens proactive token refresh failed, trying with current token');
+    }
+  }
+
   // Each endpoint has different query params — mirrors GAS TrendPuller.js
   let url: string;
   if (source === 'lihkg') {
@@ -140,39 +154,10 @@ async function fetchFromSource(baseUrl: string, token: string, source: string, c
     url = `${baseUrl}/buzz/viral-topics?days=${lookbackDays}&countries=${country}&limit=${limit}`;
   }
 
-  let response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${activeToken}` },
     signal: AbortSignal.timeout(15000),
   });
-
-  // 401 -> 自动 refresh token 后重试一次
-  if (response.status === 401) {
-    logger.warn('MediaLens JWT expired, attempting auto refresh');
-    const newToken = await refreshMlToken(baseUrl, token);
-    if (newToken) {
-      response = await fetch(url, {
-        headers: { Authorization: `Bearer ${newToken}` },
-        signal: AbortSignal.timeout(15000),
-      });
-    }
-    if (!newToken || response.status === 401) {
-      logger.warn('MediaLens JWT refresh failed, needs reauthentication');
-      // 发送邮件通知
-      try {
-        const { sendAlert } = await import('../../shared/email.js');
-        const adminEmails = await configService.getValue('ADMIN_EMAILS');
-        if (adminEmails) {
-          for (const email of adminEmails.split(',').map((e: string) => e.trim()).filter(Boolean)) {
-            await sendAlert(email,
-              '[BK Admin] MediaLens Token 过期且刷新失败',
-              `<h3>MediaLens Token 过期</h3><p>自动刷新失败，需要手动重新 OTP 验证。</p><p>时间：${new Date().toISOString()}</p>`
-            );
-          }
-        }
-      } catch { /* ignore email errors */ }
-      return [];
-    }
-  }
 
   if (!response.ok) {
     logger.warn({ status: response.status, source }, 'MediaLens API error');
